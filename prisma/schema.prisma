@@ -1,0 +1,224 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum ConfirmationMode {
+  MANUAL
+  AUTOMATIC
+}
+
+enum AppointmentStatus {
+  PENDING_CONFIRMATION
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum EmailLogStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model WorkshopSettings {
+  id                       String             @id @default(cuid())
+  workshopName             String
+  capacity                 Int
+  slotStepMinutes          Int
+  minimumNoticeMinutes     Int
+  maximumBookingWindowDays Int
+  confirmationMode         ConfirmationMode   @default(MANUAL)
+  cancellationEnabled      Boolean            @default(true)
+  reschedulingEnabled      Boolean            @default(false)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  weeklySchedules          WeeklySchedule[]
+  scheduleBreaks           ScheduleBreak[]
+  services                 Service[]
+}
+
+model WeeklySchedule {
+  id                 String           @id @default(cuid())
+  workshopSettingsId String
+  dayOfWeek          DayOfWeek
+  opensAt            String
+  closesAt           String
+  isOpen             Boolean
+  workshopSettings   WorkshopSettings @relation(fields: [workshopSettingsId], references: [id], onDelete: Cascade)
+
+  @@index([workshopSettingsId, dayOfWeek])
+}
+
+model ScheduleBreak {
+  id                 String           @id @default(cuid())
+  workshopSettingsId String
+  dayOfWeek          DayOfWeek
+  startsAt           String
+  endsAt             String
+  workshopSettings   WorkshopSettings @relation(fields: [workshopSettingsId], references: [id], onDelete: Cascade)
+
+  @@index([workshopSettingsId, dayOfWeek])
+}
+
+model Service {
+  id                 String           @id @default(cuid())
+  workshopSettingsId String
+  name               String
+  description        String?
+  durationMinutes    Int
+  isActive           Boolean          @default(true)
+  displayOrder       Int
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  workshopSettings   WorkshopSettings @relation(fields: [workshopSettingsId], references: [id], onDelete: Cascade)
+  appointments       Appointment[]
+
+  @@index([workshopSettingsId, isActive, displayOrder])
+}
+
+model Customer {
+  id           String        @id @default(cuid())
+  fullName     String
+  phone        String
+  email        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  motorcycles  Motorcycle[]
+  appointments Appointment[]
+
+  @@index([phone])
+  @@index([email])
+}
+
+model Motorcycle {
+  id           String        @id @default(cuid())
+  customerId   String
+  brand        String
+  model        String
+  licensePlate String?
+  year         Int?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([customerId])
+  @@index([licensePlate])
+}
+
+model Appointment {
+  id                    String                     @id @default(cuid())
+  serviceId             String
+  customerId            String
+  motorcycleId          String
+  startAt               DateTime
+  endAt                 DateTime
+  status                AppointmentStatus          @default(PENDING_CONFIRMATION)
+  idempotencyKey        String                     @unique
+  cancellationTokenHash String?
+  notes                 String?
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  service               Service                    @relation(fields: [serviceId], references: [id])
+  customer              Customer                   @relation(fields: [customerId], references: [id])
+  motorcycle            Motorcycle                 @relation(fields: [motorcycleId], references: [id])
+  statusHistory         AppointmentStatusHistory[]
+  emailLogs             EmailLog[]
+
+  @@index([startAt, endAt, status])
+  @@index([customerId])
+  @@index([motorcycleId])
+}
+
+model AppointmentStatusHistory {
+  id            String            @id @default(cuid())
+  appointmentId String
+  fromStatus    AppointmentStatus?
+  toStatus      AppointmentStatus
+  changedById   String?
+  changedAt     DateTime          @default(now())
+  note          String?
+  appointment   Appointment       @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  changedBy     User?             @relation(fields: [changedById], references: [id])
+
+  @@index([appointmentId, changedAt])
+}
+
+model User {
+  id            String                     @id @default(cuid())
+  name          String?
+  email         String                     @unique
+  passwordHash  String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  statusChanges AppointmentStatusHistory[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model EmailLog {
+  id            String         @id @default(cuid())
+  appointmentId String?
+  event         String
+  recipient     String
+  status        EmailLogStatus @default(PENDING)
+  providerId    String?
+  errorMessage  String?
+  createdAt     DateTime       @default(now())
+  appointment   Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
+  @@index([status, createdAt])
+}

@@ -1,0 +1,92 @@
+schema: spec-driven
+
+project:
+  name: "turnero fosa"
+  directory: "/home/maxim/Escritorio/Turnero Fosa"
+  initialized_at: "2026-06-30"
+
+artifact_store:
+  mode: both
+  resolved_persistence: hybrid
+
+session_preflight:
+  execution_mode: interactive
+  chained_pr_strategy: auto-forecast
+  review_budget_lines: 800
+
+context: |
+  Current state: empty directory, not a git repository, no application files detected.
+  Product: scalable public booking portal plus protected internal workshop panel for a motorcycle workshop.
+  Planned stack: Next.js, TypeScript, PostgreSQL, Prisma, Auth.js, Tailwind CSS, Zod, Resend, Vercel, cloud PostgreSQL.
+  MVP: public booking, services, available hours, customers, motorcycles, appointments, protected internal panel, daily view, status changes.
+  Excluded from MVP: payments, automatic WhatsApp, advanced reports, full mechanical history, multi-branch, inventory, online rescheduling.
+  Configuration rule: workshop settings, schedules, capacities, services, and booking windows must be configurable, not hardcoded.
+  Visual direction: dark/charcoal surfaces with medium fluorescent apple-green accent.
+
+testing:
+  strict_tdd: true
+  reason: "Next.js scaffold, package scripts, Vitest, React Testing Library, and Playwright are now configured; future behavior slices can enforce RED-GREEN-REFACTOR."
+  detected_at: "2026-06-30"
+  recommended_when_bootstrapped:
+    strict_tdd: true
+    test_command: "pnpm test"
+    unit_framework: "Vitest"
+    component_testing: "React Testing Library"
+    e2e_framework: "Playwright"
+  runner:
+    available: true
+    framework: "Vitest"
+    command: "pnpm test"
+  layers:
+    unit:
+      available: true
+      tool: "Vitest"
+    integration:
+      available: false
+      tool: null
+    e2e:
+      available: true
+      tool: "Playwright"
+  coverage:
+    available: false
+    command: null
+  quality_tools:
+    linter:
+      available: true
+      command: "pnpm lint"
+    type_checker:
+      available: true
+      command: "pnpm typecheck"
+    formatter:
+      available: false
+      command: null
+
+rules:
+  proposal:
+    - "Lead with user-visible outcome and explicit MVP boundaries."
+    - "Include rollback or de-risking notes for data model, auth, and scheduling logic changes."
+  specs:
+    - "Use RFC 2119 keywords and Given/When/Then scenarios."
+    - "Keep workshop settings configurable; do not encode Taller Express defaults as product constants."
+    - "Model public booking and protected internal workflows separately where behavior differs."
+  design:
+    - "Document scheduling invariants: working hours, breaks, capacity, booking notice, booking window, cancellation policy, and confirmation status."
+    - "Document data ownership, authentication boundaries, and operational settings storage."
+    - "Prefer scalable boundaries suitable for a Next.js app with PostgreSQL and Prisma."
+  tasks:
+    - "Forecast review size against review_budget_lines before apply."
+    - "Group tasks into reviewable work units and keep tests with the behavior they verify."
+  apply:
+    tdd: true
+    test_command: "pnpm test"
+    rules:
+      - "Do not implement product code before proposal, specs, design, and tasks are accepted."
+      - "When the test runner exists, switch to strict RED-GREEN-REFACTOR for behavior changes."
+  verify:
+    test_command: "pnpm test"
+    build_command: "pnpm build"
+    coverage_threshold: 0
+    rules:
+      - "Report unavailable verification commands explicitly until the scaffold provides them."
+  archive:
+    - "Preserve completed change folders as audit trail under openspec/changes/archive/."
