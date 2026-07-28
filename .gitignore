@@ -32,6 +32,7 @@ pnpm-debug.log*
 
 # local tooling metadata
 .atl/
+.neon
 
 # typescript
 *.tsbuildinfo
