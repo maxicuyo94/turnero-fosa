@@ -57,6 +57,6 @@ Chain strategy: stacked-to-main
 
 ## Phase 5: Notifications and Verification
 
-- [ ] 5.1 Create `src/modules/notifications` `NotificationPort`, Resend adapter, and failure logging that never blocks booking.
-- [ ] 5.2 Add Playwright coverage for public booking and internal status change.
+- [x] 5.1 Create `src/modules/notifications` `NotificationPort`, Resend adapter, and failure logging that never blocks booking.
+- [x] 5.2 Add Playwright coverage for public booking and internal status change.
 - [x] 5.3 Update README/setup docs with env, seed, quality commands, and MVP exclusions.

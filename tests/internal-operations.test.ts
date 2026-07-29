@@ -5,6 +5,11 @@ import {
   type InternalAppointmentRecord,
   type InternalOperationsRepository,
 } from "@/src/modules/internal/operations";
+import type {
+  EmailNotificationMessage,
+  NotificationLogRepository,
+  NotificationPort,
+} from "@/src/modules/notifications/service";
 
 const today = "2026-07-06";
 
@@ -56,6 +61,30 @@ describe("internal status transitions", () => {
     expect(repository.appointments[0]?.status).toBe("COMPLETED");
     expect(repository.statusHistory).toEqual([]);
   });
+
+  it("sends and logs a provider-neutral notification after a status change", async () => {
+    const repository = new InMemoryInternalRepository([appointment({ id: "appt_3", status: "CONFIRMED" })]);
+    const port = new CollectingNotificationPort();
+    const logRepository = new InMemoryNotificationLogRepository();
+
+    const result = await updateInternalAppointmentStatus(
+      repository,
+      { appointmentId: "appt_3", nextStatus: "IN_PROGRESS", changedById: "user_1" },
+      { port, logRepository },
+    );
+
+    expect(result).toMatchObject({ accepted: true, appointment: { status: "IN_PROGRESS" } });
+    expect(port.messages).toEqual([
+      expect.objectContaining({
+        event: "APPOINTMENT_STATUS_CHANGED",
+        appointmentId: "appt_3",
+        recipient: "ada@example.com",
+      }),
+    ]);
+    expect(logRepository.entries).toEqual([
+      expect.objectContaining({ appointmentId: "appt_3", status: "SENT", providerId: "provider-message-id" }),
+    ]);
+  });
 });
 
 function appointment(
@@ -66,6 +95,7 @@ function appointment(
     serviceName: "Service Esencial",
     customerName: "Ada Lovelace",
     customerPhone: "+5491112345678",
+    customerEmail: "ada@example.com",
     motorcycleLabel: "Honda XR ABC123",
     status: overrides.status ?? "PENDING_CONFIRMATION",
     notes: null,
@@ -73,6 +103,23 @@ function appointment(
     startAt: new Date(overrides.startAt ?? "2026-07-06T09:00:00-03:00"),
     endAt: new Date(overrides.endAt ?? "2026-07-06T09:30:00-03:00"),
   };
+}
+
+class CollectingNotificationPort implements NotificationPort {
+  messages: EmailNotificationMessage[] = [];
+
+  async sendEmail(message: EmailNotificationMessage) {
+    this.messages.push(message);
+    return { providerId: "provider-message-id" };
+  }
+}
+
+class InMemoryNotificationLogRepository implements NotificationLogRepository {
+  entries: Parameters<NotificationLogRepository["logEmail"]>[0][] = [];
+
+  async logEmail(input: Parameters<NotificationLogRepository["logEmail"]>[0]) {
+    this.entries.push(input);
+  }
 }
 
 class InMemoryInternalRepository implements InternalOperationsRepository {

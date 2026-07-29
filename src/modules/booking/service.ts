@@ -3,6 +3,7 @@ import { z } from "zod";
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
+import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
 import type { ScheduleBreak, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
 export type PublicServiceRecord = {
@@ -75,6 +76,11 @@ export type CreatePublicBookingResult =
       fieldErrors?: Record<string, string[]>;
     };
 
+export type PublicBookingNotificationOptions = {
+  logRepository: NotificationLogRepository;
+  port: NotificationPort;
+};
+
 export async function listPublicServices(repository: BookingRepository): Promise<PublicServiceRecord[]> {
   return repository.listActiveServices();
 }
@@ -110,6 +116,7 @@ export async function getPublicAvailability(
 export async function createPublicBooking(
   repository: BookingRepository,
   input: CreatePublicBookingInput,
+  notifications?: PublicBookingNotificationOptions,
 ): Promise<CreatePublicBookingResult> {
   const parsed = bookingInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -121,18 +128,24 @@ export async function createPublicBooking(
     };
   }
 
-  return repository.withBookingTransaction(async () => {
+  const transactionResult = await repository.withBookingTransaction(async (): Promise<{
+    result: CreatePublicBookingResult;
+    notification: { appointmentId: string; recipient: string; serviceName: string; startAt: Date } | null;
+  }> => {
     const existing = await repository.findByIdempotencyKey(parsed.data.idempotencyKey);
     if (existing) {
-      return bookingSuccess(existing, existing.cancellationToken, {
-        repeated: true,
-        rawTokenRecoverable: existing.cancellationToken !== null,
-      });
+      return {
+        result: bookingSuccess(existing, existing.cancellationToken, {
+          repeated: true,
+          rawTokenRecoverable: existing.cancellationToken !== null,
+        }),
+        notification: null,
+      };
     }
 
     const service = await repository.findActiveService(parsed.data.serviceId);
     if (!service) {
-      return { accepted: false, reason: "SERVICE_UNAVAILABLE", message: "Elegi un servicio activo." };
+      return { result: { accepted: false, reason: "SERVICE_UNAVAILABLE", message: "Elegi un servicio activo." }, notification: null };
     }
 
     const context = await repository.getBookingContext();
@@ -149,7 +162,7 @@ export async function createPublicBooking(
     }).some((slot) => slot.startAt.getTime() === startAt.getTime() && slot.endAt.getTime() === endAt.getTime());
 
     if (!available) {
-      return { accepted: false, reason: "SLOT_UNAVAILABLE", message: "Elegi otro horario disponible." };
+      return { result: { accepted: false, reason: "SLOT_UNAVAILABLE", message: "Elegi otro horario disponible." }, notification: null };
     }
 
     const cancellationToken = context.settings.cancellationEnabled ? createCancellationToken() : null;
@@ -166,8 +179,30 @@ export async function createPublicBooking(
       notes: parsed.data.notes,
     });
 
-    return bookingSuccess(appointment, cancellationToken);
+    return {
+      result: bookingSuccess(appointment, cancellationToken),
+      notification: parsed.data.customer.email
+        ? {
+            appointmentId: appointment.id,
+            recipient: parsed.data.customer.email,
+            serviceName: appointment.serviceName,
+            startAt: appointment.startAt,
+          }
+        : null,
+    };
   });
+
+  if (transactionResult.notification && notifications) {
+    await sendEmailAndLog(notifications.logRepository, notifications.port, {
+      event: "PUBLIC_BOOKING_CREATED",
+      appointmentId: transactionResult.notification.appointmentId,
+      recipient: transactionResult.notification.recipient,
+      subject: "Recibimos tu turno",
+      text: `Recibimos tu turno para ${transactionResult.notification.serviceName} el ${formatDateTime(transactionResult.notification.startAt)}.`,
+    });
+  }
+
+  return transactionResult.result;
 }
 
 export async function cancelPublicAppointment(
@@ -222,4 +257,12 @@ function createCancellationToken(): string {
 
 function dateAtTime(date: string, time: string): Date {
   return new Date(`${date}T${time}:00-03:00`);
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Argentina/Salta",
+  }).format(date);
 }

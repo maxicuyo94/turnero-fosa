@@ -23,6 +23,7 @@ describe("InternalAgendaScreen", () => {
               serviceName: "Service Esencial",
               customerName: "Ada Lovelace",
               customerPhone: "+5491112345678",
+              customerEmail: "ada@example.com",
               motorcycleLabel: "Honda XR ABC123",
               startAt: new Date("2026-07-06T09:00:00-03:00"),
               endAt: new Date("2026-07-06T09:30:00-03:00"),

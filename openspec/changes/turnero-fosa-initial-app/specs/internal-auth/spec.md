@@ -4,7 +4,7 @@
 
 Define the boundary between public booking and protected workshop operations.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Protected Internal Panel
 

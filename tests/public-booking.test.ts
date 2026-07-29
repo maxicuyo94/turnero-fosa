@@ -8,6 +8,7 @@ import {
   type PublicAppointmentRecord,
   type PublicServiceRecord,
 } from "@/src/modules/booking/service";
+import type { NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const monday = "2026-07-06";
@@ -141,6 +142,40 @@ describe("createPublicBooking", () => {
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
     expect(repository.createdAppointments).toHaveLength(0);
+  });
+
+  it("logs notification failures without blocking a successful booking", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
+    const logRepository = new InMemoryNotificationLogRepository();
+
+    const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }), {
+      logRepository,
+      port: new FailingNotificationPort(),
+    });
+
+    expect(result).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+    expect(repository.createdAppointments).toHaveLength(1);
+    expect(logRepository.entries).toEqual([
+      expect.objectContaining({
+        appointmentId: "appt_1",
+        event: "PUBLIC_BOOKING_CREATED",
+        recipient: "ada@example.com",
+        status: "FAILED",
+        errorMessage: "Email provider unavailable.",
+      }),
+    ]);
+  });
+
+  it("does not block a successful booking when notification failure logging also fails", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
+
+    const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }), {
+      logRepository: new FailingNotificationLogRepository(),
+      port: new FailingNotificationPort(),
+    });
+
+    expect(result).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+    expect(repository.createdAppointments).toHaveLength(1);
   });
 });
 
@@ -281,5 +316,25 @@ class InMemoryBookingRepository implements BookingRepository {
     const found = this.appointments.find((item) => item.id === appointmentId);
     if (!found) throw new Error("Appointment not found");
     found.status = "CANCELLED";
+  }
+}
+
+class FailingNotificationPort implements NotificationPort {
+  async sendEmail(): Promise<never> {
+    throw new Error("Email provider unavailable.");
+  }
+}
+
+class InMemoryNotificationLogRepository implements NotificationLogRepository {
+  entries: Parameters<NotificationLogRepository["logEmail"]>[0][] = [];
+
+  async logEmail(input: Parameters<NotificationLogRepository["logEmail"]>[0]) {
+    this.entries.push(input);
+  }
+}
+
+class FailingNotificationLogRepository implements NotificationLogRepository {
+  async logEmail(): Promise<never> {
+    throw new Error("Notification log unavailable.");
   }
 }

@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { getEnv } from "../src/lib/env";
-import { createPasswordHash } from "../src/lib/auth";
+import { createPasswordHash } from "../src/lib/password";
 import { workshopSeedConfig } from "../src/modules/settings/defaults";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });

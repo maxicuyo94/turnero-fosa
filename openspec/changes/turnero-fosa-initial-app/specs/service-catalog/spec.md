@@ -4,7 +4,7 @@
 
 Define bookable workshop services and their visibility in booking flows.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Configurable Bookable Services
 

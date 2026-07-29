@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { type AppointmentStatus, appointmentStatusSchema } from "@/src/modules/appointments/schemas";
+import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
 
 export type InternalAppointmentRecord = {
   id: string;
   serviceName: string;
   customerName: string;
   customerPhone: string;
+  customerEmail: string | null;
   motorcycleLabel: string;
   startAt: Date;
   endAt: Date;
@@ -27,6 +29,11 @@ export type InternalOperationsRepository = {
     changedById: string | null;
     note?: string;
   }): Promise<InternalAppointmentRecord>;
+};
+
+export type InternalStatusNotificationOptions = {
+  logRepository: NotificationLogRepository;
+  port: NotificationPort;
 };
 
 const agendaInputSchema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u) });
@@ -54,6 +61,7 @@ export async function getInternalAgenda(repository: InternalOperationsRepository
 export async function updateInternalAppointmentStatus(
   repository: InternalOperationsRepository,
   input: z.input<typeof updateStatusInputSchema>,
+  notifications?: InternalStatusNotificationOptions,
 ): Promise<
   | { accepted: true; appointment: InternalAppointmentRecord }
   | { accepted: false; reason: "APPOINTMENT_NOT_FOUND" | "INVALID_TRANSITION"; message: string }
@@ -69,7 +77,18 @@ export async function updateInternalAppointmentStatus(
     };
   }
 
-  return { accepted: true, appointment: await repository.updateAppointmentStatus(parsed) };
+  const updated = await repository.updateAppointmentStatus(parsed);
+  if (updated.customerEmail && notifications) {
+    await sendEmailAndLog(notifications.logRepository, notifications.port, {
+      event: "APPOINTMENT_STATUS_CHANGED",
+      appointmentId: updated.id,
+      recipient: updated.customerEmail,
+      subject: "Actualizacion de tu turno",
+      text: `Tu turno para ${updated.serviceName} ahora esta ${statusLabel(updated.status)}.`,
+    });
+  }
+
+  return { accepted: true, appointment: updated };
 }
 
 export function statusLabel(status: AppointmentStatus): string {

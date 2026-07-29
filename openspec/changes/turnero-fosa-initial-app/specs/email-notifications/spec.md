@@ -4,11 +4,11 @@
 
 Define user-observable email and WhatsApp notification behavior while keeping providers replaceable.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Booking Email Notifications
 
-The system SHOULD send email notifications for booking creation and internal status changes when email configuration is available, and SHOULD support a WhatsApp notification provider when configured.
+The system MUST attempt to send email notifications for booking creation and internal status changes when email configuration is available, and MAY support a WhatsApp notification provider when configured.
 
 #### Scenario: Booking notification sent
 

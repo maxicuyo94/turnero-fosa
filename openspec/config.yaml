@@ -77,16 +77,10 @@ rules:
     - "Forecast review size against review_budget_lines before apply."
     - "Group tasks into reviewable work units and keep tests with the behavior they verify."
   apply:
-    tdd: true
-    test_command: "pnpm test"
-    rules:
-      - "Do not implement product code before proposal, specs, design, and tasks are accepted."
-      - "When the test runner exists, switch to strict RED-GREEN-REFACTOR for behavior changes."
+    - "Do not implement product code before proposal, specs, design, and tasks are accepted."
+    - "Use pnpm test and strict RED-GREEN-REFACTOR for behavior changes."
   verify:
-    test_command: "pnpm test"
-    build_command: "pnpm build"
-    coverage_threshold: 0
-    rules:
-      - "Report unavailable verification commands explicitly until the scaffold provides them."
+    - "Run pnpm typecheck, pnpm lint, pnpm test, pnpm test:e2e, and pnpm build."
+    - "Report unavailable verification commands explicitly."
   archive:
     - "Preserve completed change folders as audit trail under openspec/changes/archive/."

@@ -1,10 +1,8 @@
-import { scrypt, timingSafeEqual, randomBytes } from "node:crypto";
-import { promisify } from "node:util";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { verifyPassword } from "@/src/lib/password";
 
-const scryptAsync = promisify(scrypt);
-const PASSWORD_HASH_PREFIX = "scrypt";
+export { createPasswordHash, verifyPassword } from "@/src/lib/password";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -40,21 +38,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
 });
-
-export async function createPasswordHash(password: string): Promise<string> {
-  const salt = randomBytes(16).toString("hex");
-  const derived = (await scryptAsync(password, salt, 64)) as Buffer;
-  return `${PASSWORD_HASH_PREFIX}:${salt}:${derived.toString("hex")}`;
-}
-
-export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const [prefix, salt, expectedHex] = storedHash.split(":");
-  if (prefix !== PASSWORD_HASH_PREFIX || !salt || !expectedHex) return false;
-
-  const expected = Buffer.from(expectedHex, "hex");
-  const actual = (await scryptAsync(password, salt, expected.length)) as Buffer;
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
 
 export function isInternalSession(session: unknown): boolean {
   if (!session || typeof session !== "object") return false;

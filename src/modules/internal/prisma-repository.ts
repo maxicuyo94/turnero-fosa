@@ -85,7 +85,7 @@ export class PrismaInternalRepository implements InternalOperationsRepository, I
 function mapInternalAppointment(appointment: {
   id: string;
   service: { name: string };
-  customer: { fullName: string; phone: string };
+  customer: { fullName: string; phone: string; email: string | null };
   motorcycle: { brand: string; model: string; licensePlate: string | null };
   startAt: Date;
   endAt: Date;
@@ -97,6 +97,7 @@ function mapInternalAppointment(appointment: {
     serviceName: appointment.service.name,
     customerName: appointment.customer.fullName,
     customerPhone: appointment.customer.phone,
+    customerEmail: appointment.customer.email,
     motorcycleLabel: [appointment.motorcycle.brand, appointment.motorcycle.model, appointment.motorcycle.licensePlate].filter(Boolean).join(" "),
     startAt: appointment.startAt,
     endAt: appointment.endAt,

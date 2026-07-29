@@ -19,7 +19,7 @@ If `pnpm` is not available but dependencies already exist in `node_modules`, use
 | `pnpm typecheck` | TypeScript verification. |
 | `pnpm lint` | Next.js ESLint rules. |
 | `pnpm test` | Vitest unit/component smoke tests. |
-| `pnpm test:e2e` | Playwright smoke test for baseline routes. |
+| `pnpm test:e2e` | Playwright coverage for baseline routes, public booking, and internal status changes. |
 | `pnpm db:generate` | Generate Prisma Client from `prisma/schema.prisma`. |
 | `pnpm db:seed` | Seed editable Taller Express defaults and optional env-sourced admin user. |
 
@@ -58,9 +58,9 @@ Default local credentials from `.env.example`:
 
 ## Current slice boundary
 
-Implemented now: scaffold, shared dark/apple-green UI, typed env validation, test tooling, Prisma schema, safe seed defaults, availability calculation, public service/slot lookup, public booking creation, policy-based cancellation link handling, Auth.js internal login, session-aware navbar, protected internal agenda with date filter, appointment status updates with status history, settings maintenance, and service visibility controls.
+Implemented now: scaffold, shared dark/apple-green UI, typed env validation, test tooling, Prisma schema, safe seed defaults, availability calculation, public service/slot lookup, public booking creation, policy-based cancellation link handling, Resend email notifications with non-blocking failure logs, Auth.js internal login, session-aware navbar, protected internal agenda with date filter, appointment status updates with status history, settings maintenance, service visibility controls, and E2E coverage for the core public/internal workflows.
 
-Intentionally deferred: notification providers, deposit/payment handling, contact/social persistence, age capture, and authenticated internal status-change E2E coverage.
+Intentionally deferred: automatic WhatsApp, deposit/payment handling, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, inventory, and online rescheduling.
 
 ## Taller Express Defaults
 
@@ -92,4 +92,4 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 
 ## Next implementation slice
 
-Phase 5 is the notifications and verification polish slice: notification adapters and authenticated internal E2E coverage for status changes. Payments, automatic WhatsApp, advanced reports, full mechanical history, multi-branch, inventory, and online rescheduling remain outside the MVP.
+The initial OpenSpec change is implementation-complete. The next step is archive/review and production launch hardening: replace placeholder secrets, verify the sender domain in Resend, confirm workshop policy values, and run the quality suite in the deployment environment.

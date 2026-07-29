@@ -4,7 +4,7 @@
 
 Define protected workshop operations for daily appointment handling.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Daily Agenda
 

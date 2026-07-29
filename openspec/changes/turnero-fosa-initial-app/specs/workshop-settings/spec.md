@@ -4,7 +4,7 @@
 
 Define configurable workshop identity, schedule, capacity, and booking policies.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Configurable Workshop Profile
 
