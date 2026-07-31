@@ -2,7 +2,7 @@ schema: spec-driven
 
 project:
   name: "turnero fosa"
-  directory: "/home/maxim/Escritorio/Turnero Fosa"
+  directory: "."
   initialized_at: "2026-06-30"
 
 artifact_store:
@@ -15,10 +15,10 @@ session_preflight:
   review_budget_lines: 800
 
 context: |
-  Current state: empty directory, not a git repository, no application files detected.
-  Product: scalable public booking portal plus protected internal workshop panel for a motorcycle workshop.
-  Planned stack: Next.js, TypeScript, PostgreSQL, Prisma, Auth.js, Tailwind CSS, Zod, Resend, Vercel, cloud PostgreSQL.
-  MVP: public booking, services, available hours, customers, motorcycles, appointments, protected internal panel, daily view, status changes.
+  Current state: production MVP deployed to Vercel with PostgreSQL hosted on Neon.
+  Product: public booking portal plus protected internal workshop panel for a motorcycle workshop.
+  Stack: Next.js, TypeScript, PostgreSQL, Prisma, Auth.js, Tailwind CSS, Zod, Resend, Vercel, and Neon.
+  Implemented MVP: public booking, services, available hours, customers, motorcycles, appointments, protected internal panel, daily view, status changes, settings, notifications, and automated tests.
   Excluded from MVP: payments, automatic WhatsApp, advanced reports, full mechanical history, multi-branch, inventory, online rescheduling.
   Configuration rule: workshop settings, schedules, capacities, services, and booking windows must be configurable, not hardcoded.
   Visual direction: dark/charcoal surfaces with medium fluorescent apple-green accent.
@@ -26,7 +26,7 @@ context: |
 testing:
   strict_tdd: true
   reason: "Next.js scaffold, package scripts, Vitest, React Testing Library, and Playwright are now configured; future behavior slices can enforce RED-GREEN-REFACTOR."
-  detected_at: "2026-06-30"
+  detected_at: "2026-07-31"
   recommended_when_bootstrapped:
     strict_tdd: true
     test_command: "pnpm test"
@@ -42,8 +42,8 @@ testing:
       available: true
       tool: "Vitest"
     integration:
-      available: false
-      tool: null
+      available: true
+      tool: "Vitest with PostgreSQL 17 via Docker Compose"
     e2e:
       available: true
       tool: "Playwright"

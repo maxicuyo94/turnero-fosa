@@ -92,4 +92,4 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 
 ## Next implementation slice
 
-The initial OpenSpec change is implementation-complete. The next step is archive/review and production launch hardening: replace placeholder secrets, verify the sender domain in Resend, confirm workshop policy values, and run the quality suite in the deployment environment.
+The initial OpenSpec change is implemented, verified, and archived. The next priorities are production hardening: verify the sender domain in Resend, confirm workshop policy values, configure preview/development environments, and keep the deployment quality suite automated.
