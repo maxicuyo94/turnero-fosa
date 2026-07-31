@@ -4,7 +4,7 @@ This repository contains the Taller de motos Express appointment scheduler MVP: 
 
 ## Quick path
 
-1. Use Node.js 20 (`20.20.2` is pinned in `.nvmrc`) and pnpm `10.14.0` through Corepack.
+1. Use Node.js 24 (`24.18.1` is pinned in `.nvmrc`) and pnpm `10.14.0` through Corepack.
 2. Install dependencies with `pnpm install`.
 3. Copy `.env.example` to `.env` and replace the placeholder values.
 4. Start PostgreSQL with `docker compose up -d postgres`.
