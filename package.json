@@ -2,6 +2,9 @@
   "name": "turnero-fosa",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "packageManager": "pnpm@10.14.0",
   "scripts": {
     "dev": "next dev",
