@@ -10,7 +10,7 @@ type PublicBookingScreenProps = {
   idempotencyKey?: string;
   action?: (formData: FormData) => void | Promise<void>;
   cancellationBasePath?: string;
-  outcome?: { accepted: boolean; message: string; cancellationUrl?: string };
+  outcome?: { accepted: boolean; message: string; cancellationUrl?: string; publicCode?: string };
   signedInUserName?: string | null;
 };
 
@@ -32,11 +32,27 @@ export function PublicBookingScreen({
 
       <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-10 sm:px-6 lg:py-12">
         <p className="text-xs font-semibold uppercase tracking-[0.55em] text-apple-300">Turnos online</p>
-        <h1 className="mt-4 text-5xl font-black tracking-[-0.05em] text-white">Reservar turno</h1>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <h1 className="text-5xl font-black tracking-[-0.05em] text-white">Reservar turno</h1>
+          <a className="font-semibold text-apple-300 underline decoration-apple-400/40 underline-offset-4" href="/booking/status">
+            Ya tengo turno
+          </a>
+        </div>
 
       {outcome ? (
         <section className="mt-8 rounded-[1.7rem] border border-apple-400/40 bg-apple-400/10 p-5 text-apple-100" role="status">
           <p>{outcome.message}</p>
+          {outcome.publicCode ? (
+            <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-apple-300/30 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-apple-200/70">Codigo del turno</p>
+                <p className="mt-1 font-mono text-2xl font-black tracking-[0.16em] text-white">{outcome.publicCode}</p>
+              </div>
+              <a className="font-black text-apple-200 underline underline-offset-4" href={`/booking/status?code=${encodeURIComponent(outcome.publicCode)}`}>
+                Consultar estado
+              </a>
+            </div>
+          ) : null}
           {outcome.cancellationUrl ? (
             <a className="mt-3 inline-block font-semibold underline" href={outcome.cancellationUrl}>
               Guardar enlace de cancelacion

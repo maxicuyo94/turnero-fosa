@@ -48,8 +48,12 @@ test("public booking happy path creates a pending request", async ({ page }) => 
   await page.getByRole("button", { name: "Solicitar turno" }).click();
 
   await expect(page.getByText("Tu turno quedo confirmado automaticamente.")).toBeVisible();
+  await expect(page.getByText(/^[A-HJ-NP-Z2-9]{10}$/u)).toBeVisible();
   await expect(page.getByRole("link", { name: "Guardar enlace de cancelacion" })).toHaveCount(0);
   await expect(page.getByText("La reprogramacion online no esta disponible por ahora.")).toBeVisible();
+  await page.getByRole("link", { name: "Consultar estado" }).click();
+  await expect(page.getByRole("heading", { name: "Consultar turno" })).toBeVisible();
+  await expect(page.getByText("Confirmado")).toBeVisible();
 });
 
 test("internal user changes an appointment status", async ({ page }) => {

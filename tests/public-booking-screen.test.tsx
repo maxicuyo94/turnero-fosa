@@ -35,4 +35,19 @@ describe("PublicBookingScreen", () => {
       .toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });
+
+  it("shows the public code and status link after a successful booking", () => {
+    render(
+      <PublicBookingScreen
+        services={[]}
+        selectedServiceId=""
+        selectedDate="2026-07-06"
+        slots={[]}
+        outcome={{ accepted: true, message: "Turno creado.", publicCode: "ABCD234567" }}
+      />,
+    );
+
+    expect(screen.getByText("ABCD234567")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Consultar estado" })).toHaveAttribute("href", "/booking/status?code=ABCD234567");
+  });
 });

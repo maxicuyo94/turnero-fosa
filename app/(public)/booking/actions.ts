@@ -41,7 +41,7 @@ export async function createAppointmentAction(formData: FormData) {
     ? `/booking/cancel?appointmentId=${encodeURIComponent(result.appointment.id)}&token=${encodeURIComponent(result.cancellationToken)}`
     : undefined;
   const cancelParam = cancellationUrl ? `&cancel=${encodeURIComponent(cancellationUrl)}` : "";
-  redirect(`/booking?booked=1&message=${encodeURIComponent(result.message)}${cancelParam}`);
+  redirect(`/booking?booked=1&message=${encodeURIComponent(result.message)}&code=${encodeURIComponent(result.appointment.publicCode)}${cancelParam}`);
 }
 
 export async function cancelAppointmentAction(formData: FormData) {

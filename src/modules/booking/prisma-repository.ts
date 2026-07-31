@@ -97,6 +97,11 @@ export class PrismaBookingRepository implements BookingRepository {
     return appointment ? mapAppointment(appointment) : null;
   }
 
+  async findByPublicCode(publicCode: string): Promise<PublicAppointmentRecord | null> {
+    const appointment = await this.client.appointment.findUnique({ where: { publicCode }, include: { service: true } });
+    return appointment ? mapAppointment(appointment) : null;
+  }
+
   async createAppointment(input: Parameters<BookingRepository["createAppointment"]>[0]): Promise<PublicAppointmentRecord> {
     const customer = await this.client.customer.create({
       data: { fullName: input.customer.fullName, phone: input.customer.phone, email: input.customer.email },
@@ -113,6 +118,7 @@ export class PrismaBookingRepository implements BookingRepository {
 
     const appointment = await this.client.appointment.create({
       data: {
+        publicCode: input.publicCode,
         serviceId: input.service.id,
         customerId: customer.id,
         motorcycleId: motorcycle.id,
@@ -154,7 +160,7 @@ function hashCancellationToken(token: string): string {
 }
 
 function isRetryableTransactionError(error: unknown): boolean {
-  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
+  return error instanceof Prisma.PrismaClientKnownRequestError && (error.code === "P2034" || error.code === "P2002");
 }
 
 function mapService(service: { id: string; name: string; description: string | null; durationMinutes: number; isActive: boolean; displayOrder: number }) {
@@ -170,16 +176,18 @@ function mapService(service: { id: string; name: string; description: string | n
 
 function mapAppointment(appointment: {
   id: string;
+  publicCode: string;
   serviceId: string;
   service: { name: string };
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;
   idempotencyKey: string;
-    cancellationTokenHash: string | null;
+  cancellationTokenHash: string | null;
 }): PublicAppointmentRecord {
   return {
     id: appointment.id,
+    publicCode: appointment.publicCode,
     serviceId: appointment.serviceId,
     serviceName: appointment.service.name,
     startAt: appointment.startAt,

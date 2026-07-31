@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
-import { createPublicBooking } from "@/src/modules/booking/service";
+import { createPublicBooking, getPublicAppointmentStatus } from "@/src/modules/booking/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
@@ -33,6 +33,7 @@ describe("Prisma public booking integration", () => {
     const repeated = await createPublicBooking(repository, input);
 
     expect(first).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+    expect(first.accepted ? first.appointment.publicCode : "").toMatch(/^[A-HJ-NP-Z2-9]{10}$/u);
     expect(first.accepted ? first.cancellationToken : "unexpected").toBeNull();
     expect(repeated).toMatchObject({
       accepted: true,
@@ -40,6 +41,14 @@ describe("Prisma public booking integration", () => {
       appointment: { idempotencyKey: "it-public-repeat-token" },
     });
     expect(repeated.accepted ? repeated.cancellationToken : "unexpected").toBeNull();
+    expect(repeated.accepted && first.accepted ? repeated.appointment.publicCode : "unexpected").toBe(
+      first.accepted ? first.appointment.publicCode : "unexpected",
+    );
+
+    const lookup = first.accepted
+      ? await getPublicAppointmentStatus(repository, { code: first.appointment.publicCode.toLowerCase() })
+      : null;
+    expect(lookup).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
   });
 
   it("accepts at most one concurrent request for the final remaining capacity in PostgreSQL", async () => {

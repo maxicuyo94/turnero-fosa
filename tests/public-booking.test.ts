@@ -3,12 +3,13 @@ import {
   cancelPublicAppointment,
   createPublicBooking,
   getPublicAvailability,
+  getPublicAppointmentStatus,
   listPublicServices,
   type BookingRepository,
   type PublicAppointmentRecord,
   type PublicServiceRecord,
 } from "@/src/modules/booking/service";
-import type { NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
+import type { EmailNotificationMessage, NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const monday = "2026-07-06";
@@ -89,7 +90,7 @@ describe("createPublicBooking", () => {
     expect(result).toMatchObject({
       accepted: true,
       message: "Tu turno quedo confirmado automaticamente.",
-      appointment: { serviceName: "Service Esencial", status: "CONFIRMED" },
+      appointment: { serviceName: "Service Esencial", status: "CONFIRMED", publicCode: expect.stringMatching(/^[A-HJ-NP-Z2-9]{10}$/u) },
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
     expect(repository.createdAppointments).toHaveLength(1);
@@ -124,6 +125,9 @@ describe("createPublicBooking", () => {
       appointment: { idempotencyKey: "repeat-key" },
     });
     expect(second.accepted ? second.cancellationToken : "unexpected").toBeNull();
+    expect(second.accepted && first.accepted ? second.appointment.publicCode : "unexpected").toBe(
+      first.accepted ? first.appointment.publicCode : "unexpected",
+    );
     expect(repository.createdAppointments).toHaveLength(1);
   });
 
@@ -208,6 +212,53 @@ describe("cancelPublicAppointment", () => {
   });
 });
 
+describe("getPublicAppointmentStatus", () => {
+  it("normalizes a code and returns only the public appointment summary", async () => {
+    const repository = new InMemoryBookingRepository({
+      appointments: [appointment({ publicCode: "ABCD234567", status: "CONFIRMED" })],
+    });
+
+    const result = await getPublicAppointmentStatus(repository, { code: "  abcd234567  " });
+
+    expect(result).toEqual({
+      accepted: true,
+      appointment: {
+        publicCode: "ABCD234567",
+        serviceName: "Service Esencial",
+        startAt: new Date("2026-07-06T09:00:00-03:00"),
+        endAt: new Date("2026-07-06T09:30:00-03:00"),
+        status: "CONFIRMED",
+      },
+    });
+    expect(result.accepted ? Object.keys(result.appointment).sort() : []).toEqual(
+      ["endAt", "publicCode", "serviceName", "startAt", "status"].sort(),
+    );
+  });
+
+  it("includes the public code in the booking confirmation email", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
+    const port = new CapturingNotificationPort();
+
+    const result = await createPublicBooking(repository, validBooking(), {
+      logRepository: new InMemoryNotificationLogRepository(),
+      port,
+    });
+
+    expect(result.accepted).toBe(true);
+    expect(port.messages[0]?.text).toContain(result.accepted ? result.appointment.publicCode : "unexpected");
+  });
+
+  it("returns the same generic result for malformed and unknown codes", async () => {
+    const repository = new InMemoryBookingRepository({ appointments: [] });
+
+    const malformed = await getPublicAppointmentStatus(repository, { code: "bad" });
+    const unknown = await getPublicAppointmentStatus(repository, { code: "ABCD234567" });
+
+    expect(malformed).toEqual({ accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese codigo." });
+    expect(unknown).toEqual(malformed);
+  });
+});
+
 function validBooking(overrides: Partial<Parameters<typeof createPublicBooking>[1]> = {}) {
   return {
     serviceId: "oil",
@@ -243,6 +294,7 @@ function appointment(
     startAt: new Date(overrides.startAt ?? "2026-07-06T09:00:00-03:00"),
     endAt: new Date(overrides.endAt ?? "2026-07-06T09:30:00-03:00"),
     status: overrides.status ?? "PENDING_CONFIRMATION",
+    publicCode: overrides.publicCode ?? "TEST234567",
     idempotencyKey: overrides.idempotencyKey ?? "existing-key",
     cancellationToken: overrides.cancellationToken === undefined ? "token" : overrides.cancellationToken,
   };
@@ -292,6 +344,10 @@ class InMemoryBookingRepository implements BookingRepository {
     return this.appointments.find((item) => item.idempotencyKey === idempotencyKey) ?? null;
   }
 
+  async findByPublicCode(publicCode: string) {
+    return this.appointments.find((item) => item.publicCode === publicCode) ?? null;
+  }
+
   async createAppointment(input: Parameters<BookingRepository["createAppointment"]>[0]) {
     const created = appointment({
       id: `appt_${this.appointments.length + 1}`,
@@ -302,6 +358,7 @@ class InMemoryBookingRepository implements BookingRepository {
       idempotencyKey: input.idempotencyKey,
       cancellationToken: input.cancellationToken,
       status: input.status,
+      publicCode: (input as typeof input & { publicCode?: string }).publicCode ?? "",
     });
     this.appointments.push(created);
     this.createdAppointments.push(created);
@@ -322,6 +379,15 @@ class InMemoryBookingRepository implements BookingRepository {
 class FailingNotificationPort implements NotificationPort {
   async sendEmail(): Promise<never> {
     throw new Error("Email provider unavailable.");
+  }
+}
+
+class CapturingNotificationPort implements NotificationPort {
+  messages: EmailNotificationMessage[] = [];
+
+  async sendEmail(message: EmailNotificationMessage) {
+    this.messages.push(message);
+    return { providerId: "message-id" };
   }
 }
 
