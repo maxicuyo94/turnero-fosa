@@ -4,11 +4,12 @@ This repository contains the Taller de motos Express appointment scheduler MVP: 
 
 ## Quick path
 
-1. Install dependencies with `pnpm install`.
-2. Copy `.env.example` to `.env` and replace the placeholder values.
-3. Start PostgreSQL with `docker compose up -d postgres`.
-4. Sync and seed the database with `pnpm prisma db push && pnpm db:seed`.
-5. Run `pnpm dev` and open `http://localhost:3000`.
+1. Use Node.js 20 (`20.20.2` is pinned in `.nvmrc`) and pnpm `10.14.0` through Corepack.
+2. Install dependencies with `pnpm install`.
+3. Copy `.env.example` to `.env` and replace the placeholder values.
+4. Start PostgreSQL with `docker compose up -d postgres`.
+5. Sync and seed the database with `pnpm prisma db push && pnpm db:seed`.
+6. Run `pnpm dev` and open `http://localhost:3000`.
 
 If `pnpm` is not available but dependencies already exist in `node_modules`, use the local binaries, for example `./node_modules/.bin/next dev --hostname 0.0.0.0 --port 3000`.
 
@@ -93,3 +94,16 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 ## Next implementation slice
 
 The initial OpenSpec change is implemented, verified, and archived. The next priorities are production hardening: verify the sender domain in Resend, confirm workshop policy values, configure preview/development environments, and keep the deployment quality suite automated.
+
+## Security maintenance
+
+Dependabot tracks npm and GitHub Actions updates weekly. `pnpm audit --prod` currently reports one transitive `sharp` advisory inherited from Next.js; do not force `sharp` 0.35 until the installed Next.js release supports that range, then update Next.js and rerun the complete quality suite.
+
+## Environment strategy
+
+- Production uses the Vercel production variables and the Neon `main` branch.
+- The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
+- Non-production email delivery is intentionally disabled. Production email delivery remains unverified until the workshop has a domain configured in Resend.
+- CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
+
+Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation/rescheduling disabled. Editable weekly schedules, Argentine holiday exceptions, and reusable test-data profiles require a separate functional change.

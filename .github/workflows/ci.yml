@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: turnero_fosa
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d turnero_fosa"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/turnero_fosa
+      AUTH_SECRET: ci-only-auth-secret-with-at-least-32-characters
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      RESEND_API_KEY: re_ci_delivery_disabled
+      EMAIL_FROM: Fosa CI <turnos@example.com>
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_NAME: Fosa CI Admin
+      ADMIN_PASSWORD: ci-admin-password
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.2
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply database migrations
+        run: pnpm exec prisma migrate deploy
+
+      - name: Seed test data
+        run: pnpm db:seed
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: End-to-end test
+        run: pnpm test:e2e
+
+      - name: Build
+        run: pnpm build
