@@ -45,5 +45,10 @@ function stringParam(value: string | string[] | undefined): string | undefined {
 function outcomeFromParams(params: Record<string, string | string[] | undefined>) {
   const message = stringParam(params.message);
   if (!message) return undefined;
-  return { accepted: stringParam(params.booked) === "1", message, cancellationUrl: stringParam(params.cancel) };
+  return {
+    accepted: stringParam(params.booked) === "1",
+    message,
+    cancellationUrl: stringParam(params.cancel),
+    publicCode: stringParam(params.code),
+  };
 }

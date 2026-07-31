@@ -17,6 +17,7 @@ export type PublicServiceRecord = {
 
 export type PublicAppointmentRecord = {
   id: string;
+  publicCode: string;
   serviceId: string;
   serviceName: string;
   startAt: Date;
@@ -33,7 +34,9 @@ export type BookingRepository = {
   findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]>;
   withBookingTransaction<T>(operation: () => Promise<T>): Promise<T>;
   findByIdempotencyKey(idempotencyKey: string): Promise<PublicAppointmentRecord | null>;
+  findByPublicCode(publicCode: string): Promise<PublicAppointmentRecord | null>;
   createAppointment(input: {
+    publicCode: string;
     service: PublicServiceRecord;
     startAt: Date;
     endAt: Date;
@@ -81,6 +84,15 @@ export type PublicBookingNotificationOptions = {
   port: NotificationPort;
 };
 
+export type PublicAppointmentStatusResult =
+  | {
+      accepted: true;
+      appointment: Pick<PublicAppointmentRecord, "publicCode" | "serviceName" | "startAt" | "endAt" | "status">;
+    }
+  | { accepted: false; reason: "APPOINTMENT_NOT_FOUND"; message: string };
+
+const publicCodeSchema = z.string().trim().toUpperCase().regex(/^[A-HJ-NP-Z2-9]{10}$/u);
+
 export async function listPublicServices(repository: BookingRepository): Promise<PublicServiceRecord[]> {
   return repository.listActiveServices();
 }
@@ -113,6 +125,28 @@ export async function getPublicAvailability(
   };
 }
 
+export async function getPublicAppointmentStatus(
+  repository: BookingRepository,
+  input: { code: string },
+): Promise<PublicAppointmentStatusResult> {
+  const parsed = publicCodeSchema.safeParse(input.code);
+  const appointment = parsed.success ? await repository.findByPublicCode(parsed.data) : null;
+  if (!appointment) {
+    return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese codigo." };
+  }
+
+  return {
+    accepted: true,
+    appointment: {
+      publicCode: appointment.publicCode,
+      serviceName: appointment.serviceName,
+      startAt: appointment.startAt,
+      endAt: appointment.endAt,
+      status: appointment.status,
+    },
+  };
+}
+
 export async function createPublicBooking(
   repository: BookingRepository,
   input: CreatePublicBookingInput,
@@ -130,7 +164,7 @@ export async function createPublicBooking(
 
   const transactionResult = await repository.withBookingTransaction(async (): Promise<{
     result: CreatePublicBookingResult;
-    notification: { appointmentId: string; recipient: string; serviceName: string; startAt: Date } | null;
+    notification: { appointmentId: string; publicCode: string; recipient: string; serviceName: string; startAt: Date } | null;
   }> => {
     const existing = await repository.findByIdempotencyKey(parsed.data.idempotencyKey);
     if (existing) {
@@ -168,6 +202,7 @@ export async function createPublicBooking(
     const cancellationToken = context.settings.cancellationEnabled ? createCancellationToken() : null;
     const status = context.settings.confirmationMode === "AUTOMATIC" ? "CONFIRMED" : "PENDING_CONFIRMATION";
     const appointment = await repository.createAppointment({
+      publicCode: createPublicCode(),
       service,
       startAt,
       endAt,
@@ -184,6 +219,7 @@ export async function createPublicBooking(
       notification: parsed.data.customer.email
         ? {
             appointmentId: appointment.id,
+            publicCode: appointment.publicCode,
             recipient: parsed.data.customer.email,
             serviceName: appointment.serviceName,
             startAt: appointment.startAt,
@@ -198,7 +234,7 @@ export async function createPublicBooking(
       appointmentId: transactionResult.notification.appointmentId,
       recipient: transactionResult.notification.recipient,
       subject: "Recibimos tu turno",
-      text: `Recibimos tu turno para ${transactionResult.notification.serviceName} el ${formatDateTime(transactionResult.notification.startAt)}.`,
+      text: `Recibimos tu turno para ${transactionResult.notification.serviceName} el ${formatDateTime(transactionResult.notification.startAt)}. Codigo: ${transactionResult.notification.publicCode}.`,
     });
   }
 
@@ -253,6 +289,11 @@ function bookingSuccess(
 
 function createCancellationToken(): string {
   return randomBytes(16).toString("hex");
+}
+
+function createPublicCode(): string {
+  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  return [...randomBytes(10)].map((value) => alphabet[value & 31]).join("");
 }
 
 function dateAtTime(date: string, time: string): Date {

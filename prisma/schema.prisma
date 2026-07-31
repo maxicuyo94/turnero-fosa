@@ -124,6 +124,7 @@ model Motorcycle {
 
 model Appointment {
   id                    String                     @id @default(cuid())
+  publicCode            String                     @unique @default(dbgenerated("generate_appointment_public_code()"))
   serviceId             String
   customerId            String
   motorcycleId          String
