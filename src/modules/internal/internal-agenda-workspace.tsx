@@ -21,6 +21,7 @@ import {
   type InternalAgenda,
   type InternalAppointmentRecord,
 } from "@/src/modules/internal/operations";
+import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
 type AgendaMode = "day" | "week";
 type StatusFilter = "ALL" | InternalAppointmentRecord["status"];
@@ -29,11 +30,13 @@ export function InternalAgendaWorkspace({
   agenda,
   weekAgendas,
   capacity,
+  exceptions = [],
   slotStepMinutes = 1,
 }: {
   agenda: InternalAgenda;
   weekAgendas: InternalAgenda[];
   capacity?: number;
+  exceptions?: ScheduleDateException[];
   slotStepMinutes?: number;
 }) {
   const [mode, setMode] = useState<AgendaMode>("day");
@@ -67,6 +70,8 @@ export function InternalAgendaWorkspace({
   const pending = agenda.appointments.filter((item) => item.status === "PENDING_CONFIRMATION").length;
   const confirmed = agenda.appointments.filter((item) => item.status === "CONFIRMED").length;
   const inProgress = agenda.appointments.filter((item) => item.status === "IN_PROGRESS").length;
+  const exceptionsByDate = useMemo(() => new Map(exceptions.map((item) => [item.date, item])), [exceptions]);
+  const selectedDateException = exceptionsByDate.get(agenda.date);
 
   return (
     <>
@@ -88,6 +93,7 @@ export function InternalAgendaWorkspace({
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-apple-300">Operación diaria</p>
               <h2 className="mt-2 text-2xl font-black text-white">{formatDisplayDate(agenda.date)}</h2>
+              {selectedDateException ? <DateExceptionNotice exception={selectedDateException} /> : null}
               <p className="mt-1 text-sm text-zinc-500">
                 {visibleAppointments.length === agenda.appointments.length
                   ? `${agenda.appointments.length} turnos programados`
@@ -156,7 +162,13 @@ export function InternalAgendaWorkspace({
             onSelect={setSelectedAppointment}
           />
         ) : (
-          <WeekAgenda agendas={weekAgendas} matchesFilters={matchesFilters} onSelect={setSelectedAppointment} selectedDate={agenda.date} />
+          <WeekAgenda
+            agendas={weekAgendas}
+            exceptionsByDate={exceptionsByDate}
+            matchesFilters={matchesFilters}
+            onSelect={setSelectedAppointment}
+            selectedDate={agenda.date}
+          />
         )}
       </Card>
 
@@ -263,11 +275,13 @@ function DayAgenda({
 function WeekAgenda({
   agendas,
   selectedDate,
+  exceptionsByDate,
   matchesFilters,
   onSelect,
 }: {
   agendas: InternalAgenda[];
   selectedDate: string;
+  exceptionsByDate: Map<string, ScheduleDateException>;
   matchesFilters: (appointment: InternalAppointmentRecord) => boolean;
   onSelect: (appointment: InternalAppointmentRecord) => void;
 }) {
@@ -276,16 +290,25 @@ function WeekAgenda({
       <div className="grid min-w-[62rem] grid-cols-7 divide-x divide-white/5">
       {agendas.map((day) => {
         const appointments = day.appointments.filter(matchesFilters);
+        const dateException = exceptionsByDate.get(day.date);
         return (
-          <div className={cn("min-h-96 p-3", day.date === selectedDate && "bg-apple-400/[0.035]")} key={day.date}>
+          <div
+            className={cn(
+              "min-h-96 min-w-0 p-3",
+              day.date === selectedDate && "bg-apple-400/[0.035]",
+              dateException && !dateException.isOpen && "bg-amber-400/[0.035]",
+            )}
+            key={day.date}
+          >
             <div className="border-b border-white/5 pb-3 text-center">
               <p className="text-xs font-black uppercase tracking-wider text-zinc-600">{formatWeekday(day.date)}</p>
               <p className={cn("mt-1 text-xl font-black", day.date === selectedDate ? "text-apple-300" : "text-white")}>{day.date.slice(8, 10)}</p>
+              {dateException ? <DateExceptionNotice className="mt-2" compact exception={dateException} /> : null}
             </div>
             <div className="mt-3 grid gap-2">
               {appointments.map((appointment) => (
                 <button
-                  className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-apple-300/30 hover:bg-apple-400/[0.07]"
+                  className="w-full min-w-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] p-3 text-left transition hover:border-apple-300/30 hover:bg-apple-400/[0.07]"
                   key={appointment.id}
                   onClick={() => onSelect(appointment)}
                   type="button"
@@ -304,6 +327,30 @@ function WeekAgenda({
         );
       })}
       </div>
+    </div>
+  );
+}
+
+function DateExceptionNotice({
+  exception,
+  compact = false,
+  className,
+}: {
+  exception: ScheduleDateException;
+  compact?: boolean;
+  className?: string;
+}) {
+  const kind = exception.isOpen ? "Horario especial" : exception.source === "IMPORTED" ? "Feriado" : "Cerrado";
+  const detail = exception.label || (exception.isOpen && exception.opensAt && exception.closesAt
+    ? `${exception.opensAt}–${exception.closesAt}`
+    : null);
+
+  return (
+    <div className={cn(compact ? "grid justify-items-center gap-1" : "mt-2 flex flex-wrap items-center gap-2", className)}>
+      <span className="w-fit rounded-full border border-amber-300/25 bg-amber-400/10 px-2 py-1 text-[0.65rem] font-black text-amber-200">
+        {kind}
+      </span>
+      {detail ? <span className={cn("text-xs text-amber-100/70", compact && "max-w-full truncate")}>{detail}</span> : null}
     </div>
   );
 }

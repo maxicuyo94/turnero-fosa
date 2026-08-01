@@ -79,6 +79,9 @@ describe("InternalAgendaScreen", () => {
     render(
       <InternalAgendaScreen
         agenda={{ date: "2026-07-06", appointments: [] }}
+        exceptions={[
+          { date: "2026-07-07", label: "Feriado nacional", source: "IMPORTED", manualOverride: false, isOpen: false, opensAt: null, closesAt: null },
+        ]}
         weekAgendas={[
           { date: "2026-07-06", appointments: [] },
           { date: "2026-07-07", appointments: [tuesdayAppointment] },
@@ -94,6 +97,8 @@ describe("InternalAgendaScreen", () => {
     fireEvent.click(screen.getByRole("button", { name: "Semana" }));
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Grace Hopper/i })).toHaveTextContent("Confirmado");
+    expect(screen.getByText("Feriado")).toBeInTheDocument();
+    expect(screen.getByText("Feriado nacional")).toBeInTheDocument();
 
     fireEvent.change(screen.getByRole("searchbox", { name: /Buscar por cliente/i }), { target: { value: "sin coincidencias" } });
     expect(screen.queryByText("Grace Hopper")).not.toBeInTheDocument();
