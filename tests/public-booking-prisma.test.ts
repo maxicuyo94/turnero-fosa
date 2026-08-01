@@ -30,7 +30,7 @@ describe("Prisma public booking integration", () => {
     // deposit payment capability exists, but the automatic path still ships.
     await applyExpressBookingPolicy({ confirmationMode: "AUTOMATIC" });
     const repository = new PrismaBookingRepository(prisma);
-    const input = bookingInput({ idempotencyKey: "it-public-repeat-token", startTime: "09:00" });
+    const input = bookingInput({ idempotencyKey: "it-public-repeat-token", startTime: "09:00", durationMinutes: 120 });
 
     const first = await createPublicBooking(repository, input);
     const repeated = await createPublicBooking(repository, input);
@@ -38,6 +38,7 @@ describe("Prisma public booking integration", () => {
     expect(first).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
     expect(first.accepted ? first.appointment.publicCode : "").toMatch(/^[A-HJ-NP-Z2-9]{10}$/u);
     expect(first.accepted ? first.cancellationToken : "unexpected").toBeNull();
+    expect(first.accepted ? first.appointment.endAt.getTime() - first.appointment.startAt.getTime() : 0).toBe(120 * 60_000);
     expect(repeated).toMatchObject({
       accepted: true,
       message: "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion.",
@@ -69,11 +70,12 @@ describe("Prisma public booking integration", () => {
   });
 });
 
-function bookingInput(overrides: { idempotencyKey: string; startTime: string }) {
+function bookingInput(overrides: { idempotencyKey: string; startTime: string; durationMinutes?: number }) {
   return {
     serviceId,
     date,
     startTime: overrides.startTime,
+    durationMinutes: overrides.durationMinutes,
     customer: { fullName: `Integration Rider ${randomUUID()}`, phone: `+54911${Math.floor(Math.random() * 1_000_000_000)}`, email: `${overrides.idempotencyKey}@example.com` },
     motorcycle: { brand: "Honda", model: "XR150", licensePlate: overrides.idempotencyKey.toUpperCase() },
     idempotencyKey: overrides.idempotencyKey,

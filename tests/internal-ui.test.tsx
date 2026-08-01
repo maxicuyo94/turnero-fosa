@@ -5,6 +5,7 @@ import { vi } from "vitest";
 vi.mock("@/app/(internal)/internal/actions", () => ({
   signOutAction: async () => undefined,
   updateAppointmentStatusAction: async () => undefined,
+  updateAppointmentDurationAction: async () => undefined,
   updateServiceVisibilityAction: async () => undefined,
   updateWorkshopSettingsAction: async () => undefined,
   updateWeeklyScheduleAction: async () => undefined,
@@ -26,6 +27,7 @@ describe("InternalAgendaScreen", () => {
             {
               id: "appt_1",
               serviceName: "Service Esencial",
+              serviceDurationMinutes: 30,
               customerName: "Ada Lovelace",
               customerPhone: "+5491112345678",
               customerEmail: "ada@example.com",
@@ -44,6 +46,8 @@ describe("InternalAgendaScreen", () => {
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Service Esencial")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Actualizar" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: /Duracion total/i })).toHaveValue(30);
+    expect(screen.getByRole("button", { name: "Extender" })).toBeInTheDocument();
   });
 
   it("renders an empty state for days without appointments", () => {

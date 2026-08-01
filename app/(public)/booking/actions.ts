@@ -15,6 +15,7 @@ export async function createAppointmentAction(formData: FormData) {
     serviceId: stringValue(formData, "serviceId"),
     date: stringValue(formData, "date"),
     startTime: stringValue(formData, "startTime"),
+    durationMinutes: numberValue(formData, "durationMinutes"),
     customer: {
       fullName: stringValue(formData, "fullName"),
       phone: stringValue(formData, "phone"),
@@ -65,4 +66,9 @@ function stringValue(formData: FormData, key: string): string {
 function optionalStringValue(formData: FormData, key: string): string | undefined {
   const value = stringValue(formData, key).trim();
   return value.length > 0 ? value : undefined;
+}
+
+function numberValue(formData: FormData, key: string): number | undefined {
+  const value = stringValue(formData, key).trim();
+  return value ? Number(value) : undefined;
 }

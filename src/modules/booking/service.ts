@@ -60,6 +60,7 @@ const bookingInputSchema = z.object({
   serviceId: z.string().trim().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
   startTime: z.string().regex(/^\d{2}:\d{2}$/u),
+  durationMinutes: z.number().int().positive().optional(),
   customer: customerSchema,
   motorcycle: motorcycleSchema,
   idempotencyKey: z.string().trim().min(8),
@@ -104,8 +105,11 @@ export async function listPublicServices(repository: BookingRepository): Promise
 
 export async function getPublicAvailability(
   repository: BookingRepository,
-  input: { serviceId: string; date: string; now: Date },
-): Promise<{ accepted: true; slots: AvailableSlot[] } | { accepted: false; reason: "SERVICE_UNAVAILABLE" }> {
+  input: { serviceId: string; date: string; durationMinutes?: number; now: Date },
+): Promise<
+  | { accepted: true; slots: AvailableSlot[]; durationMinutes: number; slotStepMinutes: number }
+  | { accepted: false; reason: "SERVICE_UNAVAILABLE" | "INVALID_DURATION"; minimumDurationMinutes?: number; slotStepMinutes?: number }
+> {
   const [context, service, appointments] = await Promise.all([
     repository.getBookingContext(),
     repository.findActiveService(input.serviceId),
@@ -116,15 +120,27 @@ export async function getPublicAvailability(
     return { accepted: false, reason: "SERVICE_UNAVAILABLE" };
   }
 
+  const durationMinutes = effectiveDurationMinutes(service.durationMinutes, input.durationMinutes, context.settings.slotStepMinutes);
+  if (durationMinutes === null) {
+    return {
+      accepted: false,
+      reason: "INVALID_DURATION",
+      minimumDurationMinutes: service.durationMinutes,
+      slotStepMinutes: context.settings.slotStepMinutes,
+    };
+  }
+
   return {
     accepted: true,
+    durationMinutes,
+    slotStepMinutes: context.settings.slotStepMinutes,
     slots: getAvailableSlots({
       settings: context.settings,
       schedules: context.schedules,
       breaks: context.breaks,
       exceptions: context.exceptions,
       date: input.date,
-      serviceDurationMinutes: service.durationMinutes,
+      serviceDurationMinutes: durationMinutes,
       appointments,
       now: input.now,
     }),
@@ -189,15 +205,31 @@ export async function createPublicBooking(
     }
 
     const context = await repository.getBookingContext();
+    const durationMinutes = effectiveDurationMinutes(
+      service.durationMinutes,
+      parsed.data.durationMinutes,
+      context.settings.slotStepMinutes,
+    );
+    if (durationMinutes === null) {
+      return {
+        result: {
+          accepted: false,
+          reason: "VALIDATION_FAILED",
+          message: "Elegi una duracion valida para el servicio.",
+          fieldErrors: { durationMinutes: ["La duracion debe respetar el minimo del servicio y el paso del taller."] },
+        },
+        notification: null,
+      };
+    }
     const startAt = dateAtTime(parsed.data.date, parsed.data.startTime);
-    const endAt = new Date(startAt.getTime() + service.durationMinutes * 60_000);
+    const endAt = new Date(startAt.getTime() + durationMinutes * 60_000);
     const available = getAvailableSlots({
       settings: context.settings,
       schedules: context.schedules,
       breaks: context.breaks,
       exceptions: context.exceptions,
       date: parsed.data.date,
-      serviceDurationMinutes: service.durationMinutes,
+      serviceDurationMinutes: durationMinutes,
       appointments: await repository.findAppointmentsForDate(parsed.data.date),
       now: parsed.data.now,
     }).some((slot) => slot.startAt.getTime() === startAt.getTime() && slot.endAt.getTime() === endAt.getTime());
@@ -246,6 +278,11 @@ export async function createPublicBooking(
   }
 
   return transactionResult.result;
+}
+
+function effectiveDurationMinutes(serviceDurationMinutes: number, requestedDurationMinutes: number | undefined, slotStepMinutes: number): number | null {
+  const durationMinutes = requestedDurationMinutes ?? serviceDurationMinutes;
+  return durationMinutes >= serviceDurationMinutes && durationMinutes % slotStepMinutes === 0 ? durationMinutes : null;
 }
 
 export async function cancelPublicAppointment(

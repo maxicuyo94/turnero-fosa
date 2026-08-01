@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
-import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import { updateInternalAppointmentDuration, updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
 
@@ -55,6 +55,19 @@ describe("Prisma internal operations integration", () => {
     const history = await prisma.appointmentStatusHistory.findFirstOrThrow({ where: { appointmentId } });
     expect(result).toEqual({ accepted: true, appointment: expect.objectContaining({ id: appointmentId, status: "CONFIRMED" }) });
     expect(history).toEqual(expect.objectContaining({ appointmentId, fromStatus: "PENDING_CONFIRMATION", toStatus: "CONFIRMED", changedById: user.id }));
+  });
+
+  it("persists an extended appointment end time", async () => {
+    const appointmentId = await createInternalTestAppointment("it-internal-duration");
+
+    const result = await updateInternalAppointmentDuration(new PrismaInternalRepository(prisma), {
+      appointmentId,
+      durationMinutes: 90,
+    });
+
+    const stored = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
+    expect(result).toMatchObject({ accepted: true, appointment: { id: appointmentId } });
+    expect(stored.endAt.getTime() - stored.startAt.getTime()).toBe(90 * 60_000);
   });
 });
 

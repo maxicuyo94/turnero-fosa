@@ -1,8 +1,10 @@
-import { signOutAction, updateAppointmentStatusAction } from "@/app/(internal)/internal/actions";
 import {
   deleteDateExceptionAction,
   importHolidaysAction,
   saveDateExceptionAction,
+  signOutAction,
+  updateAppointmentDurationAction,
+  updateAppointmentStatusAction,
   updateServiceVisibilityAction,
   updateWeeklyScheduleAction,
   updateWorkshopSettingsAction,
@@ -86,6 +88,7 @@ export function InternalAgendaScreen({
   exceptions = [],
   feedback,
   signedInUserName,
+  durationOutcome,
 }: {
   agenda: InternalAgenda;
   settings?: InternalWorkshopSettingsRecord;
@@ -94,6 +97,7 @@ export function InternalAgendaScreen({
   exceptions?: ScheduleDateException[];
   feedback?: InternalFeedbackCode | null;
   signedInUserName?: string | null;
+  durationOutcome?: { accepted: boolean; message: string };
 }) {
   const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
 
@@ -107,6 +111,12 @@ export function InternalAgendaScreen({
         {feedbackAlert ? (
           <Alert className="mt-6" tone={feedbackAlert.tone}>
             {feedbackAlert.message}
+          </Alert>
+        ) : null}
+
+        {durationOutcome ? (
+          <Alert className="mt-6" tone={durationOutcome.accepted ? "success" : "danger"}>
+            {durationOutcome.message}
           </Alert>
         ) : null}
 
@@ -133,29 +143,44 @@ export function InternalAgendaScreen({
               {agenda.appointments.map((appointment) => (
                 <AppointmentCard
                   action={
-                    <form
-                      action={updateAppointmentStatusAction}
-                      className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:min-w-52"
-                    >
-                      <input name="appointmentId" type="hidden" value={appointment.id} />
-                      <input name="date" type="hidden" value={agenda.date} />
-                      <Field label="Estado">
-                        <Select
-                          defaultValue={appointment.status}
-                          density="sm"
-                          name="nextStatus"
-                        >
-                          {internalStatusOptions.map((status) => (
-                            <option key={status} value={status}>
-                              {statusLabel(status)}
-                            </option>
-                          ))}
-                        </Select>
-                      </Field>
-                      <Button size="md" type="submit">
-                        Actualizar
-                      </Button>
-                    </form>
+                    <div className="grid gap-3 sm:min-w-56">
+                      <form
+                        action={updateAppointmentStatusAction}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                      >
+                        <input name="appointmentId" type="hidden" value={appointment.id} />
+                        <input name="date" type="hidden" value={agenda.date} />
+                        <Field label="Estado">
+                          <Select defaultValue={appointment.status} density="sm" name="nextStatus">
+                            {internalStatusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {statusLabel(status)}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                        <Button size="md" type="submit">Actualizar</Button>
+                      </form>
+                      <form
+                        action={updateAppointmentDurationAction}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                      >
+                        <input name="appointmentId" type="hidden" value={appointment.id} />
+                        <input name="date" type="hidden" value={agenda.date} />
+                        <Field hint={`(base ${appointment.serviceDurationMinutes} min)`} label="Duracion total">
+                          <TextInput
+                            defaultValue={durationMinutes(appointment.startAt, appointment.endAt)}
+                            density="sm"
+                            disabled={isTerminalStatus(appointment.status)}
+                            min={durationMinutes(appointment.startAt, appointment.endAt) + (settings?.slotStepMinutes ?? 1)}
+                            name="durationMinutes"
+                            step={settings?.slotStepMinutes ?? 1}
+                            type="number"
+                          />
+                        </Field>
+                        <Button disabled={isTerminalStatus(appointment.status)} size="md" type="submit">Extender</Button>
+                      </form>
+                    </div>
                   }
                   customerName={appointment.customerName}
                   key={appointment.id}
@@ -404,4 +429,12 @@ function formatTime(date: Date): string {
 function formatDisplayDate(date: string): string {
   const value = new Date(`${date}T12:00:00-03:00`);
   return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(value);
+}
+
+function durationMinutes(startAt: Date, endAt: Date): number {
+  return Math.round((endAt.getTime() - startAt.getTime()) / 60_000);
+}
+
+function isTerminalStatus(status: InternalAgenda["appointments"][number]["status"]): boolean {
+  return ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status);
 }

@@ -6,7 +6,7 @@ import { db } from "@/src/lib/db";
 import { getNotificationEnv } from "@/src/lib/env";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 import { appointmentStatusSchema } from "@/src/modules/appointments/schemas";
-import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import { updateInternalAppointmentDuration, updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
 import {
   deleteInternalDateException,
   saveInternalDateException,
@@ -36,6 +36,16 @@ export async function updateAppointmentStatusAction(formData: FormData) {
       }
     : undefined);
   redirect(`/internal?date=${encodeURIComponent(stringValue(formData, "date"))}`);
+}
+
+export async function updateAppointmentDurationAction(formData: FormData) {
+  await requireInternalAccess();
+  const result = await updateInternalAppointmentDuration(new PrismaInternalRepository(db), {
+    appointmentId: stringValue(formData, "appointmentId"),
+    durationMinutes: stringValue(formData, "durationMinutes"),
+  });
+  const message = result.accepted ? "La duracion del turno fue extendida." : result.message;
+  redirect(`/internal?date=${encodeURIComponent(stringValue(formData, "date"))}&durationUpdated=${result.accepted ? "1" : "0"}&message=${encodeURIComponent(message)}`);
 }
 
 export async function updateWorkshopSettingsAction(formData: FormData) {
