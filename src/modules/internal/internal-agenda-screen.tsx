@@ -138,6 +138,7 @@ export function InternalAgendaScreen({
           <InternalAgendaWorkspace
             agenda={agenda}
             capacity={settings?.capacity}
+            exceptions={exceptions}
             slotStepMinutes={settings?.slotStepMinutes}
             weekAgendas={weekAgendas}
           />
