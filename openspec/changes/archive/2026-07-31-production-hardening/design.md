@@ -31,9 +31,9 @@ The GitHub repository will be connected directly to the existing Vercel project.
 
 Preview and Development should use a non-production Neon branch and independently generated auth/admin credentials. Production sensitive values will not be downloaded or copied. Resend credentials and sender identity require account-owner confirmation.
 
-### Node.js 20 is the common baseline
+### Node.js 24 is the common baseline
 
-The repository will declare Node.js `20.x`, matching the installed local runtime and OpenSpec's minimum requirement. CI will use Node 20, and the package declaration will instruct Vercel to use the same major line.
+The repository will declare Node.js `24.x`, matching Vercel's current LTS runtime and avoiding the announced October 2026 retirement of Node 20 deployments. CI and local development will use the pinned Node 24 release.
 
 ### Residual advisories are monitored, not overridden unsafely
 
@@ -45,7 +45,7 @@ Dependabot will track npm and GitHub Actions updates. CI will report production 
 - Preview email could contact real customers -> keep delivery disabled until a dedicated Resend key/sender is confirmed.
 - A generated preview admin password can be lost -> set it once through Vercel and record it only in the user's password manager.
 - CI E2E increases runtime -> use one Chromium worker and cache pnpm/browser downloads where supported.
-- Node 20 will eventually reach end of support -> Dependabot and scheduled maintenance should move all environments together.
+- Node runtimes eventually reach end of support -> Dependabot and scheduled maintenance should move all environments together.
 
 ## Migration Plan
 
