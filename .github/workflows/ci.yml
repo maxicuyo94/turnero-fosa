@@ -37,6 +37,7 @@ jobs:
       RESEND_API_KEY: re_ci_delivery_disabled
       EMAIL_FROM: Fosa CI <turnos@example.com>
       ADMIN_EMAIL: admin@example.com
+      ADMIN_USERNAME: admin
       ADMIN_NAME: Fosa CI Admin
       ADMIN_PASSWORD: ci-admin-password
     steps:
@@ -52,7 +53,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.20.2
+          node-version: 24.18.1
           cache: pnpm
 
       - name: Install dependencies

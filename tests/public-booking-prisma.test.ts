@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
-import { createPublicBooking } from "@/src/modules/booking/service";
+import { createPublicBooking, getPublicAppointmentStatus } from "@/src/modules/booking/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
@@ -26,20 +26,33 @@ describe("Prisma public booking integration", () => {
   });
 
   it("creates an automatically confirmed booking and keeps repeated idempotency safe", async () => {
+    // Pinned explicitly: the Express default is manual confirmation until the
+    // deposit payment capability exists, but the automatic path still ships.
+    await applyExpressBookingPolicy({ confirmationMode: "AUTOMATIC" });
     const repository = new PrismaBookingRepository(prisma);
-    const input = bookingInput({ idempotencyKey: "it-public-repeat-token", startTime: "09:00" });
+    const input = bookingInput({ idempotencyKey: "it-public-repeat-token", startTime: "09:00", durationMinutes: 120 });
 
     const first = await createPublicBooking(repository, input);
     const repeated = await createPublicBooking(repository, input);
 
     expect(first).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+    expect(first.accepted ? first.appointment.publicCode : "").toMatch(/^[A-HJ-NP-Z2-9]{10}$/u);
     expect(first.accepted ? first.cancellationToken : "unexpected").toBeNull();
+    expect(first.accepted ? first.appointment.endAt.getTime() - first.appointment.startAt.getTime() : 0).toBe(120 * 60_000);
     expect(repeated).toMatchObject({
       accepted: true,
       message: "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion.",
       appointment: { idempotencyKey: "it-public-repeat-token" },
     });
     expect(repeated.accepted ? repeated.cancellationToken : "unexpected").toBeNull();
+    expect(repeated.accepted && first.accepted ? repeated.appointment.publicCode : "unexpected").toBe(
+      first.accepted ? first.appointment.publicCode : "unexpected",
+    );
+
+    const lookup = first.accepted
+      ? await getPublicAppointmentStatus(repository, { code: first.appointment.publicCode.toLowerCase() })
+      : null;
+    expect(lookup).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
   });
 
   it("accepts at most one concurrent request for the final remaining capacity in PostgreSQL", async () => {
@@ -57,11 +70,12 @@ describe("Prisma public booking integration", () => {
   });
 });
 
-function bookingInput(overrides: { idempotencyKey: string; startTime: string }) {
+function bookingInput(overrides: { idempotencyKey: string; startTime: string; durationMinutes?: number }) {
   return {
     serviceId,
     date,
     startTime: overrides.startTime,
+    durationMinutes: overrides.durationMinutes,
     customer: { fullName: `Integration Rider ${randomUUID()}`, phone: `+54911${Math.floor(Math.random() * 1_000_000_000)}`, email: `${overrides.idempotencyKey}@example.com` },
     motorcycle: { brand: "Honda", model: "XR150", licensePlate: overrides.idempotencyKey.toUpperCase() },
     idempotencyKey: overrides.idempotencyKey,
@@ -75,10 +89,12 @@ async function activeServiceId(): Promise<string> {
   return service.id;
 }
 
-async function applyExpressBookingPolicy() {
+async function applyExpressBookingPolicy(
+  overrides: { confirmationMode?: "MANUAL" | "AUTOMATIC" } = {},
+) {
   await prisma.workshopSettings.updateMany({
     data: {
-      confirmationMode: workshopSeedConfig.settings.confirmationMode,
+      confirmationMode: overrides.confirmationMode ?? workshopSeedConfig.settings.confirmationMode,
       cancellationEnabled: workshopSeedConfig.settings.cancellationEnabled,
       reschedulingEnabled: workshopSeedConfig.settings.reschedulingEnabled,
     },
