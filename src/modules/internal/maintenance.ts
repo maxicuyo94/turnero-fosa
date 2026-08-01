@@ -36,6 +36,7 @@ export type InternalScheduleRepository = {
 
 export type InternalWorkshopSettingsRecord = {
   capacity: number;
+  slotStepMinutes?: number;
   minimumNoticeMinutes: number;
   maximumBookingWindowDays: number;
 };

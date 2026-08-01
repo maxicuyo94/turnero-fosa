@@ -66,7 +66,33 @@ describe("public booking services and availability", () => {
 
     const available = await getPublicAvailability(repository, { serviceId: "oil", date: monday, now });
 
-    expect(available).toEqual({ accepted: true, slots: [] });
+    expect(available).toMatchObject({ accepted: true, slots: [] });
+  });
+
+  it("uses the service duration by default and recalculates slots for a longer requested duration", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    const defaultAvailability = await getPublicAvailability(repository, { serviceId: "oil", date: monday, now });
+    const extendedAvailability = await getPublicAvailability(repository, {
+      serviceId: "oil",
+      date: monday,
+      durationMinutes: 90,
+      now,
+    });
+
+    expect(defaultAvailability.accepted ? defaultAvailability.slots[0]?.endAt.getTime() - defaultAvailability.slots[0]?.startAt.getTime() : 0)
+      .toBe(60 * 60_000);
+    expect(extendedAvailability.accepted ? extendedAvailability.slots[0]?.endAt.getTime() - extendedAvailability.slots[0]?.startAt.getTime() : 0)
+      .toBe(90 * 60_000);
+  });
+
+  it("rejects durations below the service default or outside the configured slot step", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    await expect(getPublicAvailability(repository, { serviceId: "oil", date: monday, durationMinutes: 30, now }))
+      .resolves.toMatchObject({ accepted: false, reason: "INVALID_DURATION" });
+    await expect(getPublicAvailability(repository, { serviceId: "oil", date: monday, durationMinutes: 75, now }))
+      .resolves.toMatchObject({ accepted: false, reason: "INVALID_DURATION" });
   });
 });
 
@@ -119,6 +145,29 @@ describe("createPublicBooking", () => {
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
     expect(repository.createdAppointments).toHaveLength(1);
+  });
+
+  it("persists a requested duration longer than the service default", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    const result = await createPublicBooking(repository, validBooking({
+      serviceId: "oil",
+      durationMinutes: 90,
+      startTime: "09:00",
+    }));
+
+    expect(result).toMatchObject({ accepted: true });
+    expect(repository.createdAppointments[0]?.endAt.getTime() - repository.createdAppointments[0]?.startAt.getTime())
+      .toBe(90 * 60_000);
+  });
+
+  it("rejects a requested duration shorter than the service default", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    const result = await createPublicBooking(repository, validBooking({ durationMinutes: 30 }));
+
+    expect(result).toMatchObject({ accepted: false, reason: "VALIDATION_FAILED" });
+    expect(repository.createdAppointments).toHaveLength(0);
   });
 
   it("creates a pending appointment with a cancellation token when manual confirmation and cancellation are enabled", async () => {

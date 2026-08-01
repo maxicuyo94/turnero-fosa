@@ -35,6 +35,7 @@ export class PrismaInternalRepository
     const settings = await this.prisma.workshopSettings.findUniqueOrThrow({ where: { id: await this.resolveWorkshopSettingsId() } });
     return {
       capacity: settings.capacity,
+      slotStepMinutes: settings.slotStepMinutes,
       minimumNoticeMinutes: settings.minimumNoticeMinutes,
       maximumBookingWindowDays: settings.maximumBookingWindowDays,
     };
@@ -68,6 +69,20 @@ export class PrismaInternalRepository
       include: { service: true, customer: true, motorcycle: true },
     });
     return appointment ? mapInternalAppointment(appointment) : null;
+  }
+
+  async getSlotStepMinutes(): Promise<number> {
+    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
+    return settings.slotStepMinutes;
+  }
+
+  async updateAppointmentEnd(input: { appointmentId: string; endAt: Date }): Promise<InternalAppointmentRecord> {
+    const appointment = await this.prisma.appointment.update({
+      where: { id: input.appointmentId },
+      data: { endAt: input.endAt },
+      include: { service: true, customer: true, motorcycle: true },
+    });
+    return mapInternalAppointment(appointment);
   }
 
   async updateAppointmentStatus(input: { appointmentId: string; nextStatus: AppointmentStatus; changedById: string | null; note?: string }) {
@@ -191,6 +206,7 @@ export class PrismaInternalRepository
     const updated = await this.prisma.workshopSettings.update({ where: { id: await this.resolveWorkshopSettingsId() }, data: input });
     return {
       capacity: updated.capacity,
+      slotStepMinutes: updated.slotStepMinutes,
       minimumNoticeMinutes: updated.minimumNoticeMinutes,
       maximumBookingWindowDays: updated.maximumBookingWindowDays,
     };
@@ -210,7 +226,7 @@ export class PrismaInternalRepository
 
 function mapInternalAppointment(appointment: {
   id: string;
-  service: { name: string };
+  service: { name: string; durationMinutes: number };
   customer: { fullName: string; phone: string; email: string | null };
   motorcycle: { brand: string; model: string; licensePlate: string | null };
   startAt: Date;
@@ -221,6 +237,7 @@ function mapInternalAppointment(appointment: {
   return {
     id: appointment.id,
     serviceName: appointment.service.name,
+    serviceDurationMinutes: appointment.service.durationMinutes,
     customerName: appointment.customer.fullName,
     customerPhone: appointment.customer.phone,
     customerEmail: appointment.customer.email,

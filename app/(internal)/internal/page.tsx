@@ -12,7 +12,12 @@ import { PrismaInternalRepository } from "@/src/modules/internal/prisma-reposito
 export default async function InternalPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ date?: string; feedback?: string }>;
+  searchParams?: Promise<{
+    date?: string;
+    durationUpdated?: string;
+    feedback?: string;
+    message?: string;
+  }>;
 }) {
   const session = await auth();
   if (!isInternalSession(session)) redirect("/internal/login");
@@ -27,10 +32,10 @@ export default async function InternalPage({
     repository.getWeeklySchedule(),
     repository.listDateExceptions(exceptionRange(date)),
   ]);
-
   return (
     <InternalAgendaScreen
       agenda={agenda}
+      durationOutcome={params?.message ? { accepted: params.durationUpdated === "1", message: params.message } : undefined}
       exceptions={exceptions}
       feedback={parseFeedback(params?.feedback)}
       schedule={schedule}

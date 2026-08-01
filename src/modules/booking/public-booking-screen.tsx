@@ -21,6 +21,8 @@ type PublicBookingScreenProps = {
   services: PublicServiceRecord[];
   selectedServiceId: string;
   selectedDate: string;
+  selectedDurationMinutes: number;
+  durationStepMinutes?: number;
   slots: AvailableSlot[];
   idempotencyKey?: string;
   action?: (formData: FormData) => void | Promise<void>;
@@ -33,6 +35,8 @@ export function PublicBookingScreen({
   services,
   selectedServiceId,
   selectedDate,
+  selectedDurationMinutes,
+  durationStepMinutes = 1,
   slots,
   action,
   outcome,
@@ -90,13 +94,13 @@ export function PublicBookingScreen({
               <h2 className="text-2xl font-black text-white">Servicio y fecha</h2>
               <p className="mt-2 text-sm text-zinc-500">
                 {selectedService?.name ?? "Selecciona un servicio"} ·{" "}
-                {selectedService ? `${selectedService.durationMinutes} min` : "Duracion a confirmar"} ·{" "}
+                {selectedService ? `${selectedDurationMinutes} min` : "Duracion a confirmar"} ·{" "}
                 {slots.length} horarios
               </p>
             </div>
             <form
               action="/booking"
-              className="grid gap-3 md:min-w-[30rem] md:grid-cols-[1fr_10rem_auto] md:items-end"
+              className="grid gap-3 md:min-w-[38rem] md:grid-cols-[1fr_9rem_9rem_auto] md:items-end"
             >
               <Field label="Servicio">
                 <Select defaultValue={selectedServiceId} density="sm" name="serviceId">
@@ -110,6 +114,16 @@ export function PublicBookingScreen({
               <Field label="Fecha">
                 <TextInput defaultValue={selectedDate} density="sm" name="date" type="date" />
               </Field>
+              <Field hint={selectedService ? `(min. ${selectedService.durationMinutes})` : undefined} label="Duracion total">
+                <TextInput
+                  defaultValue={selectedDurationMinutes}
+                  density="sm"
+                  min={selectedService?.durationMinutes}
+                  name="durationMinutes"
+                  step={durationStepMinutes}
+                  type="number"
+                />
+              </Field>
               <Button type="submit">Ver</Button>
             </form>
           </div>
@@ -118,6 +132,7 @@ export function PublicBookingScreen({
         <form action={action} className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <input type="hidden" name="serviceId" value={selectedServiceId} />
           <input type="hidden" name="date" value={selectedDate} />
+          <input type="hidden" name="durationMinutes" value={selectedDurationMinutes} />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
           <Card>
