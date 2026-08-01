@@ -93,6 +93,7 @@ describe("InternalAgendaScreen", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Semana" }));
     expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Grace Hopper/i })).toHaveTextContent("Confirmado");
 
     fireEvent.change(screen.getByRole("searchbox", { name: /Buscar por cliente/i }), { target: { value: "sin coincidencias" } });
     expect(screen.queryByText("Grace Hopper")).not.toBeInTheDocument();

@@ -290,7 +290,10 @@ function WeekAgenda({
                   onClick={() => onSelect(appointment)}
                   type="button"
                 >
-                  <span className="block text-xs font-black text-apple-300">{formatTime(appointment.startAt)}</span>
+                  <span className="flex flex-col items-start gap-2">
+                    <span className="text-xs font-black text-apple-300">{formatTime(appointment.startAt)}</span>
+                    <StatusBadge className="px-2 py-1 text-[0.65rem]" status={appointment.status} />
+                  </span>
                   <span className="mt-1 block truncate text-sm font-bold text-white">{appointment.customerName}</span>
                   <span className="mt-1 block truncate text-[0.7rem] text-zinc-600">{appointment.serviceName}</span>
                 </button>
