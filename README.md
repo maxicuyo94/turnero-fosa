@@ -124,6 +124,7 @@ Dependabot tracks npm and GitHub Actions updates weekly. `pnpm audit --prod` cur
 
 - Production uses the Vercel production variables and the Neon `main` branch.
 - The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
+- Every build runs `prisma migrate deploy` before `next build`, so each Vercel environment applies pending database migrations using its own `DATABASE_URL`.
 - Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent. Production email delivery remains pending until the workshop has a verified domain configured in Resend.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
