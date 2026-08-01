@@ -3,8 +3,6 @@ import {
   importHolidaysAction,
   saveDateExceptionAction,
   signOutAction,
-  updateAppointmentDurationAction,
-  updateAppointmentStatusAction,
   updateServiceVisibilityAction,
   updateWeeklyScheduleAction,
   updateWorkshopSettingsAction,
@@ -12,7 +10,6 @@ import {
 import Link from "next/link";
 import {
   Alert,
-  AppointmentCard,
   Button,
   Card,
   Chip,
@@ -20,7 +17,6 @@ import {
   Field,
   PageHeading,
   PageShell,
-  Select,
   SiteHeader,
   TextInput,
   Toggle,
@@ -31,7 +27,8 @@ import type {
   InternalWeeklyScheduleRecord,
   InternalWorkshopSettingsRecord,
 } from "@/src/modules/internal/maintenance";
-import { internalStatusOptions, statusLabel, type InternalAgenda } from "@/src/modules/internal/operations";
+import { InternalAgendaWorkspace } from "@/src/modules/internal/internal-agenda-workspace";
+import type { InternalAgenda } from "@/src/modules/internal/operations";
 import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
 
 export const internalFeedbackCodes = [
@@ -46,6 +43,7 @@ export const internalFeedbackCodes = [
 ] as const;
 
 export type InternalFeedbackCode = (typeof internalFeedbackCodes)[number];
+export type InternalSection = "agenda" | "settings";
 
 const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message: string }> = {
   "schedule-updated": { tone: "success", message: "Actualizamos el horario semanal del taller." },
@@ -82,6 +80,8 @@ const dayLabels: Record<DayOfWeek, string> = {
 
 export function InternalAgendaScreen({
   agenda,
+  weekAgendas = [agenda],
+  section = "agenda",
   settings,
   services = [],
   schedule,
@@ -91,6 +91,8 @@ export function InternalAgendaScreen({
   durationOutcome,
 }: {
   agenda: InternalAgenda;
+  weekAgendas?: InternalAgenda[];
+  section?: InternalSection;
   settings?: InternalWorkshopSettingsRecord;
   services?: InternalServiceRecord[];
   schedule?: InternalWeeklyScheduleRecord;
@@ -106,7 +108,19 @@ export function InternalAgendaScreen({
       <SiteHeader active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
 
       <PageShell>
-        <PageHeading eyebrow="Gestion del taller" title="Agenda" />
+        <PageHeading
+          eyebrow="Gestión del taller"
+          title={section === "agenda" ? "Agenda" : "Configuración"}
+        />
+
+        <nav aria-label="Secciones del panel" className="mt-7 flex gap-2 overflow-x-auto border-b border-white/10">
+          <InternalNavLink active={section === "agenda"} href={`/internal?date=${agenda.date}`}>
+            Agenda
+          </InternalNavLink>
+          <InternalNavLink active={section === "settings"} href={`/internal?section=settings&date=${agenda.date}`}>
+            Configuración
+          </InternalNavLink>
+        </nav>
 
         {feedbackAlert ? (
           <Alert className="mt-6" tone={feedbackAlert.tone}>
@@ -120,84 +134,26 @@ export function InternalAgendaScreen({
           </Alert>
         ) : null}
 
-        <Card className="mt-8">
-          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 className="text-2xl font-black text-white">Turnos del dia</h2>
-              <p className="mt-2 text-sm text-zinc-500">
-                {formatDisplayDate(agenda.date)} · {agenda.appointments.length} Turnos
+        {section === "agenda" ? (
+          <InternalAgendaWorkspace
+            agenda={agenda}
+            capacity={settings?.capacity}
+            slotStepMinutes={settings?.slotStepMinutes}
+            weekAgendas={weekAgendas}
+          />
+        ) : (
+          <div className="mt-8">
+            <div className="mb-5">
+              <h2 className="text-2xl font-black text-white">Preferencias del taller</h2>
+              <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+                Administrá la capacidad, los servicios publicados y la disponibilidad sin mezclar estos cambios con la operación diaria.
               </p>
             </div>
-            <form action="/internal" className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <Field label="Fecha">
-                <TextInput defaultValue={agenda.date} density="sm" name="date" type="date" />
-              </Field>
-              <Button type="submit">Ver</Button>
-            </form>
-          </div>
 
-          {agenda.appointments.length === 0 ? (
-            <EmptyState className="mt-6">No hay turnos agendados para esta fecha.</EmptyState>
-          ) : (
-            <div className="mt-6 grid gap-4">
-              {agenda.appointments.map((appointment) => (
-                <AppointmentCard
-                  action={
-                    <div className="grid gap-3 sm:min-w-56">
-                      <form
-                        action={updateAppointmentStatusAction}
-                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
-                      >
-                        <input name="appointmentId" type="hidden" value={appointment.id} />
-                        <input name="date" type="hidden" value={agenda.date} />
-                        <Field label="Estado">
-                          <Select defaultValue={appointment.status} density="sm" name="nextStatus">
-                            {internalStatusOptions.map((status) => (
-                              <option key={status} value={status}>
-                                {statusLabel(status)}
-                              </option>
-                            ))}
-                          </Select>
-                        </Field>
-                        <Button size="md" type="submit">Actualizar</Button>
-                      </form>
-                      <form
-                        action={updateAppointmentDurationAction}
-                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
-                      >
-                        <input name="appointmentId" type="hidden" value={appointment.id} />
-                        <input name="date" type="hidden" value={agenda.date} />
-                        <Field hint={`(base ${appointment.serviceDurationMinutes} min)`} label="Duracion total">
-                          <TextInput
-                            defaultValue={durationMinutes(appointment.startAt, appointment.endAt)}
-                            density="sm"
-                            disabled={isTerminalStatus(appointment.status)}
-                            min={durationMinutes(appointment.startAt, appointment.endAt) + (settings?.slotStepMinutes ?? 1)}
-                            name="durationMinutes"
-                            step={settings?.slotStepMinutes ?? 1}
-                            type="number"
-                          />
-                        </Field>
-                        <Button disabled={isTerminalStatus(appointment.status)} size="md" type="submit">Extender</Button>
-                      </form>
-                    </div>
-                  }
-                  customerName={appointment.customerName}
-                  key={appointment.id}
-                  meta={`${appointment.motorcycleLabel} · ${appointment.customerPhone}`}
-                  notes={appointment.notes}
-                  serviceName={appointment.serviceName}
-                  timeLabel={`${formatTime(appointment.startAt)}-${formatTime(appointment.endAt)} · ${statusLabel(appointment.status)}`}
-                />
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
+            <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
           {settings ? (
             <Card>
-              <h2 className="text-2xl font-black text-white">Configuracion del taller</h2>
+              <h2 className="text-2xl font-black text-white">Configuración general</h2>
               <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
                 <Field hint="(1-20)" label="Capacidad simultanea">
                   <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
@@ -251,13 +207,29 @@ export function InternalAgendaScreen({
               </div>
             </Card>
           ) : null}
-        </div>
+            </div>
 
-        {schedule ? <WeeklyScheduleCard agendaDate={agenda.date} schedule={schedule} /> : null}
+            {schedule ? <WeeklyScheduleCard agendaDate={agenda.date} schedule={schedule} /> : null}
 
-        <DateExceptionsCard agendaDate={agenda.date} exceptions={exceptions} />
+            <DateExceptionsCard agendaDate={agenda.date} exceptions={exceptions} />
+          </div>
+        )}
       </PageShell>
     </>
+  );
+}
+
+function InternalNavLink({ active, href, children }: { active: boolean; href: string; children: string }) {
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      className={`border-b-2 px-5 py-3 text-sm font-black transition ${
+        active ? "border-apple-400 text-white" : "border-transparent text-zinc-500 hover:text-white"
+      }`}
+      href={href}
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -422,19 +394,7 @@ function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: string; ex
   );
 }
 
-function formatTime(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires" }).format(date);
-}
-
 function formatDisplayDate(date: string): string {
   const value = new Date(`${date}T12:00:00-03:00`);
   return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(value);
-}
-
-function durationMinutes(startAt: Date, endAt: Date): number {
-  return Math.round((endAt.getTime() - startAt.getTime()) / 60_000);
-}
-
-function isTerminalStatus(status: InternalAgenda["appointments"][number]["status"]): boolean {
-  return ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status);
 }

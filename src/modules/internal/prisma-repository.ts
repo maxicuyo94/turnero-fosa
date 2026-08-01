@@ -226,6 +226,7 @@ export class PrismaInternalRepository
 
 function mapInternalAppointment(appointment: {
   id: string;
+  publicCode: string;
   service: { name: string; durationMinutes: number };
   customer: { fullName: string; phone: string; email: string | null };
   motorcycle: { brand: string; model: string; licensePlate: string | null };
@@ -236,6 +237,7 @@ function mapInternalAppointment(appointment: {
 }): InternalAppointmentRecord {
   return {
     id: appointment.id,
+    publicCode: appointment.publicCode,
     serviceName: appointment.service.name,
     serviceDurationMinutes: appointment.service.durationMinutes,
     customerName: appointment.customer.fullName,

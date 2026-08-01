@@ -55,7 +55,7 @@ export async function updateWorkshopSettingsAction(formData: FormData) {
     minimumNoticeMinutes: stringValue(formData, "minimumNoticeMinutes"),
     maximumBookingWindowDays: stringValue(formData, "maximumBookingWindowDays"),
   });
-  redirect("/internal");
+  redirect("/internal?section=settings");
 }
 
 export async function updateServiceVisibilityAction(formData: FormData) {
@@ -64,7 +64,7 @@ export async function updateServiceVisibilityAction(formData: FormData) {
     serviceId: stringValue(formData, "serviceId"),
     isActive: stringValue(formData, "isActive") === "true",
   });
-  redirect("/internal");
+  redirect("/internal?section=settings");
 }
 
 export async function updateWeeklyScheduleAction(formData: FormData) {
@@ -122,7 +122,7 @@ function stringValue(formData: FormData, key: string): string {
 /** Feedback travels as a code so the panel never renders text taken from the URL. */
 function internalUrl(formData: FormData, feedback: string): string {
   const date = stringValue(formData, "agendaDate");
-  const params = new URLSearchParams(date ? { date, feedback } : { feedback });
+  const params = new URLSearchParams(date ? { section: "settings", date, feedback } : { section: "settings", feedback });
   return `/internal?${params.toString()}`;
 }
 

@@ -128,6 +128,7 @@ function appointment(
 ): InternalAppointmentRecord {
   return {
     id: "appt",
+    publicCode: "ABCD234567",
     serviceName: "Service Esencial",
     serviceDurationMinutes: 30,
     customerName: "Ada Lovelace",

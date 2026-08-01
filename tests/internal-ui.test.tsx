@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
@@ -26,6 +26,7 @@ describe("InternalAgendaScreen", () => {
           appointments: [
             {
               id: "appt_1",
+              publicCode: "ABCD234567",
               serviceName: "Service Esencial",
               serviceDurationMinutes: 30,
               customerName: "Ada Lovelace",
@@ -44,10 +45,14 @@ describe("InternalAgendaScreen", () => {
 
     expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
-    expect(screen.getByText("Service Esencial")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Actualizar" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: /Duracion total/i })).toHaveValue(30);
-    expect(screen.getByRole("button", { name: "Extender" })).toBeInTheDocument();
+    expect(screen.getAllByText("Service Esencial")).not.toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: /Ada Lovelace/i }));
+    expect(screen.getByRole("dialog", { name: "Detalle del turno" })).toBeInTheDocument();
+    expect(screen.getByText("Código público")).toBeInTheDocument();
+    expect(screen.getByText("ABCD234567")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Actualizar estado" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toHaveValue(30);
+    expect(screen.getByRole("button", { name: "Extender turno" })).toBeInTheDocument();
   });
 
   it("renders an empty state for days without appointments", () => {
@@ -56,11 +61,49 @@ describe("InternalAgendaScreen", () => {
     expect(screen.getByText("No hay turnos agendados para esta fecha.")).toBeInTheDocument();
   });
 
+  it("filters appointments and switches to the weekly view", () => {
+    const tuesdayAppointment = {
+      id: "appt_2",
+      publicCode: "EFGH234567",
+      serviceName: "Service Deluxe",
+      serviceDurationMinutes: 60,
+      customerName: "Grace Hopper",
+      customerPhone: "+5491198765432",
+      customerEmail: "grace@example.com",
+      motorcycleLabel: "Yamaha MT DEF456",
+      startAt: new Date("2026-07-07T10:00:00-03:00"),
+      endAt: new Date("2026-07-07T11:00:00-03:00"),
+      status: "CONFIRMED" as const,
+      notes: null,
+    };
+    render(
+      <InternalAgendaScreen
+        agenda={{ date: "2026-07-06", appointments: [] }}
+        weekAgendas={[
+          { date: "2026-07-06", appointments: [] },
+          { date: "2026-07-07", appointments: [tuesdayAppointment] },
+          { date: "2026-07-08", appointments: [] },
+          { date: "2026-07-09", appointments: [] },
+          { date: "2026-07-10", appointments: [] },
+          { date: "2026-07-11", appointments: [] },
+          { date: "2026-07-12", appointments: [] },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Semana" }));
+    expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("searchbox", { name: /Buscar por cliente/i }), { target: { value: "sin coincidencias" } });
+    expect(screen.queryByText("Grace Hopper")).not.toBeInTheDocument();
+  });
+
   it("renders editable opening hours and breaks for every weekday", () => {
     render(
       <InternalAgendaScreen
         agenda={{ date: "2026-07-06", appointments: [] }}
         schedule={{ schedules: workshopSeedConfig.schedules, breaks: workshopSeedConfig.breaks }}
+        section="settings"
       />,
     );
 
@@ -81,6 +124,7 @@ describe("InternalAgendaScreen", () => {
           { date: "2026-07-09", label: "Dia de la Independencia", source: "IMPORTED", manualOverride: false, isOpen: false, opensAt: null, closesAt: null },
           { date: "2026-12-08", label: "Abrimos igual", source: "MANUAL", manualOverride: true, isOpen: true, opensAt: "10:00", closesAt: "13:00" },
         ]}
+        section="settings"
       />,
     );
 
