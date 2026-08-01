@@ -4,6 +4,7 @@ import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort 
 
 export type InternalAppointmentRecord = {
   id: string;
+  publicCode: string;
   serviceName: string;
   serviceDurationMinutes: number;
   customerName: string;

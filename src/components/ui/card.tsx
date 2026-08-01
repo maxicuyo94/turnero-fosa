@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 
-export type CardPadding = "sm" | "md";
+export type CardPadding = "none" | "sm" | "md";
 
 export type CardProps = {
   padding?: CardPadding;
@@ -12,6 +12,7 @@ export type CardProps = {
 };
 
 const paddingClasses: Record<CardPadding, string> = {
+  none: "p-0",
   sm: "p-5",
   md: "p-6",
 };
