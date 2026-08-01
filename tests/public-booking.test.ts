@@ -11,6 +11,7 @@ import {
 } from "@/src/modules/booking/service";
 import type { EmailNotificationMessage, NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
+import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
 const monday = "2026-07-06";
 const now = new Date("2026-07-01T09:00:00-03:00");
@@ -45,6 +46,27 @@ describe("public booking services and availability", () => {
     );
     expect(available.accepted ? available.slots.map((slot) => slot.startTime) : []).not.toContain("12:00");
     expect(inactive).toEqual({ accepted: false, reason: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("hides every slot of a date persisted as a closed exception", async () => {
+    const repository = new InMemoryBookingRepository({
+      services: [service({ id: "oil", durationMinutes: 30 })],
+      exceptions: [
+        {
+          date: monday,
+          label: "Feriado nacional",
+          source: "IMPORTED",
+          manualOverride: false,
+          isOpen: false,
+          opensAt: null,
+          closesAt: null,
+        },
+      ],
+    });
+
+    const available = await getPublicAvailability(repository, { serviceId: "oil", date: monday, now });
+
+    expect(available).toEqual({ accepted: true, slots: [] });
   });
 });
 
@@ -307,6 +329,7 @@ class InMemoryBookingRepository implements BookingRepository {
   settings;
   schedules;
   breaks;
+  exceptions;
   services;
   appointments;
   createdAppointments: PublicAppointmentRecord[] = [];
@@ -315,16 +338,18 @@ class InMemoryBookingRepository implements BookingRepository {
     settings?: typeof workshopSeedConfig.settings;
     services?: PublicServiceRecord[];
     appointments?: PublicAppointmentRecord[];
+    exceptions?: ScheduleDateException[];
   }) {
     this.settings = input.settings ?? workshopSeedConfig.settings;
     this.schedules = workshopSeedConfig.schedules;
     this.breaks = workshopSeedConfig.breaks;
+    this.exceptions = input.exceptions ?? [];
     this.services = input.services ?? [];
     this.appointments = input.appointments ?? [];
   }
 
   async getBookingContext() {
-    return { settings: this.settings, schedules: this.schedules, breaks: this.breaks };
+    return { settings: this.settings, schedules: this.schedules, breaks: this.breaks, exceptions: this.exceptions };
   }
 
   async listActiveServices() {
