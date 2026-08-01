@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "incremental": false,
+    "outDir": "ds-dist",
+    "rootDir": "src/components/ui",
+    "types": []
+  },
+  "include": ["src/components/ui/**/*.ts", "src/components/ui/**/*.tsx"]
+}

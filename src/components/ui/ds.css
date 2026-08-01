@@ -1,0 +1,48 @@
+/* Stylesheet shipped with the design-system bundle.
+   `source(none)` disables Tailwind's automatic file detection so the compiled
+   utility set is exactly what this product uses — the library components plus
+   the app screens that compose them. */
+@import "tailwindcss" source(none);
+@import "./tokens.css";
+@import "./base.css";
+
+@source "../../../app/**/*.{ts,tsx}";
+@source "../../**/*.{ts,tsx}";
+/* Preview compositions are part of the shipped surface — scan them too so any
+   utility they use is compiled into the design-system stylesheet. */
+@source "../../../.design-sync/previews/**/*.tsx";
+
+/* Scanning alone only compiles the ~190 utilities this product happens to use
+   today, which is far too narrow for anyone composing new screens with the
+   library: `gap-6` or `mt-10` would silently not resolve. The safelist below
+   ships a full layout/typography surface plus the brand and neutral colour
+   ramps, so new compositions have room while colour stays on-palette. */
+@source inline("{sm:,md:,lg:,}{p,px,py,pt,pb,pl,pr,m,mx,my,mt,mb,ml,mr,gap,gap-x,gap-y}-{0,0.5,1,1.5,2,2.5,3,3.5,4,5,6,7,8,9,10,11,12,14,16,20,24}");
+@source inline("{sm:,md:,lg:,}{w,h}-{full,fit,auto,screen,min,max,0,1,2,3,4,5,6,8,10,12,16,20,24,32,40,48,64}");
+@source inline("{sm:,md:,lg:,}max-w-{none,xs,sm,md,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl,full}");
+@source inline("{sm:,md:,lg:,}min-h-{0,full,screen,fit}");
+@source inline("{sm:,md:,lg:,}text-{xs,sm,base,lg,xl,2xl,3xl,4xl,5xl,6xl,7xl}");
+@source inline("{sm:,md:,lg:,}text-{left,center,right}");
+@source inline("font-{light,normal,medium,semibold,bold,extrabold,black}");
+@source inline("leading-{none,tight,snug,normal,relaxed,loose,4,5,6,7,8,9,10}");
+@source inline("{uppercase,lowercase,capitalize,normal-case,truncate,italic,underline,line-through,no-underline}");
+@source inline("{sm:,md:,lg:,}{flex,grid,block,inline,inline-block,inline-flex,hidden,contents}");
+@source inline("{sm:,md:,lg:,}flex-{row,row-reverse,col,col-reverse,wrap,nowrap,1,auto,initial,none}");
+@source inline("{sm:,md:,lg:,}grid-cols-{1,2,3,4,5,6,12,none}");
+@source inline("{sm:,md:,lg:,}col-span-{1,2,3,4,5,6,full}");
+@source inline("{sm:,md:,lg:,}items-{start,center,end,baseline,stretch}");
+@source inline("{sm:,md:,lg:,}justify-{start,center,end,between,around,evenly}");
+@source inline("{sm:,md:,lg:,}self-{auto,start,center,end,stretch}");
+@source inline("rounded{,-t,-b,-l,-r}-{none,sm,md,lg,xl,2xl,3xl,full}");
+@source inline("border{,-t,-b,-l,-r}-{0,2,4,8}");
+@source inline("border-{solid,dashed,dotted,none}");
+@source inline("shadow-{none,sm,md,lg,xl,2xl,inner}");
+@source inline("opacity-{0,5,10,20,25,30,40,50,60,70,75,80,90,95,100}");
+@source inline("{relative,absolute,fixed,sticky,static}");
+@source inline("overflow-{auto,hidden,visible,scroll,x-auto,y-auto}");
+@source inline("{sm:,md:,lg:,}space-{x,y}-{0,1,2,3,4,5,6,8}");
+/* Colour stays deliberately narrow: the brand ramps, the neutral ramp the
+   product already uses, and a red ramp for destructive states. */
+@source inline("{hover:,focus:,}{text,bg,border,from,to,decoration,ring,accent}-{apple-300,apple-400,apple-500,charcoal-800,charcoal-900,charcoal-950,white,black,transparent,current,inherit}");
+@source inline("{hover:,focus:,}{text,bg,border}-zinc-{50,100,200,300,400,500,600,700,800,900,950}");
+@source inline("{hover:,focus:,}{text,bg,border}-red-{200,300,400,500}");

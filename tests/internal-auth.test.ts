@@ -16,8 +16,9 @@ describe("internal authentication boundary", () => {
     await expect(verifyPassword("wrong password", hash)).resolves.toBe(false);
   });
 
-  it("accepts only sessions with an email-bearing user", () => {
+  it("accepts sessions with a stable internal user identity", () => {
     expect(isInternalSession({ user: { id: "user_1", email: "admin@fosa.test" } })).toBe(true);
+    expect(isInternalSession({ user: { username: "admin" } })).toBe(true);
     expect(isInternalSession({ user: { email: null } })).toBe(false);
     expect(isInternalSession(null)).toBe(false);
   });
