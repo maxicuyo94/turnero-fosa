@@ -20,6 +20,7 @@ export type PublicAppointmentRecord = {
   publicCode: string;
   serviceId: string;
   serviceName: string;
+  serviceDurationMinutes: number;
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;
@@ -93,7 +94,10 @@ export type PublicBookingNotificationOptions = {
 export type PublicAppointmentStatusResult =
   | {
       accepted: true;
-      appointment: Pick<PublicAppointmentRecord, "publicCode" | "serviceName" | "startAt" | "endAt" | "status">;
+      appointment: Pick<
+        PublicAppointmentRecord,
+        "publicCode" | "serviceName" | "serviceDurationMinutes" | "startAt" | "endAt" | "status"
+      >;
     }
   | { accepted: false; reason: "APPOINTMENT_NOT_FOUND"; message: string };
 
@@ -162,6 +166,7 @@ export async function getPublicAppointmentStatus(
     appointment: {
       publicCode: appointment.publicCode,
       serviceName: appointment.serviceName,
+      serviceDurationMinutes: appointment.serviceDurationMinutes,
       startAt: appointment.startAt,
       endAt: appointment.endAt,
       status: appointment.status,

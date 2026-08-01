@@ -27,3 +27,11 @@ The system MUST let public users choose an active service, use its configured du
 - **WHEN** a public user submits a duration below 60 minutes
 - **THEN** no appointment MUST be created
 - **AND** the user MUST be asked to select a valid duration.
+
+#### Scenario: Extended duration is visible in public status lookup
+
+- **GIVEN** a service with a configured duration of 60 minutes
+- **AND** its appointment has been extended to 90 minutes
+- **WHEN** the customer consults the appointment using its public code
+- **THEN** the result MUST show a total duration of 90 minutes
+- **AND** it MUST identify the appointment as extended from the 60-minute service duration.

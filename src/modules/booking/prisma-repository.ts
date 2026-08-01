@@ -180,7 +180,7 @@ function mapAppointment(appointment: {
   id: string;
   publicCode: string;
   serviceId: string;
-  service: { name: string };
+  service: { name: string; durationMinutes: number };
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;
@@ -192,6 +192,7 @@ function mapAppointment(appointment: {
     publicCode: appointment.publicCode,
     serviceId: appointment.serviceId,
     serviceName: appointment.service.name,
+    serviceDurationMinutes: appointment.service.durationMinutes,
     startAt: appointment.startAt,
     endAt: appointment.endAt,
     status: appointment.status,
