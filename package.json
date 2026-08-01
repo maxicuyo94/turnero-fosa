@@ -9,7 +9,7 @@
   "types": "./ds-dist/index.d.ts",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "prisma migrate deploy",
+    "prebuild": "prisma migrate deploy && tsx scripts/sync-preview-admin.ts",
     "build": "next build",
     "start": "next start",
     "postinstall": "prisma generate",
