@@ -43,20 +43,20 @@
     "zod": "^4.1.11"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/eslintrc": "^3.3.6",
     "@fission-ai/openspec": "^1.7.0",
-    "@playwright/test": "^1.56.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@playwright/test": "^1.62.0",
+    "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.0",
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.1.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.12",
-    "jsdom": "^27.2.0",
+    "jsdom": "^30.0.1",
     "prisma": "^7.9.1",
-    "tsx": "^4.22.4",
+    "tsx": "^4.23.1",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "vitest": "^4.1.10"
   }
 }
