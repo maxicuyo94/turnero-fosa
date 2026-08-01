@@ -1,5 +1,8 @@
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
-import type { ScheduleBreak, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
+import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
+
+/** Availability only needs the opening decision of an exception, not its provenance metadata. */
+export type AvailabilityDateException = Pick<ScheduleDateException, "date" | "isOpen" | "opensAt" | "closesAt">;
 
 export type ExistingAppointment = {
   startAt: Date;
@@ -18,6 +21,7 @@ type AvailabilityInput = {
   settings: WorkshopSettings;
   schedules: WeeklySchedule[];
   breaks: ScheduleBreak[];
+  exceptions: AvailabilityDateException[];
   date: string;
   serviceDurationMinutes: number;
   appointments: ExistingAppointment[];
@@ -25,15 +29,13 @@ type AvailabilityInput = {
 };
 
 export function getAvailableSlots(input: AvailabilityInput): AvailableSlot[] {
-  const schedule = input.schedules.find((item) => item.dayOfWeek === dayOfWeekForDate(input.date));
-  if (!schedule?.isOpen || isOutsideBookingWindow(input.date, input.now, input.settings)) {
+  const dayOfWeek = dayOfWeekForDate(input.date);
+  const openingHours = openingHoursForDate(input.date, dayOfWeek, input.schedules, input.exceptions);
+  if (!openingHours || isOutsideBookingWindow(input.date, input.now, input.settings)) {
     return [];
   }
 
-  const intervals = subtractBreaks(
-    [{ startsAt: schedule.opensAt, endsAt: schedule.closesAt }],
-    input.breaks.filter((item) => item.dayOfWeek === schedule.dayOfWeek),
-  );
+  const intervals = subtractBreaks([openingHours], input.breaks.filter((item) => item.dayOfWeek === dayOfWeek));
 
   const slots: AvailableSlot[] = [];
   for (const interval of intervals) {
@@ -124,6 +126,27 @@ function countOverlappingAppointments(appointments: ExistingAppointment[], start
     (appointment) =>
       countsTowardCapacity(appointment.status) && appointment.startAt < endAt && appointment.endAt > startAt,
   ).length;
+}
+
+/**
+ * A date exception replaces the recurring weekly row for that single date. Breaks and booking
+ * policies still apply, so an exceptional opening never bypasses lunch, notice, or the window.
+ */
+function openingHoursForDate(
+  date: string,
+  dayOfWeek: WeeklySchedule["dayOfWeek"],
+  schedules: WeeklySchedule[],
+  exceptions: AvailabilityDateException[],
+): { startsAt: string; endsAt: string } | null {
+  const exception = exceptions.find((item) => item.date === date);
+  if (exception) {
+    return exception.isOpen && exception.opensAt && exception.closesAt
+      ? { startsAt: exception.opensAt, endsAt: exception.closesAt }
+      : null;
+  }
+
+  const schedule = schedules.find((item) => item.dayOfWeek === dayOfWeek);
+  return schedule?.isOpen ? { startsAt: schedule.opensAt, endsAt: schedule.closesAt } : null;
 }
 
 function isOutsideBookingWindow(date: string, now: Date, settings: WorkshopSettings): boolean {
