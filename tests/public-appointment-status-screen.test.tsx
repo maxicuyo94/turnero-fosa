@@ -12,6 +12,7 @@ describe("PublicAppointmentStatusScreen", () => {
           appointment: {
             publicCode: "ABCD234567",
             serviceName: "Service Esencial",
+            serviceDurationMinutes: 30,
             startAt: new Date("2026-07-06T09:00:00-03:00"),
             endAt: new Date("2026-07-06T09:30:00-03:00"),
             status: "CONFIRMED",
@@ -26,6 +27,26 @@ describe("PublicAppointmentStatusScreen", () => {
     expect(screen.getByText("Confirmado")).toBeInTheDocument();
     expect(screen.getByText("Service Esencial")).toBeInTheDocument();
     expect(screen.queryByText(/cliente|telefono|moto|notas/iu)).not.toBeInTheDocument();
+  });
+
+  it("shows the total duration and identifies an extended appointment", () => {
+    render(
+      <PublicAppointmentStatusScreen
+        result={{
+          accepted: true,
+          appointment: {
+            publicCode: "ABCD234567",
+            serviceName: "Service Esencial",
+            serviceDurationMinutes: 60,
+            startAt: new Date("2026-07-06T09:00:00-03:00"),
+            endAt: new Date("2026-07-06T10:30:00-03:00"),
+            status: "CONFIRMED",
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("90 min · Extendido (base 60 min)")).toBeInTheDocument();
   });
 
   it("renders the generic not-found message", () => {
