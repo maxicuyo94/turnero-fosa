@@ -299,13 +299,14 @@ describe("getPublicAppointmentStatus", () => {
       appointment: {
         publicCode: "ABCD234567",
         serviceName: "Service Esencial",
+        serviceDurationMinutes: 30,
         startAt: new Date("2026-07-06T09:00:00-03:00"),
         endAt: new Date("2026-07-06T09:30:00-03:00"),
         status: "CONFIRMED",
       },
     });
     expect(result.accepted ? Object.keys(result.appointment).sort() : []).toEqual(
-      ["endAt", "publicCode", "serviceName", "startAt", "status"].sort(),
+      ["endAt", "publicCode", "serviceDurationMinutes", "serviceName", "startAt", "status"].sort(),
     );
   });
 
@@ -365,6 +366,7 @@ function appointment(
     id: overrides.id ?? "appt",
     serviceId: "oil",
     serviceName: "Service Esencial",
+    serviceDurationMinutes: overrides.serviceDurationMinutes ?? 30,
     startAt: new Date(overrides.startAt ?? "2026-07-06T09:00:00-03:00"),
     endAt: new Date(overrides.endAt ?? "2026-07-06T09:30:00-03:00"),
     status: overrides.status ?? "PENDING_CONFIRMATION",

@@ -15,3 +15,4 @@
 - [x] 3.1 Add/update component and Prisma integration coverage for effective duration persistence and UI controls.
 - [x] 3.2 Run strict OpenSpec validation, type checking, lint, Vitest, Playwright, and the production build.
 - [x] 3.3 Confirm the implementation remains within the 800-line review budget or split the change before delivery.
+- [x] 3.4 Show the effective duration and extension indicator in public appointment lookup.
