@@ -34,12 +34,12 @@ export function SiteHeader({
     <header
       className={cn("border-b border-white/10 bg-charcoal-950/85 backdrop-blur", className)}
     >
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-5 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <Link className="flex items-center gap-3 text-lg font-black text-white" href="/">
           <span className="h-6 w-6 rotate-45 rounded-md bg-apple-400" />
           {brand}
         </Link>
-        <nav className="flex items-center gap-5 text-sm text-zinc-300">
+        <nav className="flex w-full items-center justify-between gap-2 text-sm text-zinc-300 sm:w-auto sm:justify-start sm:gap-5">
           <Link className={navClass(active === "home")} href="/">
             Inicio
           </Link>
