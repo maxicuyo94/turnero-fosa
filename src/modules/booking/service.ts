@@ -4,7 +4,7 @@ import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appo
 import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
 import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
-import type { ScheduleBreak, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
+import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
 export type PublicServiceRecord = {
   id: string;
@@ -17,6 +17,7 @@ export type PublicServiceRecord = {
 
 export type PublicAppointmentRecord = {
   id: string;
+  publicCode: string;
   serviceId: string;
   serviceName: string;
   startAt: Date;
@@ -27,13 +28,20 @@ export type PublicAppointmentRecord = {
 };
 
 export type BookingRepository = {
-  getBookingContext(): Promise<{ settings: WorkshopSettings; schedules: WeeklySchedule[]; breaks: ScheduleBreak[] }>;
+  getBookingContext(): Promise<{
+    settings: WorkshopSettings;
+    schedules: WeeklySchedule[];
+    breaks: ScheduleBreak[];
+    exceptions: ScheduleDateException[];
+  }>;
   listActiveServices(): Promise<PublicServiceRecord[]>;
   findActiveService(serviceId: string): Promise<PublicServiceRecord | null>;
   findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]>;
   withBookingTransaction<T>(operation: () => Promise<T>): Promise<T>;
   findByIdempotencyKey(idempotencyKey: string): Promise<PublicAppointmentRecord | null>;
+  findByPublicCode(publicCode: string): Promise<PublicAppointmentRecord | null>;
   createAppointment(input: {
+    publicCode: string;
     service: PublicServiceRecord;
     startAt: Date;
     endAt: Date;
@@ -52,6 +60,7 @@ const bookingInputSchema = z.object({
   serviceId: z.string().trim().min(1),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
   startTime: z.string().regex(/^\d{2}:\d{2}$/u),
+  durationMinutes: z.number().int().positive().optional(),
   customer: customerSchema,
   motorcycle: motorcycleSchema,
   idempotencyKey: z.string().trim().min(8),
@@ -81,14 +90,26 @@ export type PublicBookingNotificationOptions = {
   port: NotificationPort;
 };
 
+export type PublicAppointmentStatusResult =
+  | {
+      accepted: true;
+      appointment: Pick<PublicAppointmentRecord, "publicCode" | "serviceName" | "startAt" | "endAt" | "status">;
+    }
+  | { accepted: false; reason: "APPOINTMENT_NOT_FOUND"; message: string };
+
+const publicCodeSchema = z.string().trim().toUpperCase().regex(/^[A-HJ-NP-Z2-9]{10}$/u);
+
 export async function listPublicServices(repository: BookingRepository): Promise<PublicServiceRecord[]> {
   return repository.listActiveServices();
 }
 
 export async function getPublicAvailability(
   repository: BookingRepository,
-  input: { serviceId: string; date: string; now: Date },
-): Promise<{ accepted: true; slots: AvailableSlot[] } | { accepted: false; reason: "SERVICE_UNAVAILABLE" }> {
+  input: { serviceId: string; date: string; durationMinutes?: number; now: Date },
+): Promise<
+  | { accepted: true; slots: AvailableSlot[]; durationMinutes: number; slotStepMinutes: number }
+  | { accepted: false; reason: "SERVICE_UNAVAILABLE" | "INVALID_DURATION"; minimumDurationMinutes?: number; slotStepMinutes?: number }
+> {
   const [context, service, appointments] = await Promise.all([
     repository.getBookingContext(),
     repository.findActiveService(input.serviceId),
@@ -99,17 +120,52 @@ export async function getPublicAvailability(
     return { accepted: false, reason: "SERVICE_UNAVAILABLE" };
   }
 
+  const durationMinutes = effectiveDurationMinutes(service.durationMinutes, input.durationMinutes, context.settings.slotStepMinutes);
+  if (durationMinutes === null) {
+    return {
+      accepted: false,
+      reason: "INVALID_DURATION",
+      minimumDurationMinutes: service.durationMinutes,
+      slotStepMinutes: context.settings.slotStepMinutes,
+    };
+  }
+
   return {
     accepted: true,
+    durationMinutes,
+    slotStepMinutes: context.settings.slotStepMinutes,
     slots: getAvailableSlots({
       settings: context.settings,
       schedules: context.schedules,
       breaks: context.breaks,
+      exceptions: context.exceptions,
       date: input.date,
-      serviceDurationMinutes: service.durationMinutes,
+      serviceDurationMinutes: durationMinutes,
       appointments,
       now: input.now,
     }),
+  };
+}
+
+export async function getPublicAppointmentStatus(
+  repository: BookingRepository,
+  input: { code: string },
+): Promise<PublicAppointmentStatusResult> {
+  const parsed = publicCodeSchema.safeParse(input.code);
+  const appointment = parsed.success ? await repository.findByPublicCode(parsed.data) : null;
+  if (!appointment) {
+    return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese codigo." };
+  }
+
+  return {
+    accepted: true,
+    appointment: {
+      publicCode: appointment.publicCode,
+      serviceName: appointment.serviceName,
+      startAt: appointment.startAt,
+      endAt: appointment.endAt,
+      status: appointment.status,
+    },
   };
 }
 
@@ -130,7 +186,7 @@ export async function createPublicBooking(
 
   const transactionResult = await repository.withBookingTransaction(async (): Promise<{
     result: CreatePublicBookingResult;
-    notification: { appointmentId: string; recipient: string; serviceName: string; startAt: Date } | null;
+    notification: { appointmentId: string; publicCode: string; recipient: string; serviceName: string; startAt: Date } | null;
   }> => {
     const existing = await repository.findByIdempotencyKey(parsed.data.idempotencyKey);
     if (existing) {
@@ -149,14 +205,31 @@ export async function createPublicBooking(
     }
 
     const context = await repository.getBookingContext();
+    const durationMinutes = effectiveDurationMinutes(
+      service.durationMinutes,
+      parsed.data.durationMinutes,
+      context.settings.slotStepMinutes,
+    );
+    if (durationMinutes === null) {
+      return {
+        result: {
+          accepted: false,
+          reason: "VALIDATION_FAILED",
+          message: "Elegi una duracion valida para el servicio.",
+          fieldErrors: { durationMinutes: ["La duracion debe respetar el minimo del servicio y el paso del taller."] },
+        },
+        notification: null,
+      };
+    }
     const startAt = dateAtTime(parsed.data.date, parsed.data.startTime);
-    const endAt = new Date(startAt.getTime() + service.durationMinutes * 60_000);
+    const endAt = new Date(startAt.getTime() + durationMinutes * 60_000);
     const available = getAvailableSlots({
       settings: context.settings,
       schedules: context.schedules,
       breaks: context.breaks,
+      exceptions: context.exceptions,
       date: parsed.data.date,
-      serviceDurationMinutes: service.durationMinutes,
+      serviceDurationMinutes: durationMinutes,
       appointments: await repository.findAppointmentsForDate(parsed.data.date),
       now: parsed.data.now,
     }).some((slot) => slot.startAt.getTime() === startAt.getTime() && slot.endAt.getTime() === endAt.getTime());
@@ -168,6 +241,7 @@ export async function createPublicBooking(
     const cancellationToken = context.settings.cancellationEnabled ? createCancellationToken() : null;
     const status = context.settings.confirmationMode === "AUTOMATIC" ? "CONFIRMED" : "PENDING_CONFIRMATION";
     const appointment = await repository.createAppointment({
+      publicCode: createPublicCode(),
       service,
       startAt,
       endAt,
@@ -184,6 +258,7 @@ export async function createPublicBooking(
       notification: parsed.data.customer.email
         ? {
             appointmentId: appointment.id,
+            publicCode: appointment.publicCode,
             recipient: parsed.data.customer.email,
             serviceName: appointment.serviceName,
             startAt: appointment.startAt,
@@ -198,11 +273,16 @@ export async function createPublicBooking(
       appointmentId: transactionResult.notification.appointmentId,
       recipient: transactionResult.notification.recipient,
       subject: "Recibimos tu turno",
-      text: `Recibimos tu turno para ${transactionResult.notification.serviceName} el ${formatDateTime(transactionResult.notification.startAt)}.`,
+      text: `Recibimos tu turno para ${transactionResult.notification.serviceName} el ${formatDateTime(transactionResult.notification.startAt)}. Codigo: ${transactionResult.notification.publicCode}.`,
     });
   }
 
   return transactionResult.result;
+}
+
+function effectiveDurationMinutes(serviceDurationMinutes: number, requestedDurationMinutes: number | undefined, slotStepMinutes: number): number | null {
+  const durationMinutes = requestedDurationMinutes ?? serviceDurationMinutes;
+  return durationMinutes >= serviceDurationMinutes && durationMinutes % slotStepMinutes === 0 ? durationMinutes : null;
 }
 
 export async function cancelPublicAppointment(
@@ -253,6 +333,11 @@ function bookingSuccess(
 
 function createCancellationToken(): string {
   return randomBytes(16).toString("hex");
+}
+
+function createPublicCode(): string {
+  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+  return [...randomBytes(10)].map((value) => alphabet[value & 31]).join("");
 }
 
 function dateAtTime(date: string, time: string): Date {
