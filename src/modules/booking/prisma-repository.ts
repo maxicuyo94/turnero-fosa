@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { BookingRepository, PublicAppointmentRecord, PublicServiceRecord } from "@/src/modules/booking/service";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
+import { mapScheduleDateException } from "@/src/modules/settings/date-exceptions";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -19,7 +20,7 @@ export class PrismaBookingRepository implements BookingRepository {
   async getBookingContext() {
     const settings = await this.client.workshopSettings.findFirst({
       orderBy: { createdAt: "asc" },
-      include: { weeklySchedules: true, scheduleBreaks: true },
+      include: { weeklySchedules: true, scheduleBreaks: true, dateExceptions: true },
     });
     if (!settings) throw new Error("Workshop settings are not seeded.");
 
@@ -45,6 +46,7 @@ export class PrismaBookingRepository implements BookingRepository {
         startsAt: scheduleBreak.startsAt,
         endsAt: scheduleBreak.endsAt,
       })),
+      exceptions: settings.dateExceptions.map(mapScheduleDateException),
     };
   }
 

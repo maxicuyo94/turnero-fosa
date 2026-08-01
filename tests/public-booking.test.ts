@@ -11,6 +11,7 @@ import {
 } from "@/src/modules/booking/service";
 import type { EmailNotificationMessage, NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
+import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
 const monday = "2026-07-06";
 const now = new Date("2026-07-01T09:00:00-03:00");
@@ -45,6 +46,53 @@ describe("public booking services and availability", () => {
     );
     expect(available.accepted ? available.slots.map((slot) => slot.startTime) : []).not.toContain("12:00");
     expect(inactive).toEqual({ accepted: false, reason: "SERVICE_UNAVAILABLE" });
+  });
+
+  it("hides every slot of a date persisted as a closed exception", async () => {
+    const repository = new InMemoryBookingRepository({
+      services: [service({ id: "oil", durationMinutes: 30 })],
+      exceptions: [
+        {
+          date: monday,
+          label: "Feriado nacional",
+          source: "IMPORTED",
+          manualOverride: false,
+          isOpen: false,
+          opensAt: null,
+          closesAt: null,
+        },
+      ],
+    });
+
+    const available = await getPublicAvailability(repository, { serviceId: "oil", date: monday, now });
+
+    expect(available).toMatchObject({ accepted: true, slots: [] });
+  });
+
+  it("uses the service duration by default and recalculates slots for a longer requested duration", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    const defaultAvailability = await getPublicAvailability(repository, { serviceId: "oil", date: monday, now });
+    const extendedAvailability = await getPublicAvailability(repository, {
+      serviceId: "oil",
+      date: monday,
+      durationMinutes: 90,
+      now,
+    });
+
+    expect(defaultAvailability.accepted ? defaultAvailability.slots[0]?.endAt.getTime() - defaultAvailability.slots[0]?.startAt.getTime() : 0)
+      .toBe(60 * 60_000);
+    expect(extendedAvailability.accepted ? extendedAvailability.slots[0]?.endAt.getTime() - extendedAvailability.slots[0]?.startAt.getTime() : 0)
+      .toBe(90 * 60_000);
+  });
+
+  it("rejects durations below the service default or outside the configured slot step", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    await expect(getPublicAvailability(repository, { serviceId: "oil", date: monday, durationMinutes: 30, now }))
+      .resolves.toMatchObject({ accepted: false, reason: "INVALID_DURATION" });
+    await expect(getPublicAvailability(repository, { serviceId: "oil", date: monday, durationMinutes: 75, now }))
+      .resolves.toMatchObject({ accepted: false, reason: "INVALID_DURATION" });
   });
 });
 
@@ -97,6 +145,29 @@ describe("createPublicBooking", () => {
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
     expect(repository.createdAppointments).toHaveLength(1);
+  });
+
+  it("persists a requested duration longer than the service default", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    const result = await createPublicBooking(repository, validBooking({
+      serviceId: "oil",
+      durationMinutes: 90,
+      startTime: "09:00",
+    }));
+
+    expect(result).toMatchObject({ accepted: true });
+    expect(repository.createdAppointments[0]?.endAt.getTime() - repository.createdAppointments[0]?.startAt.getTime())
+      .toBe(90 * 60_000);
+  });
+
+  it("rejects a requested duration shorter than the service default", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 60 })] });
+
+    const result = await createPublicBooking(repository, validBooking({ durationMinutes: 30 }));
+
+    expect(result).toMatchObject({ accepted: false, reason: "VALIDATION_FAILED" });
+    expect(repository.createdAppointments).toHaveLength(0);
   });
 
   it("creates a pending appointment with a cancellation token when manual confirmation and cancellation are enabled", async () => {
@@ -307,6 +378,7 @@ class InMemoryBookingRepository implements BookingRepository {
   settings;
   schedules;
   breaks;
+  exceptions;
   services;
   appointments;
   createdAppointments: PublicAppointmentRecord[] = [];
@@ -315,16 +387,18 @@ class InMemoryBookingRepository implements BookingRepository {
     settings?: typeof workshopSeedConfig.settings;
     services?: PublicServiceRecord[];
     appointments?: PublicAppointmentRecord[];
+    exceptions?: ScheduleDateException[];
   }) {
     this.settings = input.settings ?? workshopSeedConfig.settings;
     this.schedules = workshopSeedConfig.schedules;
     this.breaks = workshopSeedConfig.breaks;
+    this.exceptions = input.exceptions ?? [];
     this.services = input.services ?? [];
     this.appointments = input.appointments ?? [];
   }
 
   async getBookingContext() {
-    return { settings: this.settings, schedules: this.schedules, breaks: this.breaks };
+    return { settings: this.settings, schedules: this.schedules, breaks: this.breaks, exceptions: this.exceptions };
   }
 
   async listActiveServices() {
