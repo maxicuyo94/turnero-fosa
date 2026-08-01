@@ -2,7 +2,7 @@
 
 - [x] 1.1 Add a GitHub Actions workflow with PostgreSQL 17, Prisma setup, lint, type checking, Vitest, Playwright, and production build verification.
 - [x] 1.2 Add Dependabot configuration for npm and GitHub Actions updates.
-- [x] 1.3 Declare and document Node.js 20 as the shared local, CI, and Vercel runtime.
+- [x] 1.3 Declare and document Node.js 24 as the shared local, CI, and Vercel runtime.
 
 ## 2. Deployment And Environments
 
@@ -19,4 +19,4 @@
 ## 4. Verification And Delivery
 
 - [x] 4.1 Run OpenSpec validation, dependency audit, lint, type checking, all Vitest tests, Playwright tests, and production build.
-- [ ] 4.2 Commit and push the reviewed changes, then verify GitHub Actions and Vercel production status.
+- [x] 4.2 Commit and push the reviewed changes, then verify GitHub Actions and Vercel production status.

@@ -5,6 +5,7 @@ import {
   getAvailableSlots,
 } from "@/src/modules/availability";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
+import { scheduleDateExceptionSchema } from "@/src/modules/settings/schemas";
 import { appointmentSchema } from "@/src/modules/appointments/schemas";
 import { serviceSchema } from "@/src/modules/catalog/schemas";
 import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
@@ -54,6 +55,7 @@ describe("getAvailableSlots", () => {
       settings: workshopSeedConfig.settings,
       schedules: workshopSeedConfig.schedules,
       breaks: workshopSeedConfig.breaks,
+      exceptions: [],
       date: monday,
       serviceDurationMinutes: 60,
       appointments: [],
@@ -73,6 +75,7 @@ describe("getAvailableSlots", () => {
         settings: workshopSeedConfig.settings,
         schedules: workshopSeedConfig.schedules,
         breaks: workshopSeedConfig.breaks,
+        exceptions: [],
         date: "2026-07-05",
         serviceDurationMinutes: 60,
         appointments: [],
@@ -85,6 +88,7 @@ describe("getAvailableSlots", () => {
         settings: workshopSeedConfig.settings,
         schedules: workshopSeedConfig.schedules,
         breaks: workshopSeedConfig.breaks,
+        exceptions: [],
         date: "2026-07-01",
         serviceDurationMinutes: 30,
         appointments: [],
@@ -97,6 +101,7 @@ describe("getAvailableSlots", () => {
         settings: workshopSeedConfig.settings,
         schedules: workshopSeedConfig.schedules,
         breaks: workshopSeedConfig.breaks,
+        exceptions: [],
         date: "2026-08-15",
         serviceDurationMinutes: 30,
         appointments: [],
@@ -110,6 +115,7 @@ describe("getAvailableSlots", () => {
       settings: workshopSeedConfig.settings,
       schedules: workshopSeedConfig.schedules,
       breaks: workshopSeedConfig.breaks,
+      exceptions: [],
       date: monday,
       serviceDurationMinutes: 120,
       appointments: [],
@@ -134,6 +140,7 @@ describe("getAvailableSlots", () => {
       settings: workshopSeedConfig.settings,
       schedules: workshopSeedConfig.schedules,
       breaks: workshopSeedConfig.breaks,
+      exceptions: [],
       date: monday,
       serviceDurationMinutes: 30,
       appointments,
@@ -142,6 +149,122 @@ describe("getAvailableSlots", () => {
 
     expect(slots).not.toContain("09:30");
     expect(slots).toContain("10:00");
+  });
+});
+
+describe("date exceptions", () => {
+  it("returns no slots for a national holiday imported as a closed date", () => {
+    const slots = getAvailableSlots({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [closedException(monday, "Feriado nacional")],
+      date: monday,
+      serviceDurationMinutes: 60,
+      appointments: [],
+      now,
+    });
+
+    expect(slots).toEqual([]);
+  });
+
+  it("opens a normally closed date within the exception hours", () => {
+    const sunday = "2026-07-05";
+
+    const slots = getAvailableSlots({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [openException(sunday, "10:00", "13:00")],
+      date: sunday,
+      serviceDurationMinutes: 60,
+      appointments: [],
+      now,
+    }).map((slot) => slot.startTime);
+
+    expect(slots).toEqual(["10:00", "10:30", "11:00", "11:30", "12:00"]);
+  });
+
+  it("takes precedence over the weekly schedule of the same weekday", () => {
+    const slots = getAvailableSlots({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [openException(monday, "10:00", "12:00")],
+      date: monday,
+      serviceDurationMinutes: 60,
+      appointments: [],
+      now,
+    }).map((slot) => slot.startTime);
+
+    expect(slots).toEqual(["10:00", "10:30", "11:00"]);
+  });
+
+  it("keeps breaks, notice, and booking window policies on an exceptionally open date", () => {
+    const exceptions = [openException(monday, "09:00", "19:00")];
+    const slots = getAvailableSlots({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions,
+      date: monday,
+      serviceDurationMinutes: 60,
+      appointments: [],
+      now,
+    }).map((slot) => slot.startTime);
+
+    expect(slots).toContain("09:00");
+    expect(slots).not.toContain("13:00");
+    expect(
+      getAvailableSlots({
+        settings: workshopSeedConfig.settings,
+        schedules: workshopSeedConfig.schedules,
+        breaks: workshopSeedConfig.breaks,
+        exceptions: [openException("2026-08-15", "09:00", "19:00")],
+        date: "2026-08-15",
+        serviceDurationMinutes: 60,
+        appointments: [],
+        now,
+      }),
+    ).toEqual([]);
+  });
+
+  it("ignores exceptions stored for other dates", () => {
+    const slots = getAvailableSlots({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [closedException("2026-07-07", "Feriado nacional")],
+      date: monday,
+      serviceDurationMinutes: 60,
+      appointments: [],
+      now,
+    }).map((slot) => slot.startTime);
+
+    expect(slots).toContain("09:00");
+  });
+});
+
+describe("scheduleDateExceptionSchema", () => {
+  it("accepts a closed exception without hours and an open exception with valid hours", () => {
+    expect(scheduleDateExceptionSchema.parse(closedException(monday, "Feriado nacional"))).toMatchObject({
+      date: monday,
+      isOpen: false,
+      source: "IMPORTED",
+    });
+    expect(scheduleDateExceptionSchema.parse(openException(monday, "10:00", "13:00"))).toMatchObject({
+      isOpen: true,
+      opensAt: "10:00",
+      closesAt: "13:00",
+      manualOverride: true,
+    });
+  });
+
+  it("rejects an open exception without hours or with an inverted range", () => {
+    expect(() =>
+      scheduleDateExceptionSchema.parse({ ...openException(monday, "10:00", "13:00"), opensAt: null, closesAt: null }),
+    ).toThrow();
+    expect(() => scheduleDateExceptionSchema.parse(openException(monday, "13:00", "10:00"))).toThrow();
   });
 });
 
@@ -204,6 +327,14 @@ describe("appointment capacity guard", () => {
     expect(repository.savedCount).toBe(1);
   });
 });
+
+function closedException(date: string, label: string) {
+  return { date, label, source: "IMPORTED" as const, manualOverride: false, isOpen: false, opensAt: null, closesAt: null };
+}
+
+function openException(date: string, opensAt: string, closesAt: string) {
+  return { date, label: "Apertura excepcional", source: "MANUAL" as const, manualOverride: true, isOpen: true, opensAt, closesAt };
+}
 
 function interval(start: string, end: string, status: "PENDING_CONFIRMATION" | "CONFIRMED" | "CANCELLED") {
   return { startAt: new Date(start), endAt: new Date(end), status };

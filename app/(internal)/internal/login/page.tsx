@@ -1,6 +1,16 @@
 import { AuthError } from "next-auth";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { SiteHeader } from "@/src/components/site-header";
+import {
+  Alert,
+  Button,
+  Card,
+  Field,
+  PageHeading,
+  PageShell,
+  SiteHeader,
+  TextInput,
+} from "@/src/components/ui";
 import { auth, isInternalSession, signIn } from "@/src/lib/auth";
 
 type InternalLoginPageProps = {
@@ -15,28 +25,30 @@ export default async function InternalLoginPage({ searchParams }: InternalLoginP
 
   return (
     <>
-      <SiteHeader active="internal" />
-      <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-12">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-apple-300">Acceso interno</p>
-        <h1 className="mt-4 text-4xl font-bold text-white">Acceso interno</h1>
-        <p className="mt-3 text-zinc-300">Ingresa para gestionar la agenda del taller.</p>
-        <form action={loginAction} className="mt-8 grid gap-4 rounded-3xl border border-zinc-800 bg-zinc-950/80 p-6">
-        <label className="grid gap-2 text-sm font-medium text-zinc-300">
-          Email
-          <input className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white" name="email" required type="email" />
-        </label>
-        <label className="grid gap-2 text-sm font-medium text-zinc-300">
-          Contraseña
-          <input className="rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white" name="password" required type="password" />
-        </label>
-        {hasCredentialError ? (
-          <p className="rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-sm text-red-100" role="alert">
-            Email o contraseña incorrectos.
-          </p>
-        ) : null}
-        <button className="rounded-xl bg-apple-400 px-4 py-3 text-sm font-bold text-zinc-950" type="submit">Ingresar</button>
-        </form>
-      </main>
+      <SiteHeader active="internal" linkComponent={Link} />
+      <PageShell centered width="sm">
+        <PageHeading
+          description="Ingresa para gestionar la agenda del taller."
+          eyebrow="Acceso interno"
+          title="Acceso interno"
+        />
+        <Card className="mt-8">
+          <form action={loginAction} className="grid gap-4">
+            <Field label="Usuario">
+              <TextInput autoComplete="username" name="username" required type="text" />
+            </Field>
+            <Field label="Contraseña">
+              <TextInput name="password" required type="password" />
+            </Field>
+            {hasCredentialError ? (
+              <Alert tone="danger">Usuario o contraseña incorrectos.</Alert>
+            ) : null}
+            <Button size="md" type="submit">
+              Ingresar
+            </Button>
+          </form>
+        </Card>
+      </PageShell>
     </>
   );
 }
@@ -48,7 +60,11 @@ function stringParam(value: string | string[] | undefined): string | undefined {
 async function loginAction(formData: FormData) {
   "use server";
   try {
-    await signIn("credentials", { email: formData.get("email"), password: formData.get("password"), redirectTo: "/internal" });
+    await signIn("credentials", {
+      username: formData.get("username"),
+      password: formData.get("password"),
+      redirectTo: "/internal",
+    });
   } catch (error) {
     if (error instanceof AuthError) redirect("/internal/login?error=credentials");
     throw error;

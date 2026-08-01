@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getInternalAgenda,
+  updateInternalAppointmentDuration,
   updateInternalAppointmentStatus,
   type InternalAppointmentRecord,
   type InternalOperationsRepository,
@@ -87,12 +88,48 @@ describe("internal status transitions", () => {
   });
 });
 
+describe("internal appointment duration", () => {
+  it("extends an active appointment while preserving its start time", async () => {
+    const repository = new InMemoryInternalRepository([appointment({ id: "appt_extend", status: "CONFIRMED" })]);
+
+    const result = await updateInternalAppointmentDuration(repository, {
+      appointmentId: "appt_extend",
+      durationMinutes: 90,
+    });
+
+    expect(result).toEqual({
+      accepted: true,
+      appointment: expect.objectContaining({
+        id: "appt_extend",
+        startAt: new Date("2026-07-06T09:00:00-03:00"),
+        endAt: new Date("2026-07-06T10:30:00-03:00"),
+      }),
+    });
+  });
+
+  it("rejects shortening, terminal appointments, and extensions into the next local day", async () => {
+    const repository = new InMemoryInternalRepository([
+      appointment({ id: "long", endAt: "2026-07-06T10:30:00-03:00", status: "CONFIRMED" }),
+      appointment({ id: "done", status: "COMPLETED" }),
+      appointment({ id: "late", startAt: "2026-07-06T23:30:00-03:00", endAt: "2026-07-06T23:59:00-03:00", status: "IN_PROGRESS" }),
+    ]);
+
+    await expect(updateInternalAppointmentDuration(repository, { appointmentId: "long", durationMinutes: 60 }))
+      .resolves.toMatchObject({ accepted: false, reason: "DURATION_NOT_EXTENDED" });
+    await expect(updateInternalAppointmentDuration(repository, { appointmentId: "done", durationMinutes: 90 }))
+      .resolves.toMatchObject({ accepted: false, reason: "TERMINAL_APPOINTMENT" });
+    await expect(updateInternalAppointmentDuration(repository, { appointmentId: "late", durationMinutes: 90 }))
+      .resolves.toMatchObject({ accepted: false, reason: "DAY_BOUNDARY_EXCEEDED" });
+  });
+});
+
 function appointment(
   overrides: Omit<Partial<InternalAppointmentRecord>, "startAt" | "endAt"> & { startAt?: string | Date; endAt?: string | Date } = {},
 ): InternalAppointmentRecord {
   return {
     id: "appt",
     serviceName: "Service Esencial",
+    serviceDurationMinutes: 30,
     customerName: "Ada Lovelace",
     customerPhone: "+5491112345678",
     customerEmail: "ada@example.com",
@@ -135,6 +172,17 @@ class InMemoryInternalRepository implements InternalOperationsRepository {
 
   async findAppointmentById(appointmentId: string) {
     return this.appointments.find((item) => item.id === appointmentId) ?? null;
+  }
+
+  async getSlotStepMinutes() {
+    return 30;
+  }
+
+  async updateAppointmentEnd(input: { appointmentId: string; endAt: Date }) {
+    const found = this.appointments.find((item) => item.id === input.appointmentId);
+    if (!found) throw new Error("Appointment not found");
+    found.endAt = input.endAt;
+    return found;
   }
 
   async updateAppointmentStatus(input: Parameters<InternalOperationsRepository["updateAppointmentStatus"]>[0]) {
