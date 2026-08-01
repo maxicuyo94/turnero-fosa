@@ -47,14 +47,14 @@ The local `.env` file is intentionally ignored by git. Use `.env.example` as the
 
 ## Internal Access
 
-The seed creates an internal admin when `ADMIN_EMAIL` and `ADMIN_PASSWORD` are present.
+The seed creates an internal admin when `ADMIN_USERNAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are present. The email remains an internal Auth.js identifier; interactive login uses the username.
 
 Default local credentials from `.env.example`:
 
 | Field | Value |
 |---|---|
 | URL | `http://localhost:3000/internal/login` |
-| Email | `admin@example.com` |
+| Username | `admin` |
 | Password | `admin123456` |
 
 ## Current slice boundary
@@ -103,7 +103,7 @@ Dependabot tracks npm and GitHub Actions updates weekly. `pnpm audit --prod` cur
 
 - Production uses the Vercel production variables and the Neon `main` branch.
 - The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
-- Non-production email delivery is intentionally disabled. Production email delivery remains unverified until the workshop has a domain configured in Resend.
+- Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent. Production email delivery remains pending until the workshop has a verified domain configured in Resend.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
 Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation/rescheduling disabled. Editable weekly schedules, Argentine holiday exceptions, and reusable test-data profiles require a separate functional change.

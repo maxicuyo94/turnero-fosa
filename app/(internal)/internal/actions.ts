@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { auth, getInternalSessionUserId, isInternalSession, signOut } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { getEnv } from "@/src/lib/env";
+import { getNotificationEnv } from "@/src/lib/env";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 import { appointmentStatusSchema } from "@/src/modules/appointments/schemas";
 import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
@@ -14,15 +14,17 @@ import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapt
 export async function updateAppointmentStatusAction(formData: FormData) {
   const changedById = await requireInternalAccess();
   const repository = new PrismaInternalRepository(db);
-  const env = getEnv();
+  const notificationEnv = getNotificationEnv();
   await updateInternalAppointmentStatus(repository, {
     appointmentId: stringValue(formData, "appointmentId"),
     nextStatus: appointmentStatusSchema.parse(stringValue(formData, "nextStatus")),
     changedById,
-  }, {
-    logRepository: new PrismaNotificationLogRepository(db),
-    port: new ResendNotificationPort(env),
-  });
+  }, notificationEnv
+    ? {
+        logRepository: new PrismaNotificationLogRepository(db),
+        port: new ResendNotificationPort(notificationEnv),
+      }
+    : undefined);
   redirect(`/internal?date=${encodeURIComponent(stringValue(formData, "date"))}`);
 }
 

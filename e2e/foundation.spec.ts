@@ -61,7 +61,7 @@ test("internal user changes an appointment status", async ({ page }) => {
 
   await ensureE2EAdminUser();
   await page.goto("/internal/login");
-  await page.getByLabel("Email").fill(requiredEnv("ADMIN_EMAIL"));
+  await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
   await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
   await page.getByRole("button", { name: "Ingresar" }).click();
 
@@ -163,16 +163,20 @@ async function cleanupInternalE2EData() {
 async function ensureE2EAdminUser() {
   await prisma.user.upsert({
     where: { email: requiredEnv("ADMIN_EMAIL") },
-    update: { passwordHash: await createPasswordHash(requiredEnv("ADMIN_PASSWORD")) },
+    update: {
+      username: requiredEnv("ADMIN_USERNAME"),
+      passwordHash: await createPasswordHash(requiredEnv("ADMIN_PASSWORD")),
+    },
     create: {
       email: requiredEnv("ADMIN_EMAIL"),
+      username: requiredEnv("ADMIN_USERNAME"),
       name: process.env.ADMIN_NAME ?? "Fosa Admin",
       passwordHash: await createPasswordHash(requiredEnv("ADMIN_PASSWORD")),
     },
   });
 }
 
-function requiredEnv(key: "ADMIN_EMAIL" | "ADMIN_PASSWORD"): string {
+function requiredEnv(key: "ADMIN_EMAIL" | "ADMIN_USERNAME" | "ADMIN_PASSWORD"): string {
   const value = process.env[key];
   if (!value) throw new Error(`${key} is required for internal E2E tests.`);
   return value;
