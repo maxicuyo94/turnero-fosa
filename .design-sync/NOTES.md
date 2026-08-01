@@ -36,8 +36,10 @@ so the DS and the product cannot drift.
 - **The `@source inline(...)` safelist in `ds.css` is load-bearing.** Scanning
   alone compiles only the ~190 utilities the product happens to use today, so
   anything the design agent composes (`gap-6`, `mt-10`, `grid-cols-3`) would not
-  resolve. The safelist raises that to ~2,600 classes and the stylesheet to
-  ~272 KB. If you narrow it, narrow the spacing scale, not the colour ramps.
+  resolve. The safelist raises that to ~2,710 classes and the stylesheet to
+  ~227 KB (measured 2026-08-01; an earlier note said ~272 KB — that figure was
+  wrong, not a regression). If you narrow it, narrow the spacing scale, not the
+  colour ramps.
 
 ## Preview conventions
 
@@ -68,8 +70,21 @@ cleanly and no component ships the floor card. Any warn on a future run is new.
 - **Tests do not cover the design system's appearance.** `pnpm test` passes 45/45
   but two `*-prisma.test.ts` files fail without a `.env` — that is pre-existing
   and unrelated to the UI. Do not read it as a regression.
-- **Grades are keyed to the authored `.tsx` files.** Editing a preview clears its
-  grade and it must be re-captured and re-graded; editing a component does not.
+- **Grades are keyed to the authored `.tsx` files AND to the component source.**
+  Under `keyRecipe: 7` the source key mixes a global slice (config + stylesheet)
+  with each component's own `srcSha`, so a change anywhere in
+  `src/components/ui/` — even a two-line edit to one file — re-keys **all 19**
+  and clears every grade. Expect a full re-grade after any UI commit; it is not
+  a nondeterminism bug. (An earlier note claimed component edits do not clear
+  grades — that was wrong.)
+- **The generated `.d.ts` drops native HTML attributes.** `Button`, `TextInput`,
+  `Select` and `Textarea` extend `ButtonHTMLAttributes` / `InputHTMLAttributes` /
+  `SelectHTMLAttributes` / `TextareaHTMLAttributes` and spread `...rest`, but the
+  extractor filters React DOM props, so `type`, `name`, `required`, `value` and
+  `onChange` never reach `<Name>Props`. That filtering is deliberate (it keeps
+  the DS pane's contract readable); `conventions.md` carries the paragraph that
+  tells the design agent those four take native attributes anyway. If the set of
+  components extending native attribute types changes, update that paragraph.
 - `.design-sync/conventions.md` is human-editable and belongs to its authors.
   Re-validate its class and component names against the fresh build each sync;
   never rewrite it wholesale.
