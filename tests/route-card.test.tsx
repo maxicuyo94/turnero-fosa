@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { RouteCard } from "@/src/components/route-card";
+import { RouteCard } from "@/src/components/ui";
 
 describe("RouteCard", () => {
   it("renders a reachable navigation action", () => {
