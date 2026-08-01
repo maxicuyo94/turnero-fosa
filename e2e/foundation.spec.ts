@@ -47,13 +47,13 @@ test("public booking happy path creates a pending request", async ({ page }) => 
   await page.getByLabel("Modelo").fill("XR150");
   await page.getByRole("button", { name: "Solicitar turno" }).click();
 
-  await expect(page.getByText("Tu turno quedo confirmado automaticamente.")).toBeVisible();
+  await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.")).toBeVisible();
   await expect(page.getByText(/^[A-HJ-NP-Z2-9]{10}$/u)).toBeVisible();
   await expect(page.getByRole("link", { name: "Guardar enlace de cancelacion" })).toHaveCount(0);
   await expect(page.getByText("La reprogramacion online no esta disponible por ahora.")).toBeVisible();
   await page.getByRole("link", { name: "Consultar estado" }).click();
   await expect(page.getByRole("heading", { name: "Consultar turno" })).toBeVisible();
-  await expect(page.getByText("Confirmado")).toBeVisible();
+  await expect(page.getByText("Pendiente")).toBeVisible();
 });
 
 test("internal user changes an appointment status", async ({ page }) => {
@@ -61,7 +61,7 @@ test("internal user changes an appointment status", async ({ page }) => {
 
   await ensureE2EAdminUser();
   await page.goto("/internal/login");
-  await page.getByLabel("Email").fill(requiredEnv("ADMIN_EMAIL"));
+  await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
   await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
   await page.getByRole("button", { name: "Ingresar" }).click();
 
@@ -163,16 +163,20 @@ async function cleanupInternalE2EData() {
 async function ensureE2EAdminUser() {
   await prisma.user.upsert({
     where: { email: requiredEnv("ADMIN_EMAIL") },
-    update: { passwordHash: await createPasswordHash(requiredEnv("ADMIN_PASSWORD")) },
+    update: {
+      username: requiredEnv("ADMIN_USERNAME"),
+      passwordHash: await createPasswordHash(requiredEnv("ADMIN_PASSWORD")),
+    },
     create: {
       email: requiredEnv("ADMIN_EMAIL"),
+      username: requiredEnv("ADMIN_USERNAME"),
       name: process.env.ADMIN_NAME ?? "Fosa Admin",
       passwordHash: await createPasswordHash(requiredEnv("ADMIN_PASSWORD")),
     },
   });
 }
 
-function requiredEnv(key: "ADMIN_EMAIL" | "ADMIN_PASSWORD"): string {
+function requiredEnv(key: "ADMIN_EMAIL" | "ADMIN_USERNAME" | "ADMIN_PASSWORD"): string {
   const value = process.env[key];
   if (!value) throw new Error(`${key} is required for internal E2E tests.`);
   return value;

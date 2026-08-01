@@ -16,6 +16,11 @@ enum DayOfWeek {
   SUNDAY
 }
 
+enum ScheduleExceptionSource {
+  IMPORTED
+  MANUAL
+}
+
 enum ConfirmationMode {
   MANUAL
   AUTOMATIC
@@ -50,6 +55,7 @@ model WorkshopSettings {
   updatedAt                DateTime           @updatedAt
   weeklySchedules          WeeklySchedule[]
   scheduleBreaks           ScheduleBreak[]
+  dateExceptions           ScheduleDateException[]
   services                 Service[]
 }
 
@@ -74,6 +80,24 @@ model ScheduleBreak {
   workshopSettings   WorkshopSettings @relation(fields: [workshopSettingsId], references: [id], onDelete: Cascade)
 
   @@index([workshopSettingsId, dayOfWeek])
+}
+
+model ScheduleDateException {
+  id                 String                  @id @default(cuid())
+  workshopSettingsId String
+  date               DateTime                @db.Date
+  label              String?
+  source             ScheduleExceptionSource @default(MANUAL)
+  manualOverride     Boolean                 @default(false)
+  isOpen             Boolean                 @default(false)
+  opensAt            String?
+  closesAt           String?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  workshopSettings   WorkshopSettings        @relation(fields: [workshopSettingsId], references: [id], onDelete: Cascade)
+
+  @@unique([workshopSettingsId, date])
+  @@index([workshopSettingsId, date])
 }
 
 model Service {
@@ -164,6 +188,7 @@ model AppointmentStatusHistory {
 model User {
   id            String                     @id @default(cuid())
   name          String?
+  username      String?                    @unique
   email         String                     @unique
   passwordHash  String?
   emailVerified DateTime?

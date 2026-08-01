@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { db } from "@/src/lib/db";
-import { getEnv } from "@/src/lib/env";
+import { getNotificationEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { cancelPublicAppointment, createPublicBooking } from "@/src/modules/booking/service";
 import { PrismaNotificationLogRepository } from "@/src/modules/notifications/prisma-repository";
@@ -10,11 +10,12 @@ import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapt
 
 export async function createAppointmentAction(formData: FormData) {
   const repository = new PrismaBookingRepository(db);
-  const env = getEnv();
+  const notificationEnv = getNotificationEnv();
   const result = await createPublicBooking(repository, {
     serviceId: stringValue(formData, "serviceId"),
     date: stringValue(formData, "date"),
     startTime: stringValue(formData, "startTime"),
+    durationMinutes: numberValue(formData, "durationMinutes"),
     customer: {
       fullName: stringValue(formData, "fullName"),
       phone: stringValue(formData, "phone"),
@@ -28,10 +29,12 @@ export async function createAppointmentAction(formData: FormData) {
     notes: optionalStringValue(formData, "notes"),
     idempotencyKey: stringValue(formData, "idempotencyKey"),
     now: new Date(),
-  }, {
-    logRepository: new PrismaNotificationLogRepository(db),
-    port: new ResendNotificationPort(env),
-  });
+  }, notificationEnv
+    ? {
+        logRepository: new PrismaNotificationLogRepository(db),
+        port: new ResendNotificationPort(notificationEnv),
+      }
+    : undefined);
 
   if (!result.accepted) {
     redirect(`/booking?serviceId=${encodeURIComponent(stringValue(formData, "serviceId"))}&date=${encodeURIComponent(stringValue(formData, "date"))}&message=${encodeURIComponent(result.message)}`);
@@ -63,4 +66,9 @@ function stringValue(formData: FormData, key: string): string {
 function optionalStringValue(formData: FormData, key: string): string | undefined {
   const value = stringValue(formData, key).trim();
   return value.length > 0 ? value : undefined;
+}
+
+function numberValue(formData: FormData, key: string): number | undefined {
+  const value = stringValue(formData, key).trim();
+  return value ? Number(value) : undefined;
 }
