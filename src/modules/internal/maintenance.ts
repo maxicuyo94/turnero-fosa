@@ -147,8 +147,8 @@ export async function saveInternalDateException(
     return rejection("Revisa la fecha: una apertura excepcional necesita horario de apertura y cierre validos.");
   }
 
-  const { source: _source, manualOverride: _manualOverride, ...exception } = parsed.data;
-  return { accepted: true, exception: await repository.saveDateException(exception) };
+  const { date, label, isOpen, opensAt, closesAt } = parsed.data;
+  return { accepted: true, exception: await repository.saveDateException({ date, label, isOpen, opensAt, closesAt }) };
 }
 
 export async function deleteInternalDateException(

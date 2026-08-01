@@ -14,6 +14,7 @@
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
+    "test-data:load": "tsx scripts/load-test-data.ts development",
     "typecheck": "tsc --noEmit",
     "ds:build": "tsc -p tsconfig.ds.json && node scripts/build-ds-css.mjs",
     "lint": "eslint .",
