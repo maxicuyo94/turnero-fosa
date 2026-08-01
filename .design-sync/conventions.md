@@ -56,6 +56,14 @@ Prefer a component over re-creating its markup: reach for `Card` before writing
 `PageHeading` opens every screen; `Card` is the section panel. `StatusBadge`
 takes one of the six appointment states and renders its Spanish label.
 
+**`Button`, `TextInput`, `Select` and `Textarea` also accept every native
+attribute of the element they render** (`type`, `name`, `required`, `value`,
+`onChange`, `disabled`, `placeholder`, …) and forward it — their props extend
+`ButtonHTMLAttributes` / `InputHTMLAttributes` / `SelectHTMLAttributes` /
+`TextareaHTMLAttributes`. The generated `.d.ts` lists only the design-system
+props, so use native attributes freely on those four even though they are not
+enumerated there.
+
 ## Where the truth lives
 
 Read `_ds/<folder>/styles.css` and the `_ds_bundle.css` it imports for the exact
