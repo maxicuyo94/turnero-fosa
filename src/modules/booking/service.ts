@@ -4,7 +4,7 @@ import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appo
 import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
 import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
-import type { ScheduleBreak, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
+import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
 export type PublicServiceRecord = {
   id: string;
@@ -28,7 +28,12 @@ export type PublicAppointmentRecord = {
 };
 
 export type BookingRepository = {
-  getBookingContext(): Promise<{ settings: WorkshopSettings; schedules: WeeklySchedule[]; breaks: ScheduleBreak[] }>;
+  getBookingContext(): Promise<{
+    settings: WorkshopSettings;
+    schedules: WeeklySchedule[];
+    breaks: ScheduleBreak[];
+    exceptions: ScheduleDateException[];
+  }>;
   listActiveServices(): Promise<PublicServiceRecord[]>;
   findActiveService(serviceId: string): Promise<PublicServiceRecord | null>;
   findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]>;
@@ -117,6 +122,7 @@ export async function getPublicAvailability(
       settings: context.settings,
       schedules: context.schedules,
       breaks: context.breaks,
+      exceptions: context.exceptions,
       date: input.date,
       serviceDurationMinutes: service.durationMinutes,
       appointments,
@@ -189,6 +195,7 @@ export async function createPublicBooking(
       settings: context.settings,
       schedules: context.schedules,
       breaks: context.breaks,
+      exceptions: context.exceptions,
       date: parsed.data.date,
       serviceDurationMinutes: service.durationMinutes,
       appointments: await repository.findAppointmentsForDate(parsed.data.date),

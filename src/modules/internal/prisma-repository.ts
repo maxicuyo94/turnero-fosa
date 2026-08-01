@@ -1,13 +1,38 @@
 import type { PrismaClient } from "@prisma/client";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
-import type { InternalMaintenanceRepository, InternalWorkshopSettingsRecord } from "@/src/modules/internal/maintenance";
+import type {
+  DateExceptionImportSummary,
+  ImportedHoliday,
+  InternalMaintenanceRepository,
+  InternalScheduleRepository,
+  InternalWeeklyScheduleRecord,
+  InternalWorkshopSettingsRecord,
+} from "@/src/modules/internal/maintenance";
 import type { InternalAppointmentRecord, InternalOperationsRepository } from "@/src/modules/internal/operations";
+import { fromExceptionDate, mapScheduleDateException, toExceptionDate } from "@/src/modules/settings/date-exceptions";
+import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
-export class PrismaInternalRepository implements InternalOperationsRepository, InternalMaintenanceRepository {
-  constructor(private readonly prisma: PrismaClient) {}
+export class PrismaInternalRepository
+  implements InternalOperationsRepository, InternalMaintenanceRepository, InternalScheduleRepository
+{
+  private readonly workshopSettingsId?: string;
+
+  constructor(
+    private readonly prisma: PrismaClient,
+    options: { workshopSettingsId?: string } = {},
+  ) {
+    this.workshopSettingsId = options.workshopSettingsId;
+  }
+
+  /** The MVP owns a single workshop; the explicit id keeps tests off the seeded row. */
+  private async resolveWorkshopSettingsId(): Promise<string> {
+    if (this.workshopSettingsId) return this.workshopSettingsId;
+    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" }, select: { id: true } });
+    return settings.id;
+  }
 
   async getWorkshopSettings(): Promise<InternalWorkshopSettingsRecord> {
-    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
+    const settings = await this.prisma.workshopSettings.findUniqueOrThrow({ where: { id: await this.resolveWorkshopSettingsId() } });
     return {
       capacity: settings.capacity,
       minimumNoticeMinutes: settings.minimumNoticeMinutes,
@@ -60,9 +85,110 @@ export class PrismaInternalRepository implements InternalOperationsRepository, I
     return mapInternalAppointment(appointment);
   }
 
+  async getWeeklySchedule(): Promise<InternalWeeklyScheduleRecord> {
+    const workshopSettingsId = await this.resolveWorkshopSettingsId();
+    const [schedules, breaks] = await Promise.all([
+      this.prisma.weeklySchedule.findMany({ where: { workshopSettingsId } }),
+      this.prisma.scheduleBreak.findMany({ where: { workshopSettingsId }, orderBy: { startsAt: "asc" } }),
+    ]);
+
+    return {
+      schedules: schedules.map((schedule) => ({
+        dayOfWeek: schedule.dayOfWeek,
+        opensAt: schedule.opensAt,
+        closesAt: schedule.closesAt,
+        isOpen: schedule.isOpen,
+      })),
+      breaks: breaks.map((scheduleBreak) => ({
+        dayOfWeek: scheduleBreak.dayOfWeek,
+        startsAt: scheduleBreak.startsAt,
+        endsAt: scheduleBreak.endsAt,
+      })),
+    };
+  }
+
+  /** Availability must never observe a half-written schedule, so the rows are swapped atomically. */
+  async replaceWeeklySchedule(input: InternalWeeklyScheduleRecord): Promise<InternalWeeklyScheduleRecord> {
+    const workshopSettingsId = await this.resolveWorkshopSettingsId();
+    await this.prisma.$transaction(async (tx) => {
+      await tx.weeklySchedule.deleteMany({ where: { workshopSettingsId } });
+      await tx.scheduleBreak.deleteMany({ where: { workshopSettingsId } });
+      await tx.weeklySchedule.createMany({ data: input.schedules.map((schedule) => ({ ...schedule, workshopSettingsId })) });
+      await tx.scheduleBreak.createMany({ data: input.breaks.map((scheduleBreak) => ({ ...scheduleBreak, workshopSettingsId })) });
+    });
+
+    return this.getWeeklySchedule();
+  }
+
+  async listDateExceptions(range: { from: string; to: string }): Promise<ScheduleDateException[]> {
+    const exceptions = await this.prisma.scheduleDateException.findMany({
+      where: {
+        workshopSettingsId: await this.resolveWorkshopSettingsId(),
+        date: { gte: toExceptionDate(range.from), lte: toExceptionDate(range.to) },
+      },
+      orderBy: { date: "asc" },
+    });
+    return exceptions.map(mapScheduleDateException);
+  }
+
+  async saveDateException(input: Omit<ScheduleDateException, "source" | "manualOverride">): Promise<ScheduleDateException> {
+    const workshopSettingsId = await this.resolveWorkshopSettingsId();
+    const data = {
+      label: input.label,
+      source: "MANUAL" as const,
+      manualOverride: true,
+      isOpen: input.isOpen,
+      opensAt: input.isOpen ? input.opensAt : null,
+      closesAt: input.isOpen ? input.closesAt : null,
+    };
+
+    const exception = await this.prisma.scheduleDateException.upsert({
+      where: { workshopSettingsId_date: { workshopSettingsId, date: toExceptionDate(input.date) } },
+      update: data,
+      create: { ...data, workshopSettingsId, date: toExceptionDate(input.date) },
+    });
+    return mapScheduleDateException(exception);
+  }
+
+  async deleteDateException(date: string): Promise<void> {
+    await this.prisma.scheduleDateException.deleteMany({
+      where: { workshopSettingsId: await this.resolveWorkshopSettingsId(), date: toExceptionDate(date) },
+    });
+  }
+
+  /** Imported holidays never overwrite a workshop decision, so manual rows are counted and skipped. */
+  async upsertImportedDateExceptions(holidays: ImportedHoliday[]): Promise<DateExceptionImportSummary> {
+    const workshopSettingsId = await this.resolveWorkshopSettingsId();
+    const dates = holidays.map((holiday) => toExceptionDate(holiday.date));
+
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.scheduleDateException.findMany({ where: { workshopSettingsId, date: { in: dates } } });
+      const byDate = new Map(existing.map((exception) => [fromExceptionDate(exception.date), exception]));
+      const summary: DateExceptionImportSummary = { imported: holidays.length, created: 0, updated: 0, preserved: 0 };
+
+      for (const holiday of holidays) {
+        const current = byDate.get(holiday.date);
+        if (current?.manualOverride) {
+          summary.preserved += 1;
+          continue;
+        }
+
+        const data = { label: holiday.label, source: "IMPORTED" as const, isOpen: false, opensAt: null, closesAt: null };
+        if (current) {
+          await tx.scheduleDateException.update({ where: { id: current.id }, data });
+          summary.updated += 1;
+        } else {
+          await tx.scheduleDateException.create({ data: { ...data, workshopSettingsId, date: toExceptionDate(holiday.date) } });
+          summary.created += 1;
+        }
+      }
+
+      return summary;
+    });
+  }
+
   async updateWorkshopSettings(input: InternalWorkshopSettingsRecord): Promise<InternalWorkshopSettingsRecord> {
-    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
-    const updated = await this.prisma.workshopSettings.update({ where: { id: settings.id }, data: input });
+    const updated = await this.prisma.workshopSettings.update({ where: { id: await this.resolveWorkshopSettingsId() }, data: input });
     return {
       capacity: updated.capacity,
       minimumNoticeMinutes: updated.minimumNoticeMinutes,
