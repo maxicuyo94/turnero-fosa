@@ -23,6 +23,7 @@ If `pnpm` is not available but dependencies already exist in `node_modules`, use
 | `pnpm test:e2e` | Playwright coverage for baseline routes, public booking, and internal status changes. |
 | `pnpm db:generate` | Generate Prisma Client from `prisma/schema.prisma`. |
 | `pnpm db:seed` | Seed editable Taller Express defaults and optional env-sourced admin user. |
+| `pnpm test-data:load` | Load the idempotent `development` test-data profile into a local or allowlisted non-production database. |
 
 Local binary equivalents used in this workspace:
 
@@ -33,6 +34,26 @@ Local binary equivalents used in this workspace:
 | `./node_modules/.bin/vitest run` | Vitest test suite. |
 | `./node_modules/.bin/playwright test` | Playwright E2E suite. |
 | `set -a && source .env && set +a && ./node_modules/.bin/tsx prisma/seed.ts` | Seed database with `.env` loaded. |
+| `./node_modules/.bin/tsx scripts/load-test-data.ts development` | Load the `development` test-data profile. |
+
+## Test data profiles
+
+`pnpm test-data:load` loads the `development` profile: the editable Taller Express defaults, the
+env-sourced admin user, and three deterministic customers, motorcycles, and appointments (pending,
+confirmed, and completed) on the next Monday. Every record uses a `test-data-` identifier, so the
+profile is idempotent — running it repeatedly refreshes the same rows instead of accumulating copies.
+
+The loader refuses to write anything unless two independent markers agree:
+
+| Marker | Rule |
+|---|---|
+| Environment | `NODE_ENV` and `VERCEL_ENV` must not be `production`. |
+| Target | The `DATABASE_URL` host must be local (`localhost`, `127.0.0.1`, `::1`, `host.docker.internal`) or listed in `TEST_DATA_ALLOWED_HOSTS`. |
+| Production names | A host or database name containing `prod` is refused even when allowlisted. |
+
+To load the profile into the Neon `non-production` branch, point `DATABASE_URL` at that branch and add
+its host to `TEST_DATA_ALLOWED_HOSTS`. Admin credentials always come from `ADMIN_USERNAME`,
+`ADMIN_EMAIL`, and `ADMIN_PASSWORD`; no secret is stored in the repository and none is printed.
 
 ## Local database
 
@@ -47,14 +68,14 @@ The local `.env` file is intentionally ignored by git. Use `.env.example` as the
 
 ## Internal Access
 
-The seed creates an internal admin when `ADMIN_EMAIL` and `ADMIN_PASSWORD` are present.
+The seed creates an internal admin when `ADMIN_USERNAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are present. The email remains an internal Auth.js identifier; interactive login uses the username.
 
 Default local credentials from `.env.example`:
 
 | Field | Value |
 |---|---|
 | URL | `http://localhost:3000/internal/login` |
-| Email | `admin@example.com` |
+| Username | `admin` |
 | Password | `admin123456` |
 
 ## Current slice boundary
@@ -103,7 +124,19 @@ Dependabot tracks npm and GitHub Actions updates weekly. `pnpm audit --prod` cur
 
 - Production uses the Vercel production variables and the Neon `main` branch.
 - The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
-- Non-production email delivery is intentionally disabled. Production email delivery remains unverified until the workshop has a domain configured in Resend.
+- Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent. Production email delivery remains pending until the workshop has a verified domain configured in Resend.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
-Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation/rescheduling disabled. Editable weekly schedules, Argentine holiday exceptions, and reusable test-data profiles require a separate functional change.
+Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation/rescheduling disabled.
+
+## Schedules and date exceptions
+
+The internal panel maintains the seven-day opening hours and their breaks as one validated unit, plus
+date-specific exceptions. A date exception replaces the weekly row for that single date: an imported
+Argentine national holiday closes it, and a manual exception can open a normally closed date within
+explicit hours. Breaks, minimum notice, and the booking window still apply on an exceptional opening.
+
+`Importar feriados` fetches `https://api.argentinadatos.com/v1/feriados/{year}` on demand and upserts
+the response as closed exceptions. Public booking never calls the provider: availability always reads
+the persisted rows. A failed or malformed response leaves every stored exception untouched, and rows a
+workshop user edited by hand are preserved across later imports.

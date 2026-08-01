@@ -11,7 +11,7 @@ Workshop identity, schedule, capacity, booking notice/window, confirmation polic
 
 - GIVEN the system is initialized for testing
 - WHEN settings are seeded
-- THEN Taller de motos Express, B° Parques Nacionales calle Los Cardones 3289, IG Expresstallerdemotos, turnos programados, automatic confirmation, cancellation disabled, rescheduling disabled, 2-hour notice, and 30-day window are available as editable business data.
+- THEN Taller de motos Express, B° Parques Nacionales calle Los Cardones 3289, IG Expresstallerdemotos, turnos programados, manual confirmation, cancellation disabled, rescheduling disabled, 2-hour notice, and 30-day window are available as editable business data.
 - AND contact phone/WhatsApp, exact weekly hours, lunch break policy, real concurrent capacity, prices, and deposit handling MUST remain explicit configuration inputs before production launch.
 
 #### Scenario: Settings change affects behavior
@@ -22,7 +22,15 @@ Workshop identity, schedule, capacity, booking notice/window, confirmation polic
 
 ### Requirement: MVP Policy Boundaries
 
-The system MUST support automatic confirmation, configurable cancellation policy, and MUST NOT expose online rescheduling in the MVP.
+The system MUST support both manual and automatic confirmation, configurable cancellation policy, and MUST NOT expose online rescheduling in the MVP.
+
+#### Scenario: Automatic confirmation is gated on deposit payment
+
+- GIVEN Taller Express requires a deposit before holding a slot
+- AND payment collection is not yet integrated
+- WHEN a public booking is created
+- THEN the appointment MUST enter pending confirmation so the workshop confirms by hand after the deposit is settled out of band
+- AND automatic confirmation MUST NOT be enabled by default until the payment/deposit capability exists.
 
 #### Scenario: Rescheduling is unavailable
 

@@ -1,0 +1,28 @@
+/* Brand surface shipped with the design system: the dark charcoal page, the
+   lime-tinted glow, and the text defaults every screen inherits.
+   Deliberately no `min-height` — that is an app-shell concern and would force
+   every preview card to viewport height. app/globals.css adds it. */
+:root {
+  color-scheme: dark;
+  --background: #090d0b;
+  --foreground: #f5f7f2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* The surface lives on `body` only. Setting it on `html` too would stop body's
+   background propagating to the canvas, leaving preview cards half-painted. */
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgb(142 224 0 / 0.18), transparent 28rem),
+    linear-gradient(135deg, #090d0b 0%, #101611 55%, #172018 100%);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+::selection {
+  background: rgb(142 224 0 / 0.35);
+}
