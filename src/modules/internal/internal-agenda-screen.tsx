@@ -1,116 +1,424 @@
-import { signOutAction, updateAppointmentStatusAction } from "@/app/(internal)/internal/actions";
-import { updateServiceVisibilityAction, updateWorkshopSettingsAction } from "@/app/(internal)/internal/actions";
-import { SiteHeader } from "@/src/components/site-header";
-import type { InternalServiceRecord, InternalWorkshopSettingsRecord } from "@/src/modules/internal/maintenance";
+import {
+  deleteDateExceptionAction,
+  importHolidaysAction,
+  saveDateExceptionAction,
+  signOutAction,
+  updateAppointmentDurationAction,
+  updateAppointmentStatusAction,
+  updateServiceVisibilityAction,
+  updateWeeklyScheduleAction,
+  updateWorkshopSettingsAction,
+} from "@/app/(internal)/internal/actions";
+import Link from "next/link";
+import {
+  Alert,
+  AppointmentCard,
+  Button,
+  Card,
+  Chip,
+  EmptyState,
+  Field,
+  PageHeading,
+  PageShell,
+  Select,
+  SiteHeader,
+  TextInput,
+  Toggle,
+  type AlertTone,
+} from "@/src/components/ui";
+import type {
+  InternalServiceRecord,
+  InternalWeeklyScheduleRecord,
+  InternalWorkshopSettingsRecord,
+} from "@/src/modules/internal/maintenance";
 import { internalStatusOptions, statusLabel, type InternalAgenda } from "@/src/modules/internal/operations";
+import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
+
+export const internalFeedbackCodes = [
+  "schedule-updated",
+  "schedule-invalid",
+  "exception-saved",
+  "exception-deleted",
+  "exception-invalid",
+  "holidays-imported",
+  "holidays-unavailable",
+  "holidays-invalid",
+] as const;
+
+export type InternalFeedbackCode = (typeof internalFeedbackCodes)[number];
+
+const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message: string }> = {
+  "schedule-updated": { tone: "success", message: "Actualizamos el horario semanal del taller." },
+  "schedule-invalid": {
+    tone: "danger",
+    message: "Revisa los horarios: cada dia abierto debe cerrar mas tarde y los descansos deben quedar dentro del horario.",
+  },
+  "exception-saved": { tone: "success", message: "Guardamos la fecha especial." },
+  "exception-deleted": { tone: "success", message: "Quitamos la fecha especial. Vuelve a regir el horario semanal." },
+  "exception-invalid": {
+    tone: "danger",
+    message: "Revisa la fecha: una apertura excepcional necesita horario de apertura y cierre validos.",
+  },
+  "holidays-imported": { tone: "success", message: "Importamos los feriados nacionales sin tocar tus ajustes manuales." },
+  "holidays-unavailable": {
+    tone: "danger",
+    message: "No pudimos consultar los feriados. Las fechas guardadas siguen vigentes.",
+  },
+  "holidays-invalid": {
+    tone: "danger",
+    message: "La respuesta de feriados no tiene el formato esperado. No se modifico ninguna fecha.",
+  },
+};
+
+const dayLabels: Record<DayOfWeek, string> = {
+  MONDAY: "Lunes",
+  TUESDAY: "Martes",
+  WEDNESDAY: "Miercoles",
+  THURSDAY: "Jueves",
+  FRIDAY: "Viernes",
+  SATURDAY: "Sabado",
+  SUNDAY: "Domingo",
+};
 
 export function InternalAgendaScreen({
   agenda,
   settings,
   services = [],
+  schedule,
+  exceptions = [],
+  feedback,
   signedInUserName,
+  durationOutcome,
 }: {
   agenda: InternalAgenda;
   settings?: InternalWorkshopSettingsRecord;
   services?: InternalServiceRecord[];
+  schedule?: InternalWeeklyScheduleRecord;
+  exceptions?: ScheduleDateException[];
+  feedback?: InternalFeedbackCode | null;
   signedInUserName?: string | null;
+  durationOutcome?: { accepted: boolean; message: string };
 }) {
+  const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
+
   return (
     <>
-      <SiteHeader active="internal" onSignOut={signOutAction} userName={signedInUserName} />
+      <SiteHeader active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
 
-      <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-10 sm:px-6 lg:py-12">
-        <p className="text-xs font-semibold uppercase tracking-[0.55em] text-apple-300">Gestion del taller</p>
-        <h1 className="mt-4 text-5xl font-black tracking-[-0.05em] text-white">Agenda</h1>
+      <PageShell>
+        <PageHeading eyebrow="Gestion del taller" title="Agenda" />
 
-        <section className="mt-8 rounded-[1.7rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20">
+        {feedbackAlert ? (
+          <Alert className="mt-6" tone={feedbackAlert.tone}>
+            {feedbackAlert.message}
+          </Alert>
+        ) : null}
+
+        {durationOutcome ? (
+          <Alert className="mt-6" tone={durationOutcome.accepted ? "success" : "danger"}>
+            {durationOutcome.message}
+          </Alert>
+        ) : null}
+
+        <Card className="mt-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
             <div>
               <h2 className="text-2xl font-black text-white">Turnos del dia</h2>
-              <p className="mt-2 text-sm text-zinc-500">{formatDisplayDate(agenda.date)} · {agenda.appointments.length} Turnos</p>
+              <p className="mt-2 text-sm text-zinc-500">
+                {formatDisplayDate(agenda.date)} · {agenda.appointments.length} Turnos
+              </p>
             </div>
             <form action="/internal" className="flex flex-col gap-2 sm:flex-row sm:items-end">
-              <label className="grid gap-2 text-sm font-medium text-zinc-400">
-                Fecha
-                <input className="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-white outline-none transition focus:border-apple-300" defaultValue={agenda.date} name="date" type="date" />
-              </label>
-              <button className="rounded-lg bg-apple-400 px-4 py-2 text-sm font-black text-zinc-950 transition hover:bg-apple-300" type="submit">
-                Ver
-              </button>
+              <Field label="Fecha">
+                <TextInput defaultValue={agenda.date} density="sm" name="date" type="date" />
+              </Field>
+              <Button type="submit">Ver</Button>
             </form>
           </div>
 
           {agenda.appointments.length === 0 ? (
-            <section className="mt-6 rounded-2xl border border-dashed border-white/10 bg-black/10 p-8 text-center text-zinc-400">
-              No hay turnos agendados para esta fecha.
-            </section>
+            <EmptyState className="mt-6">No hay turnos agendados para esta fecha.</EmptyState>
           ) : (
             <div className="mt-6 grid gap-4">
               {agenda.appointments.map((appointment) => (
-                <article key={appointment.id} className="rounded-2xl border border-white/10 bg-charcoal-950 p-4">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-apple-300">
-                        {formatTime(appointment.startAt)}-{formatTime(appointment.endAt)} · {statusLabel(appointment.status)}
-                      </p>
-                      <h3 className="mt-2 text-xl font-black text-white">{appointment.customerName}</h3>
-                      <p className="mt-1 text-sm text-zinc-300">{appointment.serviceName}</p>
-                      <p className="text-sm text-zinc-500">{appointment.motorcycleLabel} · {appointment.customerPhone}</p>
-                      {appointment.notes ? <p className="mt-3 text-sm text-zinc-300">{appointment.notes}</p> : null}
+                <AppointmentCard
+                  action={
+                    <div className="grid gap-3 sm:min-w-56">
+                      <form
+                        action={updateAppointmentStatusAction}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                      >
+                        <input name="appointmentId" type="hidden" value={appointment.id} />
+                        <input name="date" type="hidden" value={agenda.date} />
+                        <Field label="Estado">
+                          <Select defaultValue={appointment.status} density="sm" name="nextStatus">
+                            {internalStatusOptions.map((status) => (
+                              <option key={status} value={status}>
+                                {statusLabel(status)}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                        <Button size="md" type="submit">Actualizar</Button>
+                      </form>
+                      <form
+                        action={updateAppointmentDurationAction}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3"
+                      >
+                        <input name="appointmentId" type="hidden" value={appointment.id} />
+                        <input name="date" type="hidden" value={agenda.date} />
+                        <Field hint={`(base ${appointment.serviceDurationMinutes} min)`} label="Duracion total">
+                          <TextInput
+                            defaultValue={durationMinutes(appointment.startAt, appointment.endAt)}
+                            density="sm"
+                            disabled={isTerminalStatus(appointment.status)}
+                            min={durationMinutes(appointment.startAt, appointment.endAt) + (settings?.slotStepMinutes ?? 1)}
+                            name="durationMinutes"
+                            step={settings?.slotStepMinutes ?? 1}
+                            type="number"
+                          />
+                        </Field>
+                        <Button disabled={isTerminalStatus(appointment.status)} size="md" type="submit">Extender</Button>
+                      </form>
                     </div>
-                    <form action={updateAppointmentStatusAction} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:min-w-52">
-                      <input name="appointmentId" type="hidden" value={appointment.id} />
-                      <input name="date" type="hidden" value={agenda.date} />
-                      <label className="text-sm font-medium text-zinc-300" htmlFor={`status-${appointment.id}`}>Estado</label>
-                      <select className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-white outline-none" defaultValue={appointment.status} id={`status-${appointment.id}`} name="nextStatus">
-                        {internalStatusOptions.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
-                      </select>
-                      <button className="rounded-xl bg-apple-400 px-4 py-2 text-sm font-black text-zinc-950 transition hover:bg-apple-300" type="submit">Actualizar</button>
-                    </form>
-                  </div>
-                </article>
+                  }
+                  customerName={appointment.customerName}
+                  key={appointment.id}
+                  meta={`${appointment.motorcycleLabel} · ${appointment.customerPhone}`}
+                  notes={appointment.notes}
+                  serviceName={appointment.serviceName}
+                  timeLabel={`${formatTime(appointment.startAt)}-${formatTime(appointment.endAt)} · ${statusLabel(appointment.status)}`}
+                />
               ))}
             </div>
           )}
-        </section>
+        </Card>
 
         <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1fr]">
           {settings ? (
-            <section className="rounded-[1.7rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20">
+            <Card>
               <h2 className="text-2xl font-black text-white">Configuracion del taller</h2>
               <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
-                <label className="grid gap-2 text-sm text-zinc-300">Capacidad simultanea <span className="text-zinc-500">(1-20)</span><input className="rounded-lg border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-apple-300" defaultValue={settings.capacity} name="capacity" type="number" /></label>
-                <label className="grid gap-2 text-sm text-zinc-300">Aviso minimo <span className="text-zinc-500">(minutos, 0-10080)</span><input className="rounded-lg border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-apple-300" defaultValue={settings.minimumNoticeMinutes} name="minimumNoticeMinutes" type="number" /></label>
-                <label className="grid gap-2 text-sm text-zinc-300">Ventana de reserva <span className="text-zinc-500">(dias, 1-365)</span><input className="rounded-lg border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-apple-300" defaultValue={settings.maximumBookingWindowDays} name="maximumBookingWindowDays" type="number" /></label>
-                <button className="mt-1 w-fit rounded-lg bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-apple-300" type="submit">Guardar cambios</button>
+                <Field hint="(1-20)" label="Capacidad simultanea">
+                  <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
+                </Field>
+                <Field hint="(minutos, 0-10080)" label="Aviso minimo">
+                  <TextInput
+                    defaultValue={settings.minimumNoticeMinutes}
+                    name="minimumNoticeMinutes"
+                    type="number"
+                  />
+                </Field>
+                <Field hint="(dias, 1-365)" label="Ventana de reserva">
+                  <TextInput
+                    defaultValue={settings.maximumBookingWindowDays}
+                    name="maximumBookingWindowDays"
+                    type="number"
+                  />
+                </Field>
+                <Button className="mt-1 w-fit" size="md" type="submit">
+                  Guardar cambios
+                </Button>
               </form>
-            </section>
+            </Card>
           ) : null}
 
           {services.length > 0 ? (
-            <section className="rounded-[1.7rem] border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20">
+            <Card>
               <h2 className="text-2xl font-black text-white">Catalogo de servicios</h2>
               <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad publica.</p>
               <div className="mt-5 grid gap-3">
                 {services.map((service) => (
-                  <form action={updateServiceVisibilityAction} className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3" key={service.id}>
+                  <form
+                    action={updateServiceVisibilityAction}
+                    className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
+                    key={service.id}
+                  >
                     <input name="serviceId" type="hidden" value={service.id} />
                     <input name="isActive" type="hidden" value={service.isActive ? "false" : "true"} />
                     <span>
                       <span className="block font-medium text-white">{service.name}</span>
-                      <span className="mt-1 block text-xs text-zinc-500">{service.durationMinutes} min</span>
+                      <span className="mt-1 block text-xs text-zinc-500">
+                        {service.durationMinutes} min
+                      </span>
                     </span>
-                    <button aria-label={service.isActive ? `Ocultar ${service.name}` : `Publicar ${service.name}`} className={`flex h-7 w-12 items-center rounded-full p-1 transition ${service.isActive ? "justify-end bg-apple-400" : "justify-start bg-zinc-600"}`} type="submit">
-                      <span className="h-5 w-5 rounded-full bg-zinc-950 shadow" />
-                    </button>
+                    <Toggle
+                      aria-label={service.isActive ? `Ocultar ${service.name}` : `Publicar ${service.name}`}
+                      checked={service.isActive}
+                    />
                   </form>
                 ))}
               </div>
-            </section>
+            </Card>
           ) : null}
         </div>
-      </main>
+
+        {schedule ? <WeeklyScheduleCard agendaDate={agenda.date} schedule={schedule} /> : null}
+
+        <DateExceptionsCard agendaDate={agenda.date} exceptions={exceptions} />
+      </PageShell>
     </>
+  );
+}
+
+function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: string; schedule: InternalWeeklyScheduleRecord }) {
+  return (
+    <Card className="mt-5">
+      <h2 className="text-2xl font-black text-white">Horario semanal</h2>
+      <p className="mt-2 text-sm text-zinc-500">
+        Se guarda completo: los turnos publicos usan estos valores apenas confirmas los cambios.
+      </p>
+
+      <form action={updateWeeklyScheduleAction} className="mt-6 grid gap-4">
+        <input name="agendaDate" type="hidden" value={agendaDate} />
+        {dayOfWeekSchema.options.map((dayOfWeek) => {
+          const day = schedule.schedules.find((item) => item.dayOfWeek === dayOfWeek);
+          const dayBreaks = schedule.breaks.filter((item) => item.dayOfWeek === dayOfWeek);
+
+          return (
+            <fieldset className="rounded-xl border border-white/5 bg-charcoal-950 p-4" key={dayOfWeek}>
+              <legend className="px-1 text-sm font-medium text-white">{dayLabels[dayOfWeek]}</legend>
+              <div className="grid gap-3 sm:grid-cols-[auto_1fr_1fr]">
+                <Field className="sm:items-center" label="Abierto">
+                  <input
+                    aria-label={`${dayLabels[dayOfWeek]}: abierto`}
+                    className="h-5 w-5 accent-apple-400"
+                    defaultChecked={day?.isOpen ?? false}
+                    name={`isOpen-${dayOfWeek}`}
+                    type="checkbox"
+                    value="true"
+                  />
+                </Field>
+                <Field label="Abre">
+                  <TextInput
+                    aria-label={`${dayLabels[dayOfWeek]}: abre`}
+                    defaultValue={day?.opensAt ?? "09:00"}
+                    density="sm"
+                    name={`opensAt-${dayOfWeek}`}
+                    type="time"
+                  />
+                </Field>
+                <Field label="Cierra">
+                  <TextInput
+                    aria-label={`${dayLabels[dayOfWeek]}: cierra`}
+                    defaultValue={day?.closesAt ?? "19:00"}
+                    density="sm"
+                    name={`closesAt-${dayOfWeek}`}
+                    type="time"
+                  />
+                </Field>
+              </div>
+
+              <div className="mt-3 grid gap-3">
+                {[...dayBreaks, null].map((scheduleBreak, index) => (
+                  <div className="grid gap-3 sm:grid-cols-2" key={`${dayOfWeek}-break-${index}`}>
+                    <Field label={`Descanso ${index + 1} desde`}>
+                      <TextInput
+                        aria-label={`${dayLabels[dayOfWeek]}: descanso ${index + 1} desde`}
+                        defaultValue={scheduleBreak?.startsAt ?? ""}
+                        density="sm"
+                        name={`break-${dayOfWeek}-${index}-startsAt`}
+                        type="time"
+                      />
+                    </Field>
+                    <Field label={`Descanso ${index + 1} hasta`}>
+                      <TextInput
+                        aria-label={`${dayLabels[dayOfWeek]}: descanso ${index + 1} hasta`}
+                        defaultValue={scheduleBreak?.endsAt ?? ""}
+                        density="sm"
+                        name={`break-${dayOfWeek}-${index}-endsAt`}
+                        type="time"
+                      />
+                    </Field>
+                  </div>
+                ))}
+              </div>
+            </fieldset>
+          );
+        })}
+
+        <Button className="mt-1 w-fit" size="md" type="submit">
+          Guardar horarios
+        </Button>
+      </form>
+    </Card>
+  );
+}
+
+function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: string; exceptions: ScheduleDateException[] }) {
+  return (
+    <Card className="mt-5">
+      <h2 className="text-2xl font-black text-white">Fechas especiales</h2>
+      <p className="mt-2 text-sm text-zinc-500">
+        Feriados y cierres puntuales. Una fecha especial manda sobre el horario semanal.
+      </p>
+
+      {exceptions.length === 0 ? (
+        <EmptyState className="mt-5">Todavia no hay fechas especiales cargadas.</EmptyState>
+      ) : (
+        <div className="mt-5 grid gap-3">
+          {exceptions.map((exception) => (
+            <div
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
+              key={exception.date}
+            >
+              <span>
+                <span className="block font-medium text-white">{exception.label ?? "Sin motivo"}</span>
+                <span className="mt-1 block text-xs text-zinc-500">
+                  <span>{formatDisplayDate(exception.date)}</span>
+                  {" · "}
+                  <span>{exception.isOpen ? `Abre ${exception.opensAt} a ${exception.closesAt}` : "Cerrado"}</span>
+                </span>
+              </span>
+              <span className="flex items-center gap-3">
+                <Chip>{exception.manualOverride ? "Manual" : "Importado"}</Chip>
+                <form action={deleteDateExceptionAction}>
+                  <input name="agendaDate" type="hidden" value={agendaDate} />
+                  <input name="exceptionDate" type="hidden" value={exception.date} />
+                  <Button aria-label={`Eliminar la excepcion del ${exception.date}`} type="submit" variant="ghost">
+                    Eliminar
+                  </Button>
+                </form>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form action={saveDateExceptionAction} className="mt-6 grid gap-4 sm:grid-cols-2">
+        <input name="agendaDate" type="hidden" value={agendaDate} />
+        <Field label="Fecha">
+          <TextInput density="sm" name="date" required type="date" />
+        </Field>
+        <Field label="Motivo">
+          <TextInput density="sm" name="label" placeholder="Feriado, mudanza, capacitacion" type="text" />
+        </Field>
+        <Field className="sm:items-center" label="Abre excepcionalmente">
+          <input className="h-5 w-5 accent-apple-400" name="isOpen" type="checkbox" value="true" />
+        </Field>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Abre">
+            <TextInput density="sm" name="opensAt" type="time" />
+          </Field>
+          <Field label="Cierra">
+            <TextInput density="sm" name="closesAt" type="time" />
+          </Field>
+        </div>
+        <Button className="w-fit" size="md" type="submit">
+          Guardar excepcion
+        </Button>
+      </form>
+
+      <form action={importHolidaysAction} className="mt-6 flex flex-col gap-3 border-t border-white/5 pt-6 sm:flex-row sm:items-end">
+        <input name="agendaDate" type="hidden" value={agendaDate} />
+        <Field hint="(feriados nacionales de Argentina)" label="Ano">
+          <TextInput defaultValue={agendaDate.slice(0, 4)} density="sm" max={2100} min={2000} name="year" type="number" />
+        </Field>
+        <Button size="md" type="submit" variant="ghost">
+          Importar feriados
+        </Button>
+      </form>
+    </Card>
   );
 }
 
@@ -121,4 +429,12 @@ function formatTime(date: Date): string {
 function formatDisplayDate(date: string): string {
   const value = new Date(`${date}T12:00:00-03:00`);
   return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(value);
+}
+
+function durationMinutes(startAt: Date, endAt: Date): number {
+  return Math.round((endAt.getTime() - startAt.getTime()) / 60_000);
+}
+
+function isTerminalStatus(status: InternalAgenda["appointments"][number]["status"]): boolean {
+  return ["COMPLETED", "CANCELLED", "NO_SHOW"].includes(status);
 }
