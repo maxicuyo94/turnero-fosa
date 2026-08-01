@@ -9,6 +9,7 @@
   "types": "./ds-dist/index.d.ts",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "prisma migrate deploy",
     "build": "next build",
     "start": "next start",
     "postinstall": "prisma generate",
