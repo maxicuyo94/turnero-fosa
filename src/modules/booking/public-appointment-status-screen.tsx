@@ -71,6 +71,11 @@ function AppointmentSummary({
 }: {
   appointment: Extract<PublicAppointmentStatusResult, { accepted: true }>["appointment"];
 }) {
+  const totalDurationMinutes = Math.round((appointment.endAt.getTime() - appointment.startAt.getTime()) / 60_000);
+  const durationDescription = totalDurationMinutes > appointment.serviceDurationMinutes
+    ? `${totalDurationMinutes} min · Extendido (base ${appointment.serviceDurationMinutes} min)`
+    : `${totalDurationMinutes} min`;
+
   return (
     <Card
       aria-label="Estado del turno"
@@ -88,6 +93,7 @@ function AppointmentSummary({
             term: "Fecha y horario",
             description: formatAppointmentTime(appointment.startAt, appointment.endAt),
           },
+          { term: "Duracion total", description: durationDescription },
         ]}
       />
     </Card>
