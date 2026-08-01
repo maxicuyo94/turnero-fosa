@@ -6,6 +6,7 @@
     "node": "24.x"
   },
   "packageManager": "pnpm@10.14.0",
+  "types": "./ds-dist/index.d.ts",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,6 +15,7 @@
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
     "typecheck": "tsc --noEmit",
+    "ds:build": "tsc -p tsconfig.ds.json && node scripts/build-ds-css.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test"

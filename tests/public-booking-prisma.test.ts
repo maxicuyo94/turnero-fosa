@@ -26,6 +26,9 @@ describe("Prisma public booking integration", () => {
   });
 
   it("creates an automatically confirmed booking and keeps repeated idempotency safe", async () => {
+    // Pinned explicitly: the Express default is manual confirmation until the
+    // deposit payment capability exists, but the automatic path still ships.
+    await applyExpressBookingPolicy({ confirmationMode: "AUTOMATIC" });
     const repository = new PrismaBookingRepository(prisma);
     const input = bookingInput({ idempotencyKey: "it-public-repeat-token", startTime: "09:00" });
 
@@ -84,10 +87,12 @@ async function activeServiceId(): Promise<string> {
   return service.id;
 }
 
-async function applyExpressBookingPolicy() {
+async function applyExpressBookingPolicy(
+  overrides: { confirmationMode?: "MANUAL" | "AUTOMATIC" } = {},
+) {
   await prisma.workshopSettings.updateMany({
     data: {
-      confirmationMode: workshopSeedConfig.settings.confirmationMode,
+      confirmationMode: overrides.confirmationMode ?? workshopSeedConfig.settings.confirmationMode,
       cancellationEnabled: workshopSeedConfig.settings.cancellationEnabled,
       reschedulingEnabled: workshopSeedConfig.settings.reschedulingEnabled,
     },

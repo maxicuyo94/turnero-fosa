@@ -1,0 +1,18 @@
+{
+  "projectId": "f752880d-07de-4ea4-a6b1-c316b9a552d8",
+  "shape": "package",
+  "pkg": "turnero-fosa",
+  "globalName": "TurneroFosaUI",
+  "srcDir": "src",
+  "tsconfig": "tsconfig.json",
+  "buildCmd": "pnpm ds:build",
+  "cssEntry": "ds-dist/ds.css",
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "Alert": { "cardMode": "column" },
+    "AppointmentCard": { "cardMode": "column" },
+    "Field": { "cardMode": "column" },
+    "SiteHeader": { "cardMode": "column" },
+    "StatusBadge": { "cardMode": "column" }
+  }
+}

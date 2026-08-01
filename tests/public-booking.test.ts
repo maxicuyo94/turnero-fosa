@@ -83,7 +83,10 @@ describe("createPublicBooking", () => {
   });
 
   it("creates an automatically confirmed appointment without a cancellation token when policy disables cancellation", async () => {
-    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
+    const repository = new InMemoryBookingRepository({
+      settings: { ...workshopSeedConfig.settings, confirmationMode: "AUTOMATIC" },
+      services: [service({ id: "oil", durationMinutes: 30 })],
+    });
 
     const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }));
 
@@ -157,7 +160,7 @@ describe("createPublicBooking", () => {
       port: new FailingNotificationPort(),
     });
 
-    expect(result).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+    expect(result).toMatchObject({ accepted: true, appointment: { status: "PENDING_CONFIRMATION" } });
     expect(repository.createdAppointments).toHaveLength(1);
     expect(logRepository.entries).toEqual([
       expect.objectContaining({
@@ -178,7 +181,7 @@ describe("createPublicBooking", () => {
       port: new FailingNotificationPort(),
     });
 
-    expect(result).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+    expect(result).toMatchObject({ accepted: true, appointment: { status: "PENDING_CONFIRMATION" } });
     expect(repository.createdAppointments).toHaveLength(1);
   });
 });
