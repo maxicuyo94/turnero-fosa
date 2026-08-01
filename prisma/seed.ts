@@ -1,10 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { getEnv } from "../src/lib/env";
+import { getDatabaseUrl } from "../src/lib/env";
 import { createPasswordHash } from "../src/lib/password";
 import { workshopSeedConfig } from "../src/modules/settings/defaults";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 
 export async function main() {
   const settings = await prisma.workshopSettings.upsert({
@@ -54,14 +54,23 @@ export async function main() {
     }
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  if (adminEmail) {
+  const adminUsername = process.env.ADMIN_USERNAME?.trim().toLowerCase();
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (adminUsername && adminEmail) {
     const passwordHash = process.env.ADMIN_PASSWORD ? await createPasswordHash(process.env.ADMIN_PASSWORD) : undefined;
-    await prisma.user.upsert({
-      where: { email: adminEmail },
-      update: { name: process.env.ADMIN_NAME ?? "Express Admin", ...(passwordHash ? { passwordHash } : {}) },
-      create: { email: adminEmail, name: process.env.ADMIN_NAME ?? "Express Admin", passwordHash },
+    const existingAdmin = await prisma.user.findFirst({
+      where: { OR: [{ username: adminUsername }, { email: adminEmail }] },
+      select: { id: true },
     });
+    const data = {
+      username: adminUsername,
+      email: adminEmail,
+      name: process.env.ADMIN_NAME ?? "Express Admin",
+      ...(passwordHash ? { passwordHash } : {}),
+    };
+
+    if (existingAdmin) await prisma.user.update({ where: { id: existingAdmin.id }, data });
+    else await prisma.user.create({ data: { ...data, passwordHash } });
   }
 }
 

@@ -9,6 +9,7 @@ const envSchema = z.object({
 });
 
 export type AppEnv = z.infer<typeof envSchema>;
+export type NotificationEnv = Pick<AppEnv, "RESEND_API_KEY" | "EMAIL_FROM">;
 
 export function getEnv(input: Record<string, string | undefined> = process.env): AppEnv {
   const result = envSchema.safeParse(input);
@@ -22,6 +23,19 @@ export function getEnv(input: Record<string, string | undefined> = process.env):
   }
 
   return result.data;
+}
+
+export function getDatabaseUrl(input: Record<string, string | undefined> = process.env): string {
+  return envSchema.shape.DATABASE_URL.parse(input.DATABASE_URL);
+}
+
+export function getNotificationEnv(input: Record<string, string | undefined> = process.env): NotificationEnv | null {
+  if (!input.RESEND_API_KEY?.trim() && !input.EMAIL_FROM?.trim()) return null;
+
+  return {
+    RESEND_API_KEY: envSchema.shape.RESEND_API_KEY.parse(input.RESEND_API_KEY),
+    EMAIL_FROM: envSchema.shape.EMAIL_FROM.parse(input.EMAIL_FROM),
+  };
 }
 
 export const appEnvSchema = envSchema;

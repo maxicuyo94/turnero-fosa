@@ -34,14 +34,14 @@ export default async function InternalLoginPage({ searchParams }: InternalLoginP
         />
         <Card className="mt-8">
           <form action={loginAction} className="grid gap-4">
-            <Field label="Email">
-              <TextInput name="email" required type="email" />
+            <Field label="Usuario">
+              <TextInput autoComplete="username" name="username" required type="text" />
             </Field>
             <Field label="Contraseña">
               <TextInput name="password" required type="password" />
             </Field>
             {hasCredentialError ? (
-              <Alert tone="danger">Email o contraseña incorrectos.</Alert>
+              <Alert tone="danger">Usuario o contraseña incorrectos.</Alert>
             ) : null}
             <Button size="md" type="submit">
               Ingresar
@@ -60,7 +60,11 @@ function stringParam(value: string | string[] | undefined): string | undefined {
 async function loginAction(formData: FormData) {
   "use server";
   try {
-    await signIn("credentials", { email: formData.get("email"), password: formData.get("password"), redirectTo: "/internal" });
+    await signIn("credentials", {
+      username: formData.get("username"),
+      password: formData.get("password"),
+      redirectTo: "/internal",
+    });
   } catch (error) {
     if (error instanceof AuthError) redirect("/internal/login?error=credentials");
     throw error;
