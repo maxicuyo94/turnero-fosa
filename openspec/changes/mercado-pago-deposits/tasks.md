@@ -15,11 +15,12 @@
 - [x] 3.1 Keep deposit-backed bookings pending and show amount/expiration before submit.
 - [x] 3.2 Add checkout link and safe retry by public booking code.
 - [x] 3.3 Add internal deposit settings.
-- [ ] 3.4 Configure test credentials and complete a Mercado Pago test purchase.
+- [x] 3.4 Configure test credentials and validate sandbox preference creation.
+- [ ] 3.5 Complete a Mercado Pago test purchase and verify appointment reconciliation.
 
 ## 4. Verification and rollout
 
 - [x] 4.1 Pass typecheck, lint, unit/integration tests, E2E, and build.
 - [x] 4.2 Deploy migration and code to Preview with deposit collection disabled by default.
-- [ ] 4.3 Configure Preview webhook and complete signed-notification acceptance.
+- [x] 4.3 Configure Preview webhook and complete signed-notification acceptance.
 - [ ] 4.4 Configure production credentials, enable the policy, and monitor first live payment.
