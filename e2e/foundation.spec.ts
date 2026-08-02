@@ -69,14 +69,58 @@ test("internal user changes an appointment status", async ({ page }) => {
   await page.goto(`/internal?date=${internalE2EDate}`);
   await expect(page.getByText("Internal E2E Rider")).toBeVisible();
 
-  await page.getByLabel("Estado").selectOption("IN_PROGRESS");
-  await page.getByRole("button", { name: "Actualizar" }).click();
+  await page.getByRole("button", { name: /Internal E2E Rider/ }).click();
+  await page.getByLabel("Cambiar estado").selectOption("IN_PROGRESS");
+  await page.getByRole("button", { name: "Actualizar estado" }).click();
 
-  await expect(page.getByText("09:00-09:30 · en curso")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Internal E2E Rider.*En curso/ })).toBeVisible();
   await expect.poll(async () => {
     const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId }, select: { status: true } });
     return appointment?.status;
   }).toBe("IN_PROGRESS");
+});
+
+test("internal user safely reschedules an appointment", async ({ page }) => {
+  test.slow();
+  const appointmentId = await seedInternalE2EAppointment();
+
+  await ensureE2EAdminUser();
+  await page.goto("/internal/login");
+  await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
+  await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
+  await page.getByRole("button", { name: "Ingresar" }).click();
+
+  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+  await page.goto(`/internal?date=${internalE2EDate}`);
+
+  await expect(page.getByText("Internal E2E Rider")).toBeVisible();
+  await page.getByRole("button", { name: /Internal E2E Rider/ }).click();
+  await page.getByLabel("Nueva fecha").fill("2026-07-22");
+  await page.getByLabel(/Duración total/).fill("60");
+  await expect(page.getByLabel(/Horario disponible/)).toBeEnabled();
+  await page.getByLabel(/Horario disponible/).selectOption("10:00");
+  await expect(page.getByText("Intervalo final:")).toContainText("2026-07-22 · 10:00–11:00");
+  await page.getByLabel(/Motivo del cambio/).fill("Prueba E2E de reprogramacion.");
+  await page.getByRole("button", { name: "Guardar reprogramación" }).click();
+
+  await expect(page).toHaveURL(/date=2026-07-22/);
+  await expect(page.getByText("El turno fue reprogramado correctamente.")).toBeVisible();
+  await expect(page.getByRole("button", { name: /10:00.*Internal E2E Rider/ })).toBeVisible();
+  await expect.poll(async () => {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { intervalHistory: true },
+    });
+    return {
+      startAt: appointment?.startAt.toISOString(),
+      endAt: appointment?.endAt.toISOString(),
+      historyCount: appointment?.intervalHistory.length,
+    };
+  }).toEqual({
+    startAt: new Date("2026-07-22T10:00:00-03:00").toISOString(),
+    endAt: new Date("2026-07-22T11:00:00-03:00").toISOString(),
+    historyCount: 1,
+  });
 });
 
 async function cleanupPublicBookingE2EData() {

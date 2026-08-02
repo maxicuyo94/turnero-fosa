@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
-  updateAppointmentDurationAction,
+  previewAppointmentAvailabilityAction,
+  rescheduleAppointmentAction,
   updateAppointmentStatusAction,
 } from "@/app/(internal)/internal/actions";
 import {
@@ -368,6 +369,57 @@ function AppointmentDrawer({
 }) {
   const currentDuration = durationMinutes(appointment.startAt, appointment.endAt);
   const appointmentDate = formatInputDate(appointment.startAt);
+  const currentStartTime = formatInputTime(appointment.startAt);
+  const [targetDate, setTargetDate] = useState(appointmentDate);
+  const [duration, setDuration] = useState(currentDuration);
+  const [startTime, setStartTime] = useState(currentStartTime);
+  const [availableSlots, setAvailableSlots] = useState<Array<{ startTime: string; endTime: string; remainingCapacity: number }>>([
+    { startTime: currentStartTime, endTime: formatInputTime(appointment.endAt), remainingCapacity: 1 },
+  ]);
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+  const [isPreviewPending, startPreviewTransition] = useTransition();
+  const previewRequest = useRef(0);
+
+  const refreshAvailability = useCallback(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/u.test(targetDate) || !Number.isInteger(duration) || duration <= 0) {
+      setAvailableSlots([]);
+      setPreviewMessage("Completa una fecha y una duracion validas.");
+      return;
+    }
+    const request = previewRequest.current + 1;
+    previewRequest.current = request;
+    startPreviewTransition(async () => {
+      try {
+        const result = await previewAppointmentAvailabilityAction({
+          appointmentId: appointment.id,
+          date: targetDate,
+          durationMinutes: duration,
+        });
+        if (request !== previewRequest.current) return;
+        if (!result.accepted) {
+          setAvailableSlots([]);
+          setPreviewMessage(result.message);
+          return;
+        }
+        setAvailableSlots(result.slots);
+        setPreviewMessage(result.slots.length === 0 ? "No hay horarios disponibles para esa fecha y duracion." : null);
+        setStartTime((current) => result.slots.some((slot) => slot.startTime === current)
+          ? current
+          : result.slots[0]?.startTime ?? "");
+      } catch {
+        if (request !== previewRequest.current) return;
+        setAvailableSlots([]);
+        setPreviewMessage("No pudimos consultar los horarios. Intenta nuevamente.");
+      }
+    });
+  }, [appointment.id, duration, targetDate]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(refreshAvailability, 150);
+    return () => window.clearTimeout(timeout);
+  }, [refreshAvailability]);
+
+  const selectedSlot = availableSlots.find((slot) => slot.startTime === startTime);
 
   return (
     <div aria-label="Detalle del turno" aria-modal="true" className="fixed inset-0 z-50 flex justify-end" role="dialog">
@@ -412,21 +464,72 @@ function AppointmentDrawer({
           <Button className="mt-4" disabled={isTerminalStatus(appointment.status)} size="md" type="submit">Actualizar estado</Button>
         </form>
 
-        <form action={updateAppointmentDurationAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+        <form action={rescheduleAppointmentAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
           <input name="appointmentId" type="hidden" value={appointment.id} />
-          <input name="date" type="hidden" value={appointmentDate || agendaDate} />
-          <Field hint={`(base ${appointment.serviceDurationMinutes} min)`} label="Duración total">
+          <input name="agendaDate" type="hidden" value={agendaDate} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nueva fecha">
+              <TextInput
+                disabled={isTerminalStatus(appointment.status)}
+                name="targetDate"
+                onChange={(event) => setTargetDate(event.target.value)}
+                type="date"
+                value={targetDate}
+              />
+            </Field>
+            <Field hint={isPreviewPending ? "(consultando...)" : undefined} label="Horario disponible">
+              <Select
+                disabled={isTerminalStatus(appointment.status) || isPreviewPending || availableSlots.length === 0}
+                name="startTime"
+                onChange={(event) => setStartTime(event.target.value)}
+                value={startTime}
+              >
+                {availableSlots.map((slot) => (
+                  <option key={slot.startTime} value={slot.startTime}>
+                    {slot.startTime}–{slot.endTime} · {slot.remainingCapacity} lugar{slot.remainingCapacity === 1 ? "" : "es"}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+          <Field className="mt-4" hint={`(mínimo ${appointment.serviceDurationMinutes} min)`} label="Duración total">
             <TextInput
-              defaultValue={currentDuration}
               disabled={isTerminalStatus(appointment.status)}
-              min={currentDuration + slotStepMinutes}
+              min={appointment.serviceDurationMinutes}
               name="durationMinutes"
+              onChange={(event) => setDuration(Number(event.target.value))}
               step={slotStepMinutes}
               type="number"
+              value={duration}
             />
           </Field>
-          <Button className="mt-4" disabled={isTerminalStatus(appointment.status)} size="md" type="submit">Extender turno</Button>
+          <Field className="mt-4" hint="(opcional)" label="Motivo del cambio">
+            <TextInput disabled={isTerminalStatus(appointment.status)} name="reason" placeholder="Ej. solicitado por el cliente" />
+          </Field>
+          {previewMessage ? <p className="mt-4 text-sm font-bold text-amber-200" role="status">{previewMessage}</p> : null}
+          {selectedSlot ? (
+            <p className="mt-4 rounded-xl border border-apple-400/20 bg-apple-400/5 p-3 text-sm text-zinc-300">
+              Intervalo final: <strong className="text-white">{targetDate} · {selectedSlot.startTime}–{selectedSlot.endTime}</strong>
+            </p>
+          ) : null}
+          <p className="mt-4 text-xs text-zinc-500">Al guardar se vuelve a verificar horarios, descansos, feriados y capacidad dentro de la transaccion.</p>
+          <Button className="mt-4" disabled={isTerminalStatus(appointment.status) || isPreviewPending || !selectedSlot} size="md" type="submit">Guardar reprogramación</Button>
         </form>
+
+        {appointment.intervalHistory.length > 0 ? (
+          <section className="mt-4 rounded-2xl border border-white/10 p-5">
+            <h3 className="text-sm font-black text-white">Historial de reprogramaciones</h3>
+            <ol className="mt-4 grid gap-4">
+              {appointment.intervalHistory.map((item) => (
+                <li className="border-l-2 border-apple-400/30 pl-3 text-xs text-zinc-400" key={item.id}>
+                  <p className="font-bold text-zinc-200">{formatInterval(item.previousStartAt, item.previousEndAt)} → {formatInterval(item.newStartAt, item.newEndAt)}</p>
+                  <p className="mt-1">{item.changedByName ?? "Sistema"} · {formatDateTime(item.changedAt)}</p>
+                  {item.reason ? <p className="mt-1 text-zinc-500">{item.reason}</p> : null}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
       </aside>
     </div>
   );
@@ -463,6 +566,18 @@ function durationMinutes(startAt: Date, endAt: Date): number {
 
 function formatInputDate(date: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(date));
+}
+
+function formatInputTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(date));
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(date));
+}
+
+function formatInterval(startAt: Date, endAt: Date): string {
+  return `${formatInputDate(startAt)} ${formatTime(startAt)}–${formatTime(endAt)}`;
 }
 
 function statusOptionsFor(status: InternalAppointmentRecord["status"]): InternalAppointmentRecord["status"][] {
