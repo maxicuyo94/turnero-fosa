@@ -35,6 +35,6 @@
 ## 5. Verification and rollout
 
 - [x] 5.1 Run `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e`, and `pnpm build`.
-- [ ] 5.2 Apply migration and deploy to `preview`.
-- [ ] 5.3 Complete desktop/mobile acceptance for move, shorten, extend, holiday, break, terminal status, and concurrent conflict scenarios.
+- [x] 5.2 Apply migration and deploy to `preview`.
+- [x] 5.3 Complete desktop/mobile acceptance for move, shorten, extend, holiday, break, terminal status, and concurrent conflict scenarios.
 - [ ] 5.4 Promote the exact verified commit to `main` and monitor application/email logs.
