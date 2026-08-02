@@ -88,7 +88,7 @@ export function InternalAgendaScreen({
   exceptions = [],
   feedback,
   signedInUserName,
-  durationOutcome,
+  appointmentUpdateOutcome,
 }: {
   agenda: InternalAgenda;
   weekAgendas?: InternalAgenda[];
@@ -99,7 +99,7 @@ export function InternalAgendaScreen({
   exceptions?: ScheduleDateException[];
   feedback?: InternalFeedbackCode | null;
   signedInUserName?: string | null;
-  durationOutcome?: { accepted: boolean; message: string };
+  appointmentUpdateOutcome?: { accepted: boolean; message: string };
 }) {
   const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
 
@@ -128,9 +128,9 @@ export function InternalAgendaScreen({
           </Alert>
         ) : null}
 
-        {durationOutcome ? (
-          <Alert className="mt-6" tone={durationOutcome.accepted ? "success" : "danger"}>
-            {durationOutcome.message}
+        {appointmentUpdateOutcome ? (
+          <Alert className="mt-6" tone={appointmentUpdateOutcome.accepted ? "success" : "danger"}>
+            {appointmentUpdateOutcome.message}
           </Alert>
         ) : null}
 
