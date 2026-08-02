@@ -13,12 +13,12 @@ export const workshopSeedConfig: {
     slotStepMinutes: 30,
     minimumNoticeMinutes: 120,
     maximumBookingWindowDays: 30,
-    // Automatic confirmation is gated on the deposit being paid. Until the
-    // payment capability exists, the workshop confirms by hand once the deposit
-    // is settled out of band. See openspec/specs/workshop-settings/spec.md.
     confirmationMode: "MANUAL",
     cancellationEnabled: false,
     reschedulingEnabled: false,
+    depositRequired: false,
+    depositAmountCents: 500_000,
+    depositExpirationMinutes: 30,
   },
   schedules: [
     { dayOfWeek: "MONDAY", opensAt: "09:00", closesAt: "19:00", isOpen: true },

@@ -173,6 +173,32 @@ export function InternalAgendaScreen({
                     type="number"
                   />
                 </Field>
+                <Field label="Cobrar seña con Mercado Pago">
+                  <input
+                    className="h-5 w-5 accent-apple-400"
+                    defaultChecked={settings.depositRequired}
+                    name="depositRequired"
+                    type="checkbox"
+                    value="true"
+                  />
+                </Field>
+                <Field hint="(pesos argentinos)" label="Monto de la seña">
+                  <TextInput
+                    defaultValue={settings.depositAmountCents / 100}
+                    min={1}
+                    name="depositAmountArs"
+                    step="0.01"
+                    type="number"
+                  />
+                </Field>
+                <Field hint="(minutos, 5-10080)" label="Vencimiento de la reserva">
+                  <TextInput
+                    defaultValue={settings.depositExpirationMinutes}
+                    min={5}
+                    name="depositExpirationMinutes"
+                    type="number"
+                  />
+                </Field>
                 <Button className="mt-1 w-fit" size="md" type="submit">
                   Guardar cambios
                 </Button>

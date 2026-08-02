@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import type { BookingRepository, PublicAppointmentRecord, PublicServiceRecord } from "@/src/modules/booking/service";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { mapScheduleDateException } from "@/src/modules/settings/date-exceptions";
+import { expireOverdueDepositReservations } from "@/src/modules/payments/prisma-repository";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -34,6 +35,9 @@ export class PrismaBookingRepository implements BookingRepository {
         confirmationMode: settings.confirmationMode,
         cancellationEnabled: settings.cancellationEnabled,
         reschedulingEnabled: settings.reschedulingEnabled,
+        depositRequired: settings.depositRequired,
+        depositAmountCents: settings.depositAmountCents,
+        depositExpirationMinutes: settings.depositExpirationMinutes,
       },
       schedules: settings.weeklySchedules.map((schedule) => ({
         dayOfWeek: schedule.dayOfWeek,
@@ -61,6 +65,7 @@ export class PrismaBookingRepository implements BookingRepository {
   }
 
   async findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]> {
+    if (!this.tx) await expireOverdueDepositReservations(this.prisma);
     const startOfDay = new Date(`${date}T00:00:00-03:00`);
     const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
     const appointments = await this.client.appointment.findMany({

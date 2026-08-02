@@ -45,7 +45,7 @@ test("public booking happy path creates a pending request", async ({ page }) => 
   await page.getByLabel("Telefono").fill(`${e2ePhonePrefix}${runId}`);
   await page.getByLabel("Marca de la moto").fill("Honda");
   await page.getByLabel("Modelo").fill("XR150");
-  await page.getByRole("button", { name: "Solicitar turno" }).click();
+  await page.getByRole("button", { name: /Solicitar turno|Reservar y pagar seña/u }).click();
 
   await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.")).toBeVisible();
   await expect(page.getByText(/^[A-HJ-NP-Z2-9]{10}$/u)).toBeVisible();

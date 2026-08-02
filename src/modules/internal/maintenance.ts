@@ -39,6 +39,9 @@ export type InternalWorkshopSettingsRecord = {
   slotStepMinutes?: number;
   minimumNoticeMinutes: number;
   maximumBookingWindowDays: number;
+  depositRequired: boolean;
+  depositAmountCents: number;
+  depositExpirationMinutes: number;
 };
 
 export type InternalServiceRecord = {
@@ -60,13 +63,27 @@ const settingsInputSchema = z.object({
   capacity: z.coerce.number().int().min(1).max(20),
   minimumNoticeMinutes: z.coerce.number().int().min(0).max(10_080),
   maximumBookingWindowDays: z.coerce.number().int().min(1).max(365),
+  depositRequired: z.coerce.boolean(),
+  depositAmountArs: z.coerce.number().positive().max(10_000_000),
+  depositExpirationMinutes: z.coerce.number().int().min(5).max(10_080),
 });
 
 export async function updateInternalWorkshopSettings(
   repository: InternalMaintenanceRepository,
   input: z.input<typeof settingsInputSchema>,
 ): Promise<{ accepted: true; settings: InternalWorkshopSettingsRecord }> {
-  return { accepted: true, settings: await repository.updateWorkshopSettings(settingsInputSchema.parse(input)) };
+  const parsed = settingsInputSchema.parse(input);
+  return {
+    accepted: true,
+    settings: await repository.updateWorkshopSettings({
+      capacity: parsed.capacity,
+      minimumNoticeMinutes: parsed.minimumNoticeMinutes,
+      maximumBookingWindowDays: parsed.maximumBookingWindowDays,
+      depositRequired: parsed.depositRequired,
+      depositAmountCents: Math.round(parsed.depositAmountArs * 100),
+      depositExpirationMinutes: parsed.depositExpirationMinutes,
+    }),
+  };
 }
 
 const weeklyScheduleUpdateSchema = z

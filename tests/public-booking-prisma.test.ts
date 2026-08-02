@@ -95,6 +95,7 @@ async function applyExpressBookingPolicy(
   await prisma.workshopSettings.updateMany({
     data: {
       confirmationMode: overrides.confirmationMode ?? workshopSeedConfig.settings.confirmationMode,
+      depositRequired: false,
       cancellationEnabled: workshopSeedConfig.settings.cancellationEnabled,
       reschedulingEnabled: workshopSeedConfig.settings.reschedulingEnabled,
     },

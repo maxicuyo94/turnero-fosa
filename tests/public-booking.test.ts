@@ -132,7 +132,7 @@ describe("createPublicBooking", () => {
 
   it("creates an automatically confirmed appointment without a cancellation token when policy disables cancellation", async () => {
     const repository = new InMemoryBookingRepository({
-      settings: { ...workshopSeedConfig.settings, confirmationMode: "AUTOMATIC" },
+      settings: { ...workshopSeedConfig.settings, confirmationMode: "AUTOMATIC", depositRequired: false },
       services: [service({ id: "oil", durationMinutes: 30 })],
     });
 

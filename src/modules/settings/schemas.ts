@@ -25,6 +25,9 @@ export const workshopSettingsSchema = z.object({
   confirmationMode: z.enum(["MANUAL", "AUTOMATIC"]),
   cancellationEnabled: z.boolean(),
   reschedulingEnabled: z.boolean(),
+  depositRequired: z.boolean(),
+  depositAmountCents: z.number().int().nonnegative(),
+  depositExpirationMinutes: z.number().int().positive(),
 });
 
 export type WorkshopSettings = z.infer<typeof workshopSettingsSchema>;

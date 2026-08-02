@@ -78,6 +78,9 @@ export async function updateWorkshopSettingsAction(formData: FormData) {
     capacity: stringValue(formData, "capacity"),
     minimumNoticeMinutes: stringValue(formData, "minimumNoticeMinutes"),
     maximumBookingWindowDays: stringValue(formData, "maximumBookingWindowDays"),
+    depositRequired: stringValue(formData, "depositRequired") === "true",
+    depositAmountArs: stringValue(formData, "depositAmountArs"),
+    depositExpirationMinutes: stringValue(formData, "depositExpirationMinutes"),
   });
   redirect("/internal?section=settings");
 }

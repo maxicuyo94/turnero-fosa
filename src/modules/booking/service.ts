@@ -78,6 +78,7 @@ export type CreatePublicBookingResult =
       appointment: PublicAppointmentRecord;
       cancellationToken: string | null;
       reschedulingAvailable: false;
+      depositRequired: boolean;
     }
   | {
       accepted: false;
@@ -105,6 +106,19 @@ const publicCodeSchema = z.string().trim().toUpperCase().regex(/^[A-HJ-NP-Z2-9]{
 
 export async function listPublicServices(repository: BookingRepository): Promise<PublicServiceRecord[]> {
   return repository.listActiveServices();
+}
+
+export async function getPublicDepositPolicy(repository: BookingRepository): Promise<{
+  required: boolean;
+  amountCents: number;
+  expirationMinutes: number;
+}> {
+  const { settings } = await repository.getBookingContext();
+  return {
+    required: settings.depositRequired,
+    amountCents: settings.depositAmountCents,
+    expirationMinutes: settings.depositExpirationMinutes,
+  };
 }
 
 export async function getPublicAvailability(
@@ -193,12 +207,14 @@ export async function createPublicBooking(
     result: CreatePublicBookingResult;
     notification: { appointmentId: string; publicCode: string; recipient: string; serviceName: string; startAt: Date } | null;
   }> => {
+    const context = await repository.getBookingContext();
     const existing = await repository.findByIdempotencyKey(parsed.data.idempotencyKey);
     if (existing) {
       return {
         result: bookingSuccess(existing, existing.cancellationToken, {
           repeated: true,
           rawTokenRecoverable: existing.cancellationToken !== null,
+          depositRequired: context.settings.depositRequired,
         }),
         notification: null,
       };
@@ -209,7 +225,6 @@ export async function createPublicBooking(
       return { result: { accepted: false, reason: "SERVICE_UNAVAILABLE", message: "Elegi un servicio activo." }, notification: null };
     }
 
-    const context = await repository.getBookingContext();
     const durationMinutes = effectiveDurationMinutes(
       service.durationMinutes,
       parsed.data.durationMinutes,
@@ -244,7 +259,9 @@ export async function createPublicBooking(
     }
 
     const cancellationToken = context.settings.cancellationEnabled ? createCancellationToken() : null;
-    const status = context.settings.confirmationMode === "AUTOMATIC" ? "CONFIRMED" : "PENDING_CONFIRMATION";
+    const status = !context.settings.depositRequired && context.settings.confirmationMode === "AUTOMATIC"
+      ? "CONFIRMED"
+      : "PENDING_CONFIRMATION";
     const appointment = await repository.createAppointment({
       publicCode: createPublicCode(),
       service,
@@ -259,7 +276,7 @@ export async function createPublicBooking(
     });
 
     return {
-      result: bookingSuccess(appointment, cancellationToken),
+      result: bookingSuccess(appointment, cancellationToken, { depositRequired: context.settings.depositRequired }),
       notification: parsed.data.customer.email
         ? {
             appointmentId: appointment.id,
@@ -320,7 +337,7 @@ export async function cancelPublicAppointment(
 function bookingSuccess(
   appointment: PublicAppointmentRecord,
   cancellationToken: string | null,
-  options: { repeated?: boolean; rawTokenRecoverable?: boolean } = {},
+  options: { repeated?: boolean; rawTokenRecoverable?: boolean; depositRequired?: boolean } = {},
 ): Extract<CreatePublicBookingResult, { accepted: true }> {
   const repeatedWithoutToken = options.repeated && !options.rawTokenRecoverable;
   return {
@@ -333,6 +350,7 @@ function bookingSuccess(
     appointment,
     cancellationToken,
     reschedulingAvailable: false,
+    depositRequired: options.depositRequired ?? false,
   };
 }
 

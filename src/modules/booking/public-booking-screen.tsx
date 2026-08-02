@@ -26,8 +26,18 @@ type PublicBookingScreenProps = {
   slots: AvailableSlot[];
   idempotencyKey?: string;
   action?: (formData: FormData) => void | Promise<void>;
+  paymentAction?: (formData: FormData) => void | Promise<void>;
   cancellationBasePath?: string;
-  outcome?: { accepted: boolean; message: string; cancellationUrl?: string; publicCode?: string };
+  depositPolicy?: { required: boolean; amountCents: number; expirationMinutes: number };
+  outcome?: {
+    accepted: boolean;
+    message: string;
+    cancellationUrl?: string;
+    publicCode?: string;
+    paymentUrl?: string;
+    paymentError?: string;
+    depositAmountCents?: number;
+  };
   signedInUserName?: string | null;
 };
 
@@ -39,7 +49,9 @@ export function PublicBookingScreen({
   durationStepMinutes = 1,
   slots,
   action,
+  paymentAction,
   outcome,
+  depositPolicy,
   signedInUserName,
   idempotencyKey = "public-booking-form",
 }: PublicBookingScreenProps) {
@@ -81,6 +93,25 @@ export function PublicBookingScreen({
               <a className="mt-3 inline-block font-semibold underline" href={outcome.cancellationUrl}>
                 Guardar enlace de cancelacion
               </a>
+            ) : null}
+            {outcome.paymentUrl ? (
+              <a
+                className="mt-4 inline-flex rounded-xl bg-apple-400 px-5 py-3 font-black text-zinc-950"
+                href={outcome.paymentUrl}
+              >
+                Pagar seña de {formatArs(outcome.depositAmountCents ?? depositPolicy?.amountCents ?? 0)}
+              </a>
+            ) : null}
+            {outcome.paymentError ? (
+              <div className="mt-4">
+                <p className="text-sm text-amber-200">{outcome.paymentError}</p>
+                {paymentAction && outcome.publicCode ? (
+                  <form action={paymentAction} className="mt-3">
+                    <input name="publicCode" type="hidden" value={outcome.publicCode} />
+                    <Button type="submit" variant="ghost">Reintentar pago</Button>
+                  </form>
+                ) : null}
+              </div>
             ) : null}
             <p className="mt-3 text-sm text-apple-100/80">
               La reprogramacion online no esta disponible por ahora.
@@ -165,6 +196,12 @@ export function PublicBookingScreen({
           <Card>
             <h2 className="text-2xl font-black text-white">Datos para el turno</h2>
             <p className="mt-2 text-sm text-zinc-500">Completa tus datos y los de la moto.</p>
+            {depositPolicy?.required ? (
+              <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/5 p-4 text-sm text-amber-100">
+                Para confirmar el turno se solicita una seña de <strong>{formatArs(depositPolicy.amountCents)}</strong>.
+                La reserva queda disponible durante {depositPolicy.expirationMinutes} minutos para completar el pago en Mercado Pago.
+              </div>
+            ) : null}
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <Field label="Nombre y apellido">
                 <TextInput name="fullName" required />
@@ -190,11 +227,15 @@ export function PublicBookingScreen({
             </div>
 
             <Button className="mt-6" disabled={slots.length === 0} fullWidth size="md" type="submit">
-              Solicitar turno
+              {depositPolicy?.required ? "Reservar y pagar seña" : "Solicitar turno"}
             </Button>
           </Card>
         </form>
       </PageShell>
     </>
   );
+}
+
+function formatArs(amountCents: number): string {
+  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(amountCents / 100);
 }
