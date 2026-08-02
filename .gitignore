@@ -49,5 +49,6 @@ ds-bundle/
 .design-sync/learnings/
 .design-sync/node_modules
 
-# Local production credentials and operational notes.
+# Local environment credentials and operational notes.
 PRODUCTION.local.md
+PREVIEW.local.md
