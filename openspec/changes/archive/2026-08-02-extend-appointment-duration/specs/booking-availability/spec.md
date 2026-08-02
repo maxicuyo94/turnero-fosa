@@ -8,6 +8,18 @@ Calculate availability using the complete effective duration selected for a book
 
 The system MUST calculate available slots from working hours, closed days, effective appointment duration, capacity, existing appointments, minimum notice, and maximum booking window. The effective duration MUST default to the service duration, MUST NOT be shorter than it, and MUST align to the configured slot step.
 
+#### Scenario: Slot inside configured hours is available
+
+- **GIVEN** capacity remains for the full selected service duration
+- **WHEN** a user requests availability within working hours and policy limits
+- **THEN** the slot MAY be returned as available.
+
+#### Scenario: Closed or out-of-policy slot is rejected
+
+- **GIVEN** a requested time is on Sunday, outside working hours, less than 2 hours away, or more than 30 days away
+- **WHEN** availability is calculated
+- **THEN** the slot MUST NOT be returned.
+
 #### Scenario: Extended interval is available
 
 - **GIVEN** a service defaults to 60 minutes and the user requests 90 minutes
