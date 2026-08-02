@@ -164,11 +164,28 @@ model Appointment {
   customer              Customer                   @relation(fields: [customerId], references: [id])
   motorcycle            Motorcycle                 @relation(fields: [motorcycleId], references: [id])
   statusHistory         AppointmentStatusHistory[]
+  intervalHistory       AppointmentIntervalHistory[]
   emailLogs             EmailLog[]
 
   @@index([startAt, endAt, status])
   @@index([customerId])
   @@index([motorcycleId])
+}
+
+model AppointmentIntervalHistory {
+  id              String      @id @default(cuid())
+  appointmentId   String
+  previousStartAt DateTime
+  previousEndAt   DateTime
+  newStartAt      DateTime
+  newEndAt        DateTime
+  changedById     String?
+  changedAt       DateTime    @default(now())
+  reason          String?
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  changedBy       User?       @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId, changedAt])
 }
 
 model AppointmentStatusHistory {
@@ -198,6 +215,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   statusChanges AppointmentStatusHistory[]
+  intervalChanges AppointmentIntervalHistory[]
 }
 
 model Account {
