@@ -6,7 +6,11 @@ import { db } from "@/src/lib/db";
 import { getNotificationEnv } from "@/src/lib/env";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 import { appointmentStatusSchema } from "@/src/modules/appointments/schemas";
-import { updateInternalAppointmentDuration, updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import {
+  previewInternalAppointmentSlots,
+  rescheduleInternalAppointment,
+  updateInternalAppointmentStatus,
+} from "@/src/modules/internal/operations";
 import {
   deleteInternalDateException,
   saveInternalDateException,
@@ -38,14 +42,34 @@ export async function updateAppointmentStatusAction(formData: FormData) {
   redirect(`/internal?date=${encodeURIComponent(stringValue(formData, "date"))}`);
 }
 
-export async function updateAppointmentDurationAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await updateInternalAppointmentDuration(new PrismaInternalRepository(db), {
+export async function rescheduleAppointmentAction(formData: FormData) {
+  const changedById = await requireInternalAccess();
+  const notificationEnv = getNotificationEnv();
+  const result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
     appointmentId: stringValue(formData, "appointmentId"),
+    date: stringValue(formData, "targetDate"),
+    startTime: stringValue(formData, "startTime"),
     durationMinutes: stringValue(formData, "durationMinutes"),
-  });
-  const message = result.accepted ? "La duracion del turno fue extendida." : result.message;
-  redirect(`/internal?date=${encodeURIComponent(stringValue(formData, "date"))}&durationUpdated=${result.accepted ? "1" : "0"}&message=${encodeURIComponent(message)}`);
+    changedById,
+    reason: stringValue(formData, "reason") || undefined,
+  }, notificationEnv
+    ? {
+        logRepository: new PrismaNotificationLogRepository(db),
+        port: new ResendNotificationPort(notificationEnv),
+      }
+    : undefined);
+  const message = result.accepted ? "El turno fue reprogramado correctamente." : result.message;
+  const date = result.accepted ? stringValue(formData, "targetDate") : stringValue(formData, "agendaDate");
+  redirect(`/internal?date=${encodeURIComponent(date)}&appointmentUpdated=${result.accepted ? "1" : "0"}&message=${encodeURIComponent(message)}`);
+}
+
+export async function previewAppointmentAvailabilityAction(input: {
+  appointmentId: string;
+  date: string;
+  durationMinutes: number;
+}) {
+  await requireInternalAccess();
+  return previewInternalAppointmentSlots(new PrismaInternalRepository(db), input);
 }
 
 export async function updateWorkshopSettingsAction(formData: FormData) {

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import type {
   DateExceptionImportSummary,
@@ -8,14 +8,17 @@ import type {
   InternalWeeklyScheduleRecord,
   InternalWorkshopSettingsRecord,
 } from "@/src/modules/internal/maintenance";
-import type { InternalAppointmentRecord, InternalOperationsRepository } from "@/src/modules/internal/operations";
+import type { InternalAppointmentRecord, InternalOperationsRepository, InternalSchedulingRepository } from "@/src/modules/internal/operations";
 import { fromExceptionDate, mapScheduleDateException, toExceptionDate } from "@/src/modules/settings/date-exceptions";
 import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
+type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
+
 export class PrismaInternalRepository
-  implements InternalOperationsRepository, InternalMaintenanceRepository, InternalScheduleRepository
+  implements InternalOperationsRepository, InternalSchedulingRepository, InternalMaintenanceRepository, InternalScheduleRepository
 {
   private readonly workshopSettingsId?: string;
+  private tx?: TransactionClient;
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -24,10 +27,14 @@ export class PrismaInternalRepository
     this.workshopSettingsId = options.workshopSettingsId;
   }
 
+  private get client(): PrismaClient | TransactionClient {
+    return this.tx ?? this.prisma;
+  }
+
   /** The MVP owns a single workshop; the explicit id keeps tests off the seeded row. */
   private async resolveWorkshopSettingsId(): Promise<string> {
     if (this.workshopSettingsId) return this.workshopSettingsId;
-    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" }, select: { id: true } });
+    const settings = await this.client.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" }, select: { id: true } });
     return settings.id;
   }
 
@@ -55,39 +62,25 @@ export class PrismaInternalRepository
   async listAppointmentsForDate(date: string): Promise<InternalAppointmentRecord[]> {
     const startOfDay = new Date(`${date}T00:00:00-03:00`);
     const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
-    const appointments = await this.prisma.appointment.findMany({
+    const appointments = await this.client.appointment.findMany({
       where: { startAt: { lt: endOfDay }, endAt: { gt: startOfDay } },
-      include: { service: true, customer: true, motorcycle: true },
+      include: appointmentInclude,
       orderBy: { startAt: "asc" },
     });
     return appointments.map(mapInternalAppointment);
   }
 
   async findAppointmentById(appointmentId: string): Promise<InternalAppointmentRecord | null> {
-    const appointment = await this.prisma.appointment.findUnique({
+    const appointment = await this.client.appointment.findUnique({
       where: { id: appointmentId },
-      include: { service: true, customer: true, motorcycle: true },
+      include: appointmentInclude,
     });
     return appointment ? mapInternalAppointment(appointment) : null;
   }
 
-  async getSlotStepMinutes(): Promise<number> {
-    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
-    return settings.slotStepMinutes;
-  }
-
-  async updateAppointmentEnd(input: { appointmentId: string; endAt: Date }): Promise<InternalAppointmentRecord> {
-    const appointment = await this.prisma.appointment.update({
-      where: { id: input.appointmentId },
-      data: { endAt: input.endAt },
-      include: { service: true, customer: true, motorcycle: true },
-    });
-    return mapInternalAppointment(appointment);
-  }
-
   async updateAppointmentStatus(input: { appointmentId: string; nextStatus: AppointmentStatus; changedById: string | null; note?: string }) {
-    const current = await this.prisma.appointment.findUniqueOrThrow({ where: { id: input.appointmentId } });
-    const appointment = await this.prisma.appointment.update({
+    const current = await this.client.appointment.findUniqueOrThrow({ where: { id: input.appointmentId } });
+    const appointment = await this.client.appointment.update({
       where: { id: input.appointmentId },
       data: {
         status: input.nextStatus,
@@ -95,7 +88,75 @@ export class PrismaInternalRepository
           create: { fromStatus: current.status, toStatus: input.nextStatus, changedById: input.changedById, note: input.note },
         },
       },
-      include: { service: true, customer: true, motorcycle: true },
+      include: appointmentInclude,
+    });
+    return mapInternalAppointment(appointment);
+  }
+
+  async withSchedulingTransaction<T>(operation: () => Promise<T>): Promise<T> {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const previous = this.tx;
+            this.tx = tx;
+            try {
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('public_booking_capacity'))`;
+              return await operation();
+            } finally {
+              this.tx = previous;
+            }
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error) {
+        if (!isRetryableTransactionError(error) || attempt === 3) throw error;
+      }
+    }
+    throw new Error("Scheduling transaction retry attempts exhausted.");
+  }
+
+  async getSchedulingContext() {
+    const workshopSettingsId = await this.resolveWorkshopSettingsId();
+    const [settings, schedules, breaks, exceptions] = await Promise.all([
+      this.client.workshopSettings.findUniqueOrThrow({ where: { id: workshopSettingsId } }),
+      this.client.weeklySchedule.findMany({ where: { workshopSettingsId } }),
+      this.client.scheduleBreak.findMany({ where: { workshopSettingsId }, orderBy: { startsAt: "asc" } }),
+      this.client.scheduleDateException.findMany({ where: { workshopSettingsId } }),
+    ]);
+    return {
+      settings: { capacity: settings.capacity, slotStepMinutes: settings.slotStepMinutes },
+      schedules: schedules.map(({ dayOfWeek, opensAt, closesAt, isOpen }) => ({ dayOfWeek, opensAt, closesAt, isOpen })),
+      breaks: breaks.map(({ dayOfWeek, startsAt, endsAt }) => ({ dayOfWeek, startsAt, endsAt })),
+      exceptions: exceptions.map(mapScheduleDateException),
+    };
+  }
+
+  async updateAppointmentInterval(input: {
+    appointmentId: string;
+    startAt: Date;
+    endAt: Date;
+    changedById: string | null;
+    reason?: string;
+  }): Promise<InternalAppointmentRecord> {
+    const current = await this.client.appointment.findUniqueOrThrow({ where: { id: input.appointmentId } });
+    const appointment = await this.client.appointment.update({
+      where: { id: input.appointmentId },
+      data: {
+        startAt: input.startAt,
+        endAt: input.endAt,
+        intervalHistory: {
+          create: {
+            previousStartAt: current.startAt,
+            previousEndAt: current.endAt,
+            newStartAt: input.startAt,
+            newEndAt: input.endAt,
+            changedById: input.changedById,
+            reason: input.reason,
+          },
+        },
+      },
+      include: appointmentInclude,
     });
     return mapInternalAppointment(appointment);
   }
@@ -234,6 +295,16 @@ function mapInternalAppointment(appointment: {
   endAt: Date;
   status: AppointmentStatus;
   notes: string | null;
+  intervalHistory: Array<{
+    id: string;
+    previousStartAt: Date;
+    previousEndAt: Date;
+    newStartAt: Date;
+    newEndAt: Date;
+    changedAt: Date;
+    reason: string | null;
+    changedBy: { name: string | null; username: string | null; email: string } | null;
+  }>;
 }): InternalAppointmentRecord {
   return {
     id: appointment.id,
@@ -248,5 +319,26 @@ function mapInternalAppointment(appointment: {
     endAt: appointment.endAt,
     status: appointment.status,
     notes: appointment.notes,
+    intervalHistory: appointment.intervalHistory.map((item) => ({
+      id: item.id,
+      previousStartAt: item.previousStartAt,
+      previousEndAt: item.previousEndAt,
+      newStartAt: item.newStartAt,
+      newEndAt: item.newEndAt,
+      changedAt: item.changedAt,
+      changedByName: item.changedBy?.name ?? item.changedBy?.username ?? item.changedBy?.email ?? null,
+      reason: item.reason,
+    })),
   };
+}
+
+const appointmentInclude = {
+  service: true,
+  customer: true,
+  motorcycle: true,
+  intervalHistory: { include: { changedBy: true }, orderBy: { changedAt: "desc" as const } },
+} as const;
+
+function isRetryableTransactionError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
 }

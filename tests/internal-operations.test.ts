@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   getInternalAgenda,
-  updateInternalAppointmentDuration,
+  previewInternalAppointmentSlots,
+  rescheduleInternalAppointment,
   updateInternalAppointmentStatus,
   type InternalAppointmentRecord,
   type InternalOperationsRepository,
+  type InternalSchedulingRepository,
 } from "@/src/modules/internal/operations";
 import type {
   EmailNotificationMessage,
   NotificationLogRepository,
   NotificationPort,
 } from "@/src/modules/notifications/service";
+import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const today = "2026-07-06";
 
@@ -88,38 +91,87 @@ describe("internal status transitions", () => {
   });
 });
 
-describe("internal appointment duration", () => {
-  it("extends an active appointment while preserving its start time", async () => {
-    const repository = new InMemoryInternalRepository([appointment({ id: "appt_extend", status: "CONFIRMED" })]);
+describe("internal appointment rescheduling", () => {
+  it("previews eligible internal start times without applying public notice or window limits", async () => {
+    const repository = new InMemoryInternalRepository([appointment({ id: "preview", status: "CONFIRMED" })]);
 
-    const result = await updateInternalAppointmentDuration(repository, {
-      appointmentId: "appt_extend",
-      durationMinutes: 90,
+    const result = await previewInternalAppointmentSlots(repository, {
+      appointmentId: "preview",
+      date: "2026-07-07",
+      durationMinutes: 60,
     });
 
-    expect(result).toEqual({
-      accepted: true,
-      appointment: expect.objectContaining({
-        id: "appt_extend",
-        startAt: new Date("2026-07-06T09:00:00-03:00"),
-        endAt: new Date("2026-07-06T10:30:00-03:00"),
-      }),
-    });
+    expect(result).toMatchObject({ accepted: true });
+    if (!result.accepted) throw new Error("Expected preview to succeed");
+    expect(result.slots).toContainEqual({ startTime: "09:00", endTime: "10:00", remainingCapacity: 2 });
+    expect(result.slots.some((slot) => slot.startTime === "13:00")).toBe(false);
   });
 
-  it("rejects shortening, terminal appointments, and extensions into the next local day", async () => {
+  it("moves and shortens an appointment when the complete interval is available", async () => {
     const repository = new InMemoryInternalRepository([
-      appointment({ id: "long", endAt: "2026-07-06T10:30:00-03:00", status: "CONFIRMED" }),
-      appointment({ id: "done", status: "COMPLETED" }),
-      appointment({ id: "late", startAt: "2026-07-06T23:30:00-03:00", endAt: "2026-07-06T23:59:00-03:00", status: "IN_PROGRESS" }),
+      appointment({ id: "move", status: "CONFIRMED", endAt: "2026-07-06T10:30:00-03:00" }),
     ]);
 
-    await expect(updateInternalAppointmentDuration(repository, { appointmentId: "long", durationMinutes: 60 }))
-      .resolves.toMatchObject({ accepted: false, reason: "DURATION_NOT_EXTENDED" });
-    await expect(updateInternalAppointmentDuration(repository, { appointmentId: "done", durationMinutes: 90 }))
-      .resolves.toMatchObject({ accepted: false, reason: "TERMINAL_APPOINTMENT" });
-    await expect(updateInternalAppointmentDuration(repository, { appointmentId: "late", durationMinutes: 90 }))
-      .resolves.toMatchObject({ accepted: false, reason: "DAY_BOUNDARY_EXCEEDED" });
+    const result = await rescheduleInternalAppointment(repository, {
+      appointmentId: "move",
+      date: "2026-07-07",
+      startTime: "10:00",
+      durationMinutes: 60,
+      changedById: "user_1",
+      reason: "El cliente lo solicito.",
+    });
+
+    expect(result).toMatchObject({
+      accepted: true,
+      appointment: {
+        startAt: new Date("2026-07-07T10:00:00-03:00"),
+        endAt: new Date("2026-07-07T11:00:00-03:00"),
+      },
+    });
+    expect(repository.appointments[0]?.intervalHistory).toEqual([
+      expect.objectContaining({
+        previousStartAt: new Date("2026-07-06T09:00:00-03:00"),
+        previousEndAt: new Date("2026-07-06T10:30:00-03:00"),
+        newStartAt: new Date("2026-07-07T10:00:00-03:00"),
+        newEndAt: new Date("2026-07-07T11:00:00-03:00"),
+        reason: "El cliente lo solicito.",
+      }),
+    ]);
+  });
+
+  it("rejects a duration change when capacity is exhausted and writes no history", async () => {
+    const repository = new InMemoryInternalRepository([
+      appointment({ id: "edited", status: "CONFIRMED" }),
+      appointment({ id: "first", startAt: "2026-07-06T10:00:00-03:00", endAt: "2026-07-06T11:30:00-03:00", status: "CONFIRMED" }),
+      appointment({ id: "second", startAt: "2026-07-06T10:30:00-03:00", endAt: "2026-07-06T11:30:00-03:00", status: "PENDING_CONFIRMATION" }),
+    ]);
+
+    const result = await rescheduleInternalAppointment(repository, {
+      appointmentId: "edited",
+      date: "2026-07-06",
+      startTime: "09:00",
+      durationMinutes: 120,
+      changedById: "user_1",
+    });
+
+    expect(result).toMatchObject({ accepted: false, reason: "CAPACITY_EXHAUSTED" });
+    expect(repository.appointments[0]?.endAt).toEqual(new Date("2026-07-06T09:30:00-03:00"));
+    expect(repository.appointments[0]?.intervalHistory).toEqual([]);
+  });
+
+  it("notifies the customer only after a successful reschedule", async () => {
+    const repository = new InMemoryInternalRepository([appointment({ id: "notify", status: "CONFIRMED" })]);
+    const port = new CollectingNotificationPort();
+    const logRepository = new InMemoryNotificationLogRepository();
+
+    const result = await rescheduleInternalAppointment(
+      repository,
+      { appointmentId: "notify", date: "2026-07-07", startTime: "10:00", durationMinutes: 60, changedById: null },
+      { port, logRepository },
+    );
+
+    expect(result).toMatchObject({ accepted: true });
+    expect(port.messages).toEqual([expect.objectContaining({ event: "APPOINTMENT_INTERVAL_CHANGED", appointmentId: "notify" })]);
   });
 });
 
@@ -137,6 +189,7 @@ function appointment(
     motorcycleLabel: "Honda XR ABC123",
     status: overrides.status ?? "PENDING_CONFIRMATION",
     notes: null,
+    intervalHistory: [],
     ...overrides,
     startAt: new Date(overrides.startAt ?? "2026-07-06T09:00:00-03:00"),
     endAt: new Date(overrides.endAt ?? "2026-07-06T09:30:00-03:00"),
@@ -160,7 +213,7 @@ class InMemoryNotificationLogRepository implements NotificationLogRepository {
   }
 }
 
-class InMemoryInternalRepository implements InternalOperationsRepository {
+class InMemoryInternalRepository implements InternalOperationsRepository, InternalSchedulingRepository {
   statusHistory: Array<{ appointmentId: string; fromStatus: string; toStatus: string; changedById: string | null; note?: string }> = [];
 
   constructor(public appointments: InternalAppointmentRecord[]) {}
@@ -175,17 +228,6 @@ class InMemoryInternalRepository implements InternalOperationsRepository {
     return this.appointments.find((item) => item.id === appointmentId) ?? null;
   }
 
-  async getSlotStepMinutes() {
-    return 30;
-  }
-
-  async updateAppointmentEnd(input: { appointmentId: string; endAt: Date }) {
-    const found = this.appointments.find((item) => item.id === input.appointmentId);
-    if (!found) throw new Error("Appointment not found");
-    found.endAt = input.endAt;
-    return found;
-  }
-
   async updateAppointmentStatus(input: Parameters<InternalOperationsRepository["updateAppointmentStatus"]>[0]) {
     const found = this.appointments.find((item) => item.id === input.appointmentId);
     if (!found) throw new Error("Appointment not found");
@@ -198,6 +240,37 @@ class InMemoryInternalRepository implements InternalOperationsRepository {
       changedById: input.changedById,
       note: input.note,
     });
+    return found;
+  }
+
+  async withSchedulingTransaction<T>(operation: () => Promise<T>) {
+    return operation();
+  }
+
+  async getSchedulingContext() {
+    return {
+      settings: { capacity: workshopSeedConfig.settings.capacity, slotStepMinutes: workshopSeedConfig.settings.slotStepMinutes },
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [],
+    };
+  }
+
+  async updateAppointmentInterval(input: Parameters<InternalSchedulingRepository["updateAppointmentInterval"]>[0]) {
+    const found = this.appointments.find((item) => item.id === input.appointmentId);
+    if (!found) throw new Error("Appointment not found");
+    found.intervalHistory.unshift({
+      id: `history-${found.id}`,
+      previousStartAt: found.startAt,
+      previousEndAt: found.endAt,
+      newStartAt: input.startAt,
+      newEndAt: input.endAt,
+      changedAt: new Date("2026-07-01T12:00:00-03:00"),
+      changedByName: input.changedById,
+      reason: input.reason ?? null,
+    });
+    found.startAt = input.startAt;
+    found.endAt = input.endAt;
     return found;
   }
 }
