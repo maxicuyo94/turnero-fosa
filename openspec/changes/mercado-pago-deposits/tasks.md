@@ -20,6 +20,6 @@
 ## 4. Verification and rollout
 
 - [x] 4.1 Pass typecheck, lint, unit/integration tests, E2E, and build.
-- [ ] 4.2 Deploy migration and code to Preview with deposit collection disabled by default.
+- [x] 4.2 Deploy migration and code to Preview with deposit collection disabled by default.
 - [ ] 4.3 Configure Preview webhook and complete signed-notification acceptance.
 - [ ] 4.4 Configure production credentials, enable the policy, and monitor first live payment.
