@@ -5,10 +5,68 @@ import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSett
 export type AvailabilityDateException = Pick<ScheduleDateException, "date" | "isOpen" | "opensAt" | "closesAt">;
 
 export type ExistingAppointment = {
+  id?: string;
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;
 };
+
+export type AppointmentIntervalRejection =
+  | "INVALID_DURATION"
+  | "CLOSED_DATE"
+  | "OUTSIDE_OPENING_HOURS"
+  | "BREAK_OVERLAP"
+  | "DAY_BOUNDARY_EXCEEDED"
+  | "CAPACITY_EXHAUSTED";
+
+export function validateAppointmentInterval(input: {
+  settings: Pick<WorkshopSettings, "capacity" | "slotStepMinutes">;
+  schedules: WeeklySchedule[];
+  breaks: ScheduleBreak[];
+  exceptions: AvailabilityDateException[];
+  date: string;
+  startTime: string;
+  durationMinutes: number;
+  serviceMinimumDurationMinutes: number;
+  appointments: ExistingAppointment[];
+  excludeAppointmentId?: string;
+}):
+  | { accepted: true; startAt: Date; endAt: Date; remainingCapacity: number }
+  | { accepted: false; reason: AppointmentIntervalRejection } {
+  if (
+    !Number.isInteger(input.durationMinutes) ||
+    input.durationMinutes < input.serviceMinimumDurationMinutes ||
+    input.durationMinutes % input.settings.slotStepMinutes !== 0
+  ) {
+    return { accepted: false, reason: "INVALID_DURATION" };
+  }
+
+  const startMinutes = minutesFromTime(input.startTime);
+  const endMinutes = startMinutes + input.durationMinutes;
+  if (endMinutes >= 24 * 60) return { accepted: false, reason: "DAY_BOUNDARY_EXCEEDED" };
+
+  const dayOfWeek = dayOfWeekForDate(input.date);
+  const openingHours = openingHoursForDate(input.date, dayOfWeek, input.schedules, input.exceptions);
+  if (!openingHours) return { accepted: false, reason: "CLOSED_DATE" };
+  if (startMinutes < minutesFromTime(openingHours.startsAt) || endMinutes > minutesFromTime(openingHours.endsAt)) {
+    return { accepted: false, reason: "OUTSIDE_OPENING_HOURS" };
+  }
+
+  const overlapsBreak = input.breaks
+    .filter((item) => item.dayOfWeek === dayOfWeek)
+    .some((item) => startMinutes < minutesFromTime(item.endsAt) && endMinutes > minutesFromTime(item.startsAt));
+  if (overlapsBreak) return { accepted: false, reason: "BREAK_OVERLAP" };
+
+  const startAt = dateAtMinutes(input.date, startMinutes);
+  const endAt = addMinutes(startAt, input.durationMinutes);
+  const appointments = input.excludeAppointmentId
+    ? input.appointments.filter((item) => item.id !== input.excludeAppointmentId)
+    : input.appointments;
+  const overlapping = maximumConcurrentAppointments(appointments, startAt, endAt);
+  if (overlapping >= input.settings.capacity) return { accepted: false, reason: "CAPACITY_EXHAUSTED" };
+
+  return { accepted: true, startAt, endAt, remainingCapacity: input.settings.capacity - overlapping };
+}
 
 export type AvailableSlot = {
   startAt: Date;
@@ -16,6 +74,35 @@ export type AvailableSlot = {
   startTime: string;
   remainingCapacity: number;
 };
+
+export function getInternalAvailableSlots(input: {
+  settings: Pick<WorkshopSettings, "capacity" | "slotStepMinutes">;
+  schedules: WeeklySchedule[];
+  breaks: ScheduleBreak[];
+  exceptions: AvailabilityDateException[];
+  date: string;
+  durationMinutes: number;
+  serviceMinimumDurationMinutes: number;
+  appointments: ExistingAppointment[];
+  excludeAppointmentId: string;
+}): AvailableSlot[] {
+  const slots: AvailableSlot[] = [];
+
+  for (let cursor = 0; cursor < 24 * 60; cursor += input.settings.slotStepMinutes) {
+    const startTime = timeFromMinutes(cursor);
+    const result = validateAppointmentInterval({ ...input, startTime });
+    if (result.accepted) {
+      slots.push({
+        startAt: result.startAt,
+        endAt: result.endAt,
+        startTime,
+        remainingCapacity: result.remainingCapacity,
+      });
+    }
+  }
+
+  return slots;
+}
 
 type AvailabilityInput = {
   settings: WorkshopSettings;
@@ -35,30 +122,36 @@ export function getAvailableSlots(input: AvailabilityInput): AvailableSlot[] {
     return [];
   }
 
-  const intervals = subtractBreaks([openingHours], input.breaks.filter((item) => item.dayOfWeek === dayOfWeek));
-
   const slots: AvailableSlot[] = [];
-  for (const interval of intervals) {
-    for (
-      let cursor = minutesFromTime(interval.startsAt);
-      cursor + input.serviceDurationMinutes <= minutesFromTime(interval.endsAt);
-      cursor += input.settings.slotStepMinutes
-    ) {
-      const startAt = dateAtMinutes(input.date, cursor);
-      const endAt = addMinutes(startAt, input.serviceDurationMinutes);
-      if (startAt.getTime() < input.now.getTime() + input.settings.minimumNoticeMinutes * 60_000) {
-        continue;
-      }
+  for (
+    let cursor = minutesFromTime(openingHours.startsAt);
+    cursor + input.serviceDurationMinutes <= minutesFromTime(openingHours.endsAt);
+    cursor += input.settings.slotStepMinutes
+  ) {
+    const startAt = dateAtMinutes(input.date, cursor);
+    if (startAt.getTime() < input.now.getTime() + input.settings.minimumNoticeMinutes * 60_000) {
+      continue;
+    }
 
-      const overlapping = countOverlappingAppointments(input.appointments, startAt, endAt);
-      if (overlapping < input.settings.capacity) {
-        slots.push({
-          startAt,
-          endAt,
-          startTime: timeFromMinutes(cursor),
-          remainingCapacity: input.settings.capacity - overlapping,
-        });
-      }
+    const startTime = timeFromMinutes(cursor);
+    const result = validateAppointmentInterval({
+      settings: input.settings,
+      schedules: input.schedules,
+      breaks: input.breaks,
+      exceptions: input.exceptions,
+      date: input.date,
+      startTime,
+      durationMinutes: input.serviceDurationMinutes,
+      serviceMinimumDurationMinutes: input.serviceDurationMinutes,
+      appointments: input.appointments,
+    });
+    if (result.accepted) {
+      slots.push({
+        startAt: result.startAt,
+        endAt: result.endAt,
+        startTime,
+        remainingCapacity: result.remainingCapacity,
+      });
     }
   }
 
@@ -72,7 +165,7 @@ export function canAcceptAppointment(input: {
   appointments: ExistingAppointment[];
 }): { accepted: true; endAt: Date } | { accepted: false; reason: "CAPACITY_EXHAUSTED" } {
   const endAt = addMinutes(input.startAt, input.serviceDurationMinutes);
-  const overlapping = countOverlappingAppointments(input.appointments, input.startAt, endAt);
+  const overlapping = maximumConcurrentAppointments(input.appointments, input.startAt, endAt);
 
   if (overlapping >= input.settings.capacity) {
     return { accepted: false, reason: "CAPACITY_EXHAUSTED" };
@@ -121,11 +214,25 @@ export async function createAppointmentReservation(input: {
   });
 }
 
-function countOverlappingAppointments(appointments: ExistingAppointment[], startAt: Date, endAt: Date): number {
-  return appointments.filter(
-    (appointment) =>
-      countsTowardCapacity(appointment.status) && appointment.startAt < endAt && appointment.endAt > startAt,
-  ).length;
+function maximumConcurrentAppointments(appointments: ExistingAppointment[], startAt: Date, endAt: Date): number {
+  const events = appointments
+    .filter(
+      (appointment) =>
+        countsTowardCapacity(appointment.status) && appointment.startAt < endAt && appointment.endAt > startAt,
+    )
+    .flatMap((appointment) => [
+      { at: Math.max(appointment.startAt.getTime(), startAt.getTime()), delta: 1 },
+      { at: Math.min(appointment.endAt.getTime(), endAt.getTime()), delta: -1 },
+    ])
+    .sort((left, right) => left.at - right.at || left.delta - right.delta);
+
+  let concurrent = 0;
+  let maximum = 0;
+  for (const event of events) {
+    concurrent += event.delta;
+    maximum = Math.max(maximum, concurrent);
+  }
+  return maximum;
 }
 
 /**
@@ -155,26 +262,6 @@ function isOutsideBookingWindow(date: string, now: Date, settings: WorkshopSetti
   startOfToday.setHours(0, 0, 0, 0);
   const daysAhead = Math.floor((startOfRequestedDay.getTime() - startOfToday.getTime()) / 86_400_000);
   return daysAhead < 0 || daysAhead > settings.maximumBookingWindowDays;
-}
-
-function subtractBreaks(intervals: { startsAt: string; endsAt: string }[], breaks: ScheduleBreak[]) {
-  return breaks.reduce((currentIntervals, scheduleBreak) => {
-    const breakStart = minutesFromTime(scheduleBreak.startsAt);
-    const breakEnd = minutesFromTime(scheduleBreak.endsAt);
-
-    return currentIntervals.flatMap((interval) => {
-      const intervalStart = minutesFromTime(interval.startsAt);
-      const intervalEnd = minutesFromTime(interval.endsAt);
-      if (breakEnd <= intervalStart || breakStart >= intervalEnd) {
-        return [interval];
-      }
-
-      return [
-        { startsAt: interval.startsAt, endsAt: timeFromMinutes(breakStart) },
-        { startsAt: timeFromMinutes(breakEnd), endsAt: interval.endsAt },
-      ].filter((item) => item.endsAt > item.startsAt);
-    });
-  }, intervals);
 }
 
 function dayOfWeekForDate(date: string) {

@@ -3,6 +3,8 @@ import {
   canAcceptAppointment,
   createAppointmentReservation,
   getAvailableSlots,
+  getInternalAvailableSlots,
+  validateAppointmentInterval,
 } from "@/src/modules/availability";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import { scheduleDateExceptionSchema } from "@/src/modules/settings/schemas";
@@ -325,6 +327,152 @@ describe("appointment capacity guard", () => {
     expect(first).toMatchObject({ accepted: true });
     expect(second).toEqual(first);
     expect(repository.savedCount).toBe(1);
+  });
+});
+
+describe("internal appointment interval validation", () => {
+  it("accepts shortening and excludes the edited appointment from capacity", () => {
+    const result = validateAppointmentInterval({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [],
+      date: monday,
+      startTime: "09:00",
+      durationMinutes: 60,
+      serviceMinimumDurationMinutes: 30,
+      excludeAppointmentId: "edited",
+      appointments: [
+        { id: "edited", ...interval("2026-07-06T09:00:00-03:00", "2026-07-06T10:30:00-03:00", "CONFIRMED") },
+        { id: "other", ...interval("2026-07-06T09:00:00-03:00", "2026-07-06T10:00:00-03:00", "CONFIRMED") },
+      ],
+    });
+
+    expect(result).toEqual({
+      accepted: true,
+      startAt: new Date("2026-07-06T09:00:00-03:00"),
+      endAt: new Date("2026-07-06T10:00:00-03:00"),
+      remainingCapacity: 1,
+    });
+  });
+
+  it("rejects a longer interval when capacity is exhausted", () => {
+    const result = validateAppointmentInterval({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [],
+      date: monday,
+      startTime: "09:00",
+      durationMinutes: 120,
+      serviceMinimumDurationMinutes: 60,
+      excludeAppointmentId: "edited",
+      appointments: [
+        { id: "edited", ...interval("2026-07-06T09:00:00-03:00", "2026-07-06T10:00:00-03:00", "CONFIRMED") },
+        { id: "first", ...interval("2026-07-06T10:00:00-03:00", "2026-07-06T11:30:00-03:00", "CONFIRMED") },
+        { id: "second", ...interval("2026-07-06T10:30:00-03:00", "2026-07-06T11:30:00-03:00", "PENDING_CONFIRMATION") },
+      ],
+    });
+
+    expect(result).toEqual({ accepted: false, reason: "CAPACITY_EXHAUSTED" });
+  });
+
+  it("accepts a long interval when existing appointments are back-to-back rather than simultaneous", () => {
+    const result = validateAppointmentInterval({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [],
+      date: monday,
+      startTime: "09:00",
+      durationMinutes: 120,
+      serviceMinimumDurationMinutes: 60,
+      appointments: [
+        interval("2026-07-06T09:00:00-03:00", "2026-07-06T10:00:00-03:00", "CONFIRMED"),
+        interval("2026-07-06T10:00:00-03:00", "2026-07-06T11:00:00-03:00", "CONFIRMED"),
+      ],
+    });
+
+    expect(result).toEqual({
+      accepted: true,
+      startAt: new Date("2026-07-06T09:00:00-03:00"),
+      endAt: new Date("2026-07-06T11:00:00-03:00"),
+      remainingCapacity: 1,
+    });
+  });
+
+  it("rejects invalid durations, holidays, breaks, and intervals outside opening hours", () => {
+    const base = {
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [],
+      date: monday,
+      startTime: "09:00",
+      durationMinutes: 60,
+      serviceMinimumDurationMinutes: 60,
+      appointments: [],
+    };
+
+    expect(validateAppointmentInterval({ ...base, durationMinutes: 45 })).toEqual({ accepted: false, reason: "INVALID_DURATION" });
+    expect(validateAppointmentInterval({ ...base, exceptions: [closedException(monday, "Feriado nacional")] })).toEqual({ accepted: false, reason: "CLOSED_DATE" });
+    expect(validateAppointmentInterval({ ...base, startTime: "13:00" })).toEqual({ accepted: false, reason: "BREAK_OVERLAP" });
+    expect(validateAppointmentInterval({ ...base, startTime: "18:30" })).toEqual({ accepted: false, reason: "OUTSIDE_OPENING_HOURS" });
+  });
+
+  it("uses exceptional opening hours and rejects intervals that cross the local day boundary", () => {
+    const exceptional = validateAppointmentInterval({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: [],
+      exceptions: [openException("2026-07-05", "10:00", "13:00")],
+      date: "2026-07-05",
+      startTime: "12:00",
+      durationMinutes: 60,
+      serviceMinimumDurationMinutes: 30,
+      appointments: [],
+    });
+    const dayBoundary = validateAppointmentInterval({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: [],
+      exceptions: [openException(monday, "00:00", "23:59")],
+      date: monday,
+      startTime: "23:30",
+      durationMinutes: 60,
+      serviceMinimumDurationMinutes: 30,
+      appointments: [],
+    });
+
+    expect(exceptional).toMatchObject({ accepted: true, endAt: new Date("2026-07-05T13:00:00-03:00") });
+    expect(dayBoundary).toEqual({ accepted: false, reason: "DAY_BOUNDARY_EXCEEDED" });
+  });
+
+  it("ignores every non-capacity status and lists only valid internal start times", () => {
+    const appointments = ["COMPLETED", "CANCELLED", "NO_SHOW"].flatMap((status, index) => [
+      {
+        id: `ignored-${index}`,
+        startAt: new Date("2026-07-06T09:00:00-03:00"),
+        endAt: new Date("2026-07-06T10:00:00-03:00"),
+        status: status as "COMPLETED" | "CANCELLED" | "NO_SHOW",
+      },
+    ]);
+
+    const slots = getInternalAvailableSlots({
+      settings: workshopSeedConfig.settings,
+      schedules: workshopSeedConfig.schedules,
+      breaks: workshopSeedConfig.breaks,
+      exceptions: [],
+      date: monday,
+      durationMinutes: 60,
+      serviceMinimumDurationMinutes: 30,
+      appointments,
+      excludeAppointmentId: "edited",
+    });
+
+    expect(slots.map((slot) => slot.startTime)).toContain("09:00");
+    expect(slots.map((slot) => slot.startTime)).not.toContain("13:00");
+    expect(slots.at(-1)?.startTime).toBe("18:00");
   });
 });
 
