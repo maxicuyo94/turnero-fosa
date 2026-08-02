@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { createAppointmentAction } from "@/app/(public)/booking/actions";
+import { createAppointmentAction, retryDepositAction } from "@/app/(public)/booking/actions";
 import { auth, getInternalSessionDisplayName } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { PublicBookingScreen } from "@/src/modules/booking/public-booking-screen";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
-import { getPublicAvailability, listPublicServices } from "@/src/modules/booking/service";
+import { getPublicAvailability, getPublicDepositPolicy, listPublicServices } from "@/src/modules/booking/service";
 
 type BookingPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -14,7 +14,10 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
   const params = (await searchParams) ?? {};
   const session = await auth();
   const repository = new PrismaBookingRepository(db);
-  const services = await listPublicServices(repository);
+  const [services, depositPolicy] = await Promise.all([
+    listPublicServices(repository),
+    getPublicDepositPolicy(repository),
+  ]);
   const selectedServiceId = stringParam(params.serviceId) ?? services[0]?.id ?? "";
   const selectedService = services.find((service) => service.id === selectedServiceId);
   const selectedDate = stringParam(params.date) ?? defaultBookingDate();
@@ -35,11 +38,13 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
 
   return <PublicBookingScreen
     action={createAppointmentAction}
+    paymentAction={retryDepositAction}
     idempotencyKey={randomUUID()}
     outcome={outcomeFromParams(params)}
     selectedDate={selectedDate}
     selectedDurationMinutes={selectedDurationMinutes}
     durationStepMinutes={durationStepMinutes}
+    depositPolicy={depositPolicy}
     selectedServiceId={selectedServiceId}
     signedInUserName={getInternalSessionDisplayName(session)}
     services={services}
@@ -69,5 +74,8 @@ function outcomeFromParams(params: Record<string, string | string[] | undefined>
     message,
     cancellationUrl: stringParam(params.cancel),
     publicCode: stringParam(params.code),
+    paymentUrl: stringParam(params.paymentUrl),
+    paymentError: stringParam(params.paymentError),
+    depositAmountCents: numberParam(params.deposit),
   };
 }

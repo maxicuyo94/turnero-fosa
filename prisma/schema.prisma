@@ -41,6 +41,18 @@ enum EmailLogStatus {
   FAILED
 }
 
+enum DepositPaymentStatus {
+  CREATED
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+  CHARGED_BACK
+  ERROR
+}
+
 model WorkshopSettings {
   id                       String             @id @default(cuid())
   workshopName             String
@@ -51,6 +63,9 @@ model WorkshopSettings {
   confirmationMode         ConfirmationMode   @default(MANUAL)
   cancellationEnabled      Boolean            @default(true)
   reschedulingEnabled      Boolean            @default(false)
+  depositRequired          Boolean            @default(false)
+  depositAmountCents       Int                @default(500000)
+  depositExpirationMinutes Int                @default(30)
   createdAt                DateTime           @default(now())
   updatedAt                DateTime           @updatedAt
   weeklySchedules          WeeklySchedule[]
@@ -166,10 +181,35 @@ model Appointment {
   statusHistory         AppointmentStatusHistory[]
   intervalHistory       AppointmentIntervalHistory[]
   emailLogs             EmailLog[]
+  paymentAttempts       DepositPaymentAttempt[]
 
   @@index([startAt, endAt, status])
   @@index([customerId])
   @@index([motorcycleId])
+}
+
+model DepositPaymentAttempt {
+  id                 String               @id @default(cuid())
+  appointmentId      String
+  provider           String               @default("MERCADO_PAGO")
+  externalReference  String               @unique
+  preferenceId       String?              @unique
+  providerPaymentId  String?              @unique
+  checkoutUrl        String?
+  amountCents        Int
+  currency           String               @default("ARS")
+  status             DepositPaymentStatus @default(CREATED)
+  statusDetail       String?
+  liveMode           Boolean?
+  expiresAt          DateTime
+  approvedAt         DateTime?
+  lastNotificationAt DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  appointment        Appointment          @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId, createdAt])
+  @@index([status, expiresAt])
 }
 
 model AppointmentIntervalHistory {

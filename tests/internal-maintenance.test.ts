@@ -16,7 +16,14 @@ describe("internal settings and catalog maintenance", () => {
   it("updates workshop capacity so future availability can use editable settings", async () => {
     const repository = new InMemoryMaintenanceRepository();
 
-    const result = await updateInternalWorkshopSettings(repository, { capacity: 3, minimumNoticeMinutes: 180, maximumBookingWindowDays: 20 });
+    const result = await updateInternalWorkshopSettings(repository, {
+      capacity: 3,
+      minimumNoticeMinutes: 180,
+      maximumBookingWindowDays: 20,
+      depositRequired: true,
+      depositAmountArs: 7_500,
+      depositExpirationMinutes: 45,
+    });
 
     expect(result).toEqual({ accepted: true, settings: expect.objectContaining({ capacity: 3, minimumNoticeMinutes: 180, maximumBookingWindowDays: 20 }) });
   });
@@ -169,7 +176,14 @@ describe("internal date exception maintenance", () => {
 });
 
 class InMemoryMaintenanceRepository implements InternalMaintenanceRepository {
-  settings: InternalWorkshopSettingsRecord = { capacity: 2, minimumNoticeMinutes: 120, maximumBookingWindowDays: 30 };
+  settings: InternalWorkshopSettingsRecord = {
+    capacity: 2,
+    minimumNoticeMinutes: 120,
+    maximumBookingWindowDays: 30,
+    depositRequired: true,
+    depositAmountCents: 500_000,
+    depositExpirationMinutes: 30,
+  };
   services: InternalServiceRecord[] = [{ id: "oil", name: "Service Esencial", durationMinutes: 60, isActive: true, displayOrder: 1 }];
 
   async updateWorkshopSettings(input: InternalWorkshopSettingsRecord) {

@@ -45,6 +45,9 @@ export class PrismaInternalRepository
       slotStepMinutes: settings.slotStepMinutes,
       minimumNoticeMinutes: settings.minimumNoticeMinutes,
       maximumBookingWindowDays: settings.maximumBookingWindowDays,
+      depositRequired: settings.depositRequired,
+      depositAmountCents: settings.depositAmountCents,
+      depositExpirationMinutes: settings.depositExpirationMinutes,
     };
   }
 
@@ -270,6 +273,9 @@ export class PrismaInternalRepository
       slotStepMinutes: updated.slotStepMinutes,
       minimumNoticeMinutes: updated.minimumNoticeMinutes,
       maximumBookingWindowDays: updated.maximumBookingWindowDays,
+      depositRequired: updated.depositRequired,
+      depositAmountCents: updated.depositAmountCents,
+      depositExpirationMinutes: updated.depositExpirationMinutes,
     };
   }
 
