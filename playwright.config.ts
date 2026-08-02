@@ -6,6 +6,7 @@ const playwrightBaseUrl = `http://127.0.0.1:${playwrightPort}`;
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
+  workers: 1,
   use: {
     baseURL: playwrightBaseUrl,
     trace: "on-first-retry",
@@ -19,6 +20,10 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "mobile-chromium",
+      use: { ...devices["Pixel 5"] },
     },
   ],
 });
