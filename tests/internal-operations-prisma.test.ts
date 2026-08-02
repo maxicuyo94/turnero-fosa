@@ -5,7 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
-import { updateInternalAppointmentDuration, updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import { rescheduleInternalAppointment, updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
 
@@ -57,17 +57,106 @@ describe("Prisma internal operations integration", () => {
     expect(history).toEqual(expect.objectContaining({ appointmentId, fromStatus: "PENDING_CONFIRMATION", toStatus: "CONFIRMED", changedById: user.id }));
   });
 
-  it("persists an extended appointment end time", async () => {
-    const appointmentId = await createInternalTestAppointment("it-internal-duration");
+  it("atomically reschedules an appointment and records its interval history", async () => {
+    const appointmentId = await createInternalTestAppointment("it-internal-reschedule");
 
-    const result = await updateInternalAppointmentDuration(new PrismaInternalRepository(prisma), {
+    const result = await rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
       appointmentId,
-      durationMinutes: 90,
+      date: "2026-07-22",
+      startTime: "10:00",
+      durationMinutes: 60,
+      changedById: null,
+      reason: "Requested during integration test.",
     });
 
-    const stored = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
-    expect(result).toMatchObject({ accepted: true, appointment: { id: appointmentId } });
-    expect(stored.endAt.getTime() - stored.startAt.getTime()).toBe(90 * 60_000);
+    const stored = await prisma.appointment.findUniqueOrThrow({
+      where: { id: appointmentId },
+      include: { intervalHistory: true },
+    });
+    expect(result).toMatchObject({
+      accepted: true,
+      appointment: {
+        startAt: new Date("2026-07-22T10:00:00-03:00"),
+        endAt: new Date("2026-07-22T11:00:00-03:00"),
+      },
+    });
+    expect(stored.intervalHistory).toEqual([
+      expect.objectContaining({
+        previousStartAt: new Date("2026-07-21T09:00:00-03:00"),
+        previousEndAt: new Date("2026-07-21T09:30:00-03:00"),
+        newStartAt: new Date("2026-07-22T10:00:00-03:00"),
+        newEndAt: new Date("2026-07-22T11:00:00-03:00"),
+        reason: "Requested during integration test.",
+      }),
+    ]);
+  });
+
+  it("rolls back both the interval and history when capacity rejects the update", async () => {
+    const candidateId = await createInternalTestAppointment("it-internal-rollback-candidate");
+    const firstBlockerId = await createInternalTestAppointment("it-internal-rollback-blocker-1");
+    const secondBlockerId = await createInternalTestAppointment("it-internal-rollback-blocker-2");
+    await prisma.appointment.updateMany({
+      where: { id: { in: [firstBlockerId, secondBlockerId] } },
+      data: {
+        startAt: new Date("2026-07-22T10:00:00-03:00"),
+        endAt: new Date("2026-07-22T11:00:00-03:00"),
+      },
+    });
+
+    const result = await rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+      appointmentId: candidateId,
+      date: "2026-07-22",
+      startTime: "10:00",
+      durationMinutes: 60,
+      changedById: null,
+    });
+    const stored = await prisma.appointment.findUniqueOrThrow({
+      where: { id: candidateId },
+      include: { intervalHistory: true },
+    });
+
+    expect(result).toMatchObject({ accepted: false, reason: "CAPACITY_EXHAUSTED" });
+    expect(stored.startAt).toEqual(new Date("2026-07-21T09:00:00-03:00"));
+    expect(stored.endAt).toEqual(new Date("2026-07-21T09:30:00-03:00"));
+    expect(stored.intervalHistory).toEqual([]);
+  });
+
+  it("allows at most one concurrent edit to claim the final capacity", async () => {
+    const blockerId = await createInternalTestAppointment("it-internal-concurrent-blocker");
+    const firstId = await createInternalTestAppointment("it-internal-concurrent-first");
+    const secondId = await createInternalTestAppointment("it-internal-concurrent-second");
+    await prisma.appointment.update({
+      where: { id: blockerId },
+      data: {
+        startAt: new Date("2026-07-22T10:00:00-03:00"),
+        endAt: new Date("2026-07-22T11:00:00-03:00"),
+      },
+    });
+
+    const [first, second] = await Promise.all([
+      rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+        appointmentId: firstId,
+        date: "2026-07-22",
+        startTime: "10:00",
+        durationMinutes: 60,
+        changedById: null,
+      }),
+      rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+        appointmentId: secondId,
+        date: "2026-07-22",
+        startTime: "10:00",
+        durationMinutes: 60,
+        changedById: null,
+      }),
+    ]);
+    const stored = await prisma.appointment.findMany({
+      where: { id: { in: [firstId, secondId] } },
+      include: { intervalHistory: true },
+    });
+
+    expect([first, second].filter((result) => result.accepted)).toHaveLength(1);
+    expect([first, second].filter((result) => !result.accepted && result.reason === "CAPACITY_EXHAUSTED")).toHaveLength(1);
+    expect(stored.flatMap((appointment) => appointment.intervalHistory)).toHaveLength(1);
   });
 });
 
