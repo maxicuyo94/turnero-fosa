@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   canAcceptAppointment,
   createAppointmentReservation,
@@ -52,6 +52,26 @@ describe("domain schemas", () => {
 });
 
 describe("getAvailableSlots", () => {
+  it.each(["UTC", "America/Argentina/Buenos_Aires", "Asia/Tokyo"])("uses workshop calendar days near midnight with server TZ=%s", (timezone) => {
+    vi.stubEnv("TZ", timezone);
+    try {
+      const input = {
+        settings: { ...workshopSeedConfig.settings, maximumBookingWindowDays: 30 },
+        schedules: workshopSeedConfig.schedules,
+        breaks: [],
+        exceptions: [],
+        serviceDurationMinutes: 60,
+        appointments: [],
+        now: new Date("2026-09-09T21:30:00-03:00"),
+      };
+      expect(getAvailableSlots({ ...input, date: "2026-10-09" }).length).toBeGreaterThan(0);
+      expect(getAvailableSlots({ ...input, date: "2026-10-10" })).toEqual([]);
+      expect(getAvailableSlots({ ...input, date: "2026-10-10", now: new Date("2026-09-10T00:01:00-03:00") }).length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("returns slots inside configured hours and excludes lunch break", () => {
     const slots = getAvailableSlots({
       settings: workshopSeedConfig.settings,

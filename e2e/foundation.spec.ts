@@ -80,6 +80,21 @@ test("internal user changes an appointment status", async ({ page }) => {
   }).toBe("IN_PROGRESS");
 });
 
+test("booking ignores injected payment and cancellation links and displays the stored checkout", async ({ page }) => {
+  const appointmentId = await seedInternalE2EAppointment();
+  const appointment = await prisma.appointment.update({ where: { id: appointmentId }, data: { status: "PENDING_CONFIRMATION" } });
+  const params = new URLSearchParams({ booked: "1", message: "Turno recibido", code: appointment.publicCode, paymentUrl: "https://example.com/fake-payment", cancel: "https://example.com/fake-cancel", deposit: "1" });
+  await page.goto(`/booking?${params}`);
+  await expect(page.getByRole("link", { name: /Pagar seña/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Guardar enlace de cancelacion" })).toHaveCount(0);
+
+  const checkoutUrl = "https://sandbox.mercadopago.com/checkout";
+  await prisma.depositPaymentAttempt.create({ data: { appointmentId, externalReference: `e2e-${Date.now()}`, status: "PENDING", amountCents: 500_000, checkoutUrl, expiresAt: new Date(Date.now() + 30 * 60_000) } });
+  await page.reload();
+  await expect(page.getByRole("link", { name: /Pagar seña/ })).toHaveAttribute("href", checkoutUrl);
+  await expect(page.getByRole("link", { name: /Pagar seña/ })).toContainText("5.000");
+});
+
 test("internal user safely reschedules an appointment", async ({ page }) => {
   test.slow();
   const appointmentId = await seedInternalE2EAppointment();

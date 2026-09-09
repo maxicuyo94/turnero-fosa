@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { createAppointmentAction, retryDepositAction } from "@/app/(public)/booking/actions";
 import { auth, getInternalSessionDisplayName } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
+import { workshopDate } from "@/src/lib/workshop-date";
+import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
 import { PublicBookingScreen } from "@/src/modules/booking/public-booking-screen";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { getPublicAvailability, getPublicDepositPolicy, listPublicServices } from "@/src/modules/booking/service";
@@ -35,12 +37,20 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     ? availability.durationMinutes
     : requestedDurationMinutes ?? selectedService?.durationMinutes ?? 0;
   const durationStepMinutes = availability.accepted ? availability.slotStepMinutes : availability.slotStepMinutes ?? 1;
+  const outcome = outcomeFromParams(params);
+  const checkout = outcome?.publicCode
+    ? await new PrismaDepositPaymentRepository(db).getPublicCheckout(outcome.publicCode)
+    : null;
 
   return <PublicBookingScreen
     action={createAppointmentAction}
     paymentAction={retryDepositAction}
     idempotencyKey={randomUUID()}
-    outcome={outcomeFromParams(params)}
+    outcome={outcome ? {
+      ...outcome,
+      paymentUrl: checkout?.checkoutUrl ?? undefined,
+      depositAmountCents: checkout?.amountCents,
+    } : undefined}
     selectedDate={selectedDate}
     selectedDurationMinutes={selectedDurationMinutes}
     durationStepMinutes={durationStepMinutes}
@@ -54,7 +64,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
 
 function defaultBookingDate(): string {
   const date = new Date(Date.now() + 3 * 86_400_000);
-  return date.toISOString().slice(0, 10);
+  return workshopDate(date);
 }
 
 function stringParam(value: string | string[] | undefined): string | undefined {
@@ -72,10 +82,8 @@ function outcomeFromParams(params: Record<string, string | string[] | undefined>
   return {
     accepted: stringParam(params.booked) === "1",
     message,
-    cancellationUrl: stringParam(params.cancel),
+    cancellationUrl: stringParam(params.cancel)?.startsWith("/booking/cancel?") ? stringParam(params.cancel) : undefined,
     publicCode: stringParam(params.code),
-    paymentUrl: stringParam(params.paymentUrl),
     paymentError: stringParam(params.paymentError),
-    depositAmountCents: numberParam(params.deposit),
   };
 }
