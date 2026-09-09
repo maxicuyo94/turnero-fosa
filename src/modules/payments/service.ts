@@ -30,7 +30,7 @@ export type DepositPaymentRepository = {
     externalReference: string;
     amountCents: number;
     expiresAt: Date;
-  }): Promise<DepositPaymentAttemptRecord>;
+  }): Promise<DepositPaymentAttemptRecord | null>;
   markPreferenceCreated(input: {
     attemptId: string;
     preferenceId: string;
@@ -111,6 +111,13 @@ export async function initiateAppointmentDeposit(
     amountCents: policy.amountCents,
     expiresAt: new Date(now.getTime() + policy.expirationMinutes * 60_000),
   });
+  if (!attempt) {
+    return {
+      accepted: false,
+      reason: "APPOINTMENT_NOT_PAYABLE",
+      message: "Este turno ya no admite el pago de una seña.",
+    };
+  }
 
   try {
     const preference = await port.createPreference({

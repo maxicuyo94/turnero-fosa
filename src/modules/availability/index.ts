@@ -1,4 +1,5 @@
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
+import { workshopDate } from "@/src/lib/workshop-date";
 import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
 /** Availability only needs the opening decision of an exception, not its provenance metadata. */
@@ -258,15 +259,14 @@ function openingHoursForDate(
 
 function isOutsideBookingWindow(date: string, now: Date, settings: WorkshopSettings): boolean {
   const startOfRequestedDay = dateAtMinutes(date, 0);
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = dateAtMinutes(workshopDate(now), 0);
   const daysAhead = Math.floor((startOfRequestedDay.getTime() - startOfToday.getTime()) / 86_400_000);
   return daysAhead < 0 || daysAhead > settings.maximumBookingWindowDays;
 }
 
 function dayOfWeekForDate(date: string) {
   return ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"][
-    dateAtMinutes(date, 12).getDay()
+    new Date(`${date}T12:00:00Z`).getUTCDay()
   ] as WeeklySchedule["dayOfWeek"];
 }
 

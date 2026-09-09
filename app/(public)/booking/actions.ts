@@ -57,10 +57,7 @@ export async function createAppointmentAction(formData: FormData) {
         new MercadoPagoAdapter(paymentEnv),
         { appointmentId: result.appointment.id },
       );
-      if (payment.accepted && payment.required) {
-        params.set("paymentUrl", payment.checkoutUrl);
-        params.set("deposit", String(payment.amountCents));
-      } else if (!payment.accepted) {
+      if (!payment.accepted) {
         params.set("paymentError", payment.message);
       }
     } else {
@@ -96,10 +93,7 @@ export async function retryDepositAction(formData: FormData) {
   params.set("message", payment.accepted
     ? "Continua en Mercado Pago para confirmar el turno."
     : "El turno sigue registrado, pero no pudimos iniciar la seña.");
-  if (payment.accepted && payment.required) {
-    params.set("paymentUrl", payment.checkoutUrl);
-    params.set("deposit", String(payment.amountCents));
-  } else if (!payment.accepted) {
+  if (!payment.accepted) {
     params.set("paymentError", payment.message);
   }
   redirect(`/booking?${params.toString()}`);

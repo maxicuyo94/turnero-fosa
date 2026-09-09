@@ -20,8 +20,10 @@ export default async function PaymentReturnPage({
       <PageShell>
         <PageHeading eyebrow="Mercado Pago" title="Estado de la seña" />
         <Card className="mt-8">
-          {attempt?.status === "APPROVED" ? (
+          {attempt?.status === "APPROVED" && ["CONFIRMED", "IN_PROGRESS", "COMPLETED"].includes(attempt.appointmentStatus) ? (
             <Alert tone="success">La seña fue acreditada y el turno quedó confirmado.</Alert>
+          ) : attempt?.status === "APPROVED" ? (
+            <Alert tone="info">La seña fue acreditada, pero el turno no está confirmado. Contactá al taller para coordinar la atención o devolución.</Alert>
           ) : (
             <Alert tone="info">
               Estamos verificando el pago con Mercado Pago. La confirmación depende del webhook seguro, no de esta página de retorno.
