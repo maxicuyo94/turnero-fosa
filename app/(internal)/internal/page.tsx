@@ -36,9 +36,11 @@ export default async function InternalPage({
     repository.listDateExceptions(exceptionRange(date)),
   ]);
   const agenda = weekAgendas.find((item) => item.date === date) ?? await getInternalAgenda(repository, { date });
+  const capacityConflicts = await repository.getCapacityConflicts(settings.capacity);
   return (
     <InternalAgendaScreen
       agenda={agenda}
+      capacityConflicts={capacityConflicts}
       appointmentUpdateOutcome={params?.message ? { accepted: params.appointmentUpdated === "1", message: params.message } : undefined}
       exceptions={exceptions}
       feedback={parseFeedback(params?.feedback)}

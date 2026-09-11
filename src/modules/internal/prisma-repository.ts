@@ -1,4 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
+import { activeAppointmentStatuses } from "@/src/modules/appointments/schemas";
+import { findCapacityConflicts } from "@/src/modules/internal/capacity-conflicts";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import type {
   DateExceptionImportSummary,
@@ -55,6 +57,18 @@ export class PrismaInternalRepository
       depositAmountCents: settings.depositAmountCents,
       depositExpirationMinutes: settings.depositExpirationMinutes,
     };
+  }
+
+  async getCapacityConflicts(capacity: number, now = new Date()) {
+    const appointments = await this.prisma.appointment.findMany({
+      where: {
+        service: { workshopSettingsId: await this.resolveWorkshopSettingsId() },
+        status: { in: [...activeAppointmentStatuses] },
+        endAt: { gt: now },
+      },
+      select: { startAt: true, endAt: true, status: true },
+    });
+    return findCapacityConflicts(appointments, capacity, now);
   }
 
   async listServices() {

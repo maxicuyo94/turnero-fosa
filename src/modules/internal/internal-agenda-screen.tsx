@@ -9,6 +9,8 @@ import {
   updateWorkshopSettingsAction,
 } from "@/app/(internal)/internal/actions";
 import Link from "next/link";
+import { CapacityWarning } from "@/src/modules/internal/capacity-warning";
+import type { CapacityConflict } from "@/src/modules/internal/capacity-conflicts";
 import { ContactSettingsFields, DepositSettingsFields } from "@/src/modules/settings/business-settings-fields";
 import {
   Alert,
@@ -90,6 +92,7 @@ export function InternalAgendaScreen({
   weekAgendas = [agenda],
   section = "agenda",
   settings,
+  capacityConflicts = [],
   services = [],
   schedule,
   exceptions = [],
@@ -101,6 +104,7 @@ export function InternalAgendaScreen({
   weekAgendas?: InternalAgenda[];
   section?: InternalSection;
   settings?: InternalWorkshopSettingsRecord;
+  capacityConflicts?: CapacityConflict[];
   services?: InternalServiceRecord[];
   schedule?: InternalWeeklyScheduleRecord;
   exceptions?: ScheduleDateException[];
@@ -128,6 +132,8 @@ export function InternalAgendaScreen({
             Configuración
           </InternalNavLink>
         </nav>
+
+        {settings ? <CapacityWarning capacity={settings.capacity} conflicts={capacityConflicts} /> : null}
 
         {feedbackAlert ? (
           <Alert className="mt-6" tone={feedbackAlert.tone}>

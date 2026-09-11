@@ -91,6 +91,11 @@ the deposit toggle is enabled. Empty activation dates preserve immediate activat
 Refund terms are displayed publicly; refunds are processed manually. Duration edits
 affect new reservations and preserve existing appointment intervals.
 
+Lowering capacity preserves existing appointments. Both internal sections display
+a persistent warning with links to every future interval above capacity, including
+dates outside the selected week. The warning is recalculated from the database on
+each page load and disappears once those conflicts are resolved.
+
 Apply `prisma migrate deploy` for existing databases; do not reseed to apply changes,
 since the seed resets the operational defaults. Migration columns are nullable and
 do not enable deposits or invent contact details.
