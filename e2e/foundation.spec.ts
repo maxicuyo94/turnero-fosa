@@ -34,6 +34,45 @@ test("foundation routes are reachable", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Acceso interno" })).toBeVisible();
 });
 
+test("capacity changes keep appointments and show a persistent conflict warning", async ({ page }) => {
+  test.slow();
+  const settings = await prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
+  const firstId = await seedInternalE2EAppointment();
+  const secondId = await seedInternalE2EAppointment();
+  const futureDate = new Date(Date.now() + 45 * 86_400_000).toISOString().slice(0, 10);
+  const interval = { startAt: new Date(`${futureDate}T09:00:00-03:00`), endAt: new Date(`${futureDate}T10:00:00-03:00`) };
+  try {
+    await prisma.appointment.updateMany({ where: { id: { in: [firstId, secondId] } }, data: interval });
+    await prisma.workshopSettings.update({ where: { id: settings.id }, data: { capacity: 2 } });
+    await ensureE2EAdminUser();
+    await page.goto("/internal/login");
+    await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
+    await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
+    await page.getByRole("button", { name: "Ingresar", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+    await page.goto("/internal?section=settings");
+    await page.getByLabel("Capacidad simultanea", { exact: false }).fill("1");
+    await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
+    const conflictLink = page.getByRole("alert").locator(`a[href="/internal?date=${futureDate}"]`);
+    await expect(conflictLink).toBeVisible();
+    expect(await prisma.workshopSettings.findUnique({ where: { id: settings.id } })).toMatchObject({ capacity: 1 });
+    expect(await prisma.appointment.findMany({ where: { id: { in: [firstId, secondId] } } })).toEqual([
+      expect.objectContaining({ ...interval, status: "CONFIRMED" }), expect.objectContaining({ ...interval, status: "CONFIRMED" }),
+    ]);
+    await page.goto("/internal?section=settings");
+    await expect(conflictLink).toBeVisible();
+    await page.reload();
+    await expect(conflictLink).toBeVisible();
+    await page.getByRole("link", { name: "Agenda", exact: true }).click();
+    await expect(conflictLink).toBeVisible();
+    await prisma.appointment.update({ where: { id: secondId }, data: { status: "CANCELLED" } });
+    await page.reload();
+    await expect(conflictLink).toHaveCount(0);
+  } finally {
+    await prisma.workshopSettings.update({ where: { id: settings.id }, data: { capacity: settings.capacity } });
+  }
+});
+
 test("internal settings persist business details and service durations", async ({ page }) => {
   test.slow();
   const original = await prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
