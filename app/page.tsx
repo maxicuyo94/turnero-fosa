@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WorkshopContact } from "@/src/modules/settings/workshop-contact";
 import { Chip, PageHeading, PageShell, RouteCard, SiteHeader } from "@/src/components/ui";
 import { auth, getInternalSessionDisplayName } from "@/src/lib/auth";
 
@@ -42,6 +43,7 @@ export default async function HomePage() {
           <Chip>Sin cancelacion online</Chip>
         </div>
       </PageShell>
+      <WorkshopContact />
     </>
   );
 }

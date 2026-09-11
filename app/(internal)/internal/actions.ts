@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { ZodError } from "zod";
 import { auth, getInternalSessionUserId, isInternalSession, signOut } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { getNotificationEnv } from "@/src/lib/env";
+import { getWorkshopNotificationEnv } from "@/src/modules/settings/runtime-settings";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 import { appointmentStatusSchema } from "@/src/modules/appointments/schemas";
 import {
@@ -15,6 +17,7 @@ import {
   deleteInternalDateException,
   saveInternalDateException,
   updateInternalServiceVisibility,
+  updateInternalServiceDuration,
   updateInternalWeeklySchedule,
   updateInternalWorkshopSettings,
   type WeeklyScheduleUpdateInput,
@@ -28,7 +31,7 @@ import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapt
 export async function updateAppointmentStatusAction(formData: FormData) {
   const changedById = await requireInternalAccess();
   const repository = new PrismaInternalRepository(db);
-  const notificationEnv = getNotificationEnv();
+  const notificationEnv = await getWorkshopNotificationEnv(db);
   await updateInternalAppointmentStatus(repository, {
     appointmentId: stringValue(formData, "appointmentId"),
     nextStatus: appointmentStatusSchema.parse(stringValue(formData, "nextStatus")),
@@ -44,7 +47,7 @@ export async function updateAppointmentStatusAction(formData: FormData) {
 
 export async function rescheduleAppointmentAction(formData: FormData) {
   const changedById = await requireInternalAccess();
-  const notificationEnv = getNotificationEnv();
+  const notificationEnv = await getWorkshopNotificationEnv(db);
   const result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
     appointmentId: stringValue(formData, "appointmentId"),
     date: stringValue(formData, "targetDate"),
@@ -74,15 +77,37 @@ export async function previewAppointmentAvailabilityAction(input: {
 
 export async function updateWorkshopSettingsAction(formData: FormData) {
   await requireInternalAccess();
-  await updateInternalWorkshopSettings(new PrismaInternalRepository(db), {
-    capacity: stringValue(formData, "capacity"),
-    minimumNoticeMinutes: stringValue(formData, "minimumNoticeMinutes"),
-    maximumBookingWindowDays: stringValue(formData, "maximumBookingWindowDays"),
-    depositRequired: stringValue(formData, "depositRequired") === "true",
-    depositAmountArs: stringValue(formData, "depositAmountArs"),
-    depositExpirationMinutes: stringValue(formData, "depositExpirationMinutes"),
+  try {
+    await updateInternalWorkshopSettings(new PrismaInternalRepository(db), {
+      publicPhone: stringValue(formData, "publicPhone"),
+      whatsappNumber: stringValue(formData, "whatsappNumber"),
+      publicAppUrl: stringValue(formData, "publicAppUrl"),
+      emailFrom: stringValue(formData, "emailFrom"),
+      depositRefundPolicy: stringValue(formData, "depositRefundPolicy"),
+      depositActivationDate: stringValue(formData, "depositActivationDate"),
+      capacity: stringValue(formData, "capacity"),
+      minimumNoticeMinutes: stringValue(formData, "minimumNoticeMinutes"),
+      maximumBookingWindowDays: stringValue(formData, "maximumBookingWindowDays"),
+      depositRequired: stringValue(formData, "depositRequired") === "true",
+      depositAmountArs: stringValue(formData, "depositAmountArs"),
+      depositExpirationMinutes: stringValue(formData, "depositExpirationMinutes"),
+    });
+  } catch (error) {
+    if (!(error instanceof ZodError)) throw error;
+    redirect("/internal?section=settings&feedback=settings-invalid");
+  }
+  revalidatePath("/", "layout");
+  redirect("/internal?section=settings&feedback=settings-updated");
+}
+
+export async function updateServiceDurationAction(formData: FormData) {
+  await requireInternalAccess();
+  const result = await updateInternalServiceDuration(new PrismaInternalRepository(db), {
+    serviceId: stringValue(formData, "serviceId"),
+    durationMinutes: stringValue(formData, "durationMinutes"),
   });
-  redirect("/internal?section=settings");
+  if (result.accepted) revalidatePath("/", "layout");
+  redirect(`/internal?section=settings&feedback=${result.accepted ? "service-updated" : "service-invalid"}`);
 }
 
 export async function updateServiceVisibilityAction(formData: FormData) {

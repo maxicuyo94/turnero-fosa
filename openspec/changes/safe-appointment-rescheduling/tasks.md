@@ -37,4 +37,5 @@
 - [x] 5.1 Run `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e`, and `pnpm build`.
 - [x] 5.2 Apply migration and deploy to `preview`.
 - [x] 5.3 Complete desktop/mobile acceptance for move, shorten, extend, holiday, break, terminal status, and concurrent conflict scenarios.
-- [ ] 5.4 Promote the exact verified commit to `main` and monitor application/email logs.
+- [x] 5.4 Promote the exact verified commit to `main` (`e15ebe8`, 2026-09-09; production migrations and public routes verified).
+- [ ] 5.5 Complete post-release application/email log monitoring and record evidence of actual email delivery.

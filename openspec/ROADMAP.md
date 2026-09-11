@@ -1,82 +1,127 @@
-# Product application roadmap
+# Roadmap — Turnero Taller Express
 
-This roadmap sequences the next product improvements into independently reviewable OpenSpec changes. Each phase must preserve the scheduling invariants and pass the complete quality suite before deployment to `preview` and then `main`.
+Actualizado: **2026-09-11**. Base revisada: `e15ebe8` en `main`.
 
-## Delivery order
+Este documento ordena el trabajo futuro. El detalle de errores, riesgos y pruebas
+pendientes está en [BACKLOG.md](BACKLOG.md). Las prioridades son propuestas; no
+representan fechas comprometidas ni autorización para activar cobros.
 
-### Phase 1 — Safe appointment rescheduling
+## Estado de partida
 
-Outcome: authorized staff can change an appointment's date, start time, and total duration without creating an invalid or over-capacity interval.
+El 2026-09-09 se publicó `e15ebe8` en producción con migraciones aplicadas y
+[CI aprobado](https://github.com/maxicuyo94/turnero-fosa/actions/runs/34361160756).
+En esa entrega pasaron 127 pruebas unitarias/de integración y 10 pruebas E2E.
+Estos resultados son históricos: esta actualización documental no vuelve a
+certificar el estado remoto ni constituye una auditoría exhaustiva.
 
-- Reuse one scheduling policy for public booking, internal rescheduling, and duration changes.
-- Validate service minimum duration, slot-step alignment, opening hours, date exceptions and holidays, breaks, day boundary, terminal status, and capacity for the complete proposed interval.
-- Exclude the appointment being edited from overlap counts.
-- Revalidate and update inside one database transaction with the same capacity lock used to prevent concurrent overbooking.
-- Allow both shortening and extending, but never below the selected service's configured minimum duration.
-- Record previous and new intervals, the authenticated operator, timestamp, and optional reason.
-- Notify the customer only after a successful commit.
+| Capacidad | Estado | Evidencia / pendiente |
+| --- | --- | --- |
+| Reserva pública, consulta por código, disponibilidad y capacidad | Implementado y publicado | `src/modules/booking/`, `src/modules/availability/` |
+| Agenda protegida, estados, horarios, descansos y feriados | Implementado y publicado | `src/modules/internal/`; queda cerrar evidencia pendiente de aceptación de feriados |
+| Reprogramación interna, duración e historial de intervalos | Implementado y publicado | [Cambio OpenSpec](changes/safe-appointment-rescheduling/tasks.md); pendiente seguimiento de logs de email |
+| Base de señas con Mercado Pago y webhook firmado | Código publicado; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); falta compra sandbox completa y configuración productiva |
+| Correcciones de reintentos vencidos, pagos fallidos, enlaces manipulados y zona horaria | Publicadas en `e15ebe8` | `tests/payments-prisma.test.ts`, `tests/availability.test.ts`, `e2e/foundation.spec.ts` |
+| Email de creación, cambio de estado y reprogramación | Implementado; operación por verificar | Confirmar remitente/dominio productivo y entrega real; aún sin cola durable ni recordatorios |
 
-Detailed artifacts live in `openspec/changes/safe-appointment-rescheduling/`.
+Publicar el código de pagos no habilita Mercado Pago automáticamente. En la
+verificación del 2026-09-09 no había credenciales de Mercado Pago en producción y
+el formulario público no exigía seña. Revisar la configuración antes de activarla.
 
-### Phase 2 — Faster daily operations
+## Próximo bloque — Estabilidad
 
-Outcome: common workshop actions require fewer clicks.
+Objetivo: evitar estados inconsistentes y rechazar entradas inválidas antes de
+consultar o modificar la base.
 
-- Add previous, today, and next navigation to day/week agenda views.
-- Add copy-public-code, call, and WhatsApp shortcuts to appointment details.
-- Add safe editing for customer contact, motorcycle details, and operational notes.
-- Show interval and status history in the appointment detail.
-- Replace the mobile seven-column week with a compact list or three-day view while retaining the desktop week grid.
-- Show closed holidays as `Taller cerrado` and flag any legacy appointment that overlaps a closed date.
+| Orden | Trabajo | Prioridad | Criterio de salida |
+| --- | --- | --- | --- |
+| 1 | Transiciones de estado atómicas, incluyendo cancelación pública | P1 · [ERR-001](BACKLOG.md#err-001--cambios-de-estado-concurrentes) | Dos operaciones incompatibles no pueden aprobarse sobre un estado obsoleto; historial coherente en PostgreSQL |
+| 2 | Fechas reales y horas válidas en páginas, acciones y esquemas | P1 · [ERR-002](BACKLOG.md#err-002--fechas-y-horas-invalidas) | `2026-02-31`, `25:00` y una fecha malformada producen feedback controlado, sin persistencia ni excepción sin manejar |
+| 3 | Inicio de pago idempotente bajo concurrencia | P1 antes de cobrar · [PAY-001](BACKLOG.md#pay-001--inicio-de-pago-concurrente) | Doble clic/reintento paralelo devuelve el mismo intento y no crea dos checkouts cobrables |
+| 4 | Orden de actualizaciones de pago y reconciliación | P1 antes de cobrar · [PAY-002](BACKLOG.md#pay-002--actualizaciones-de-pago-fuera-de-orden) | Una respuesta vieja no rebaja un pago aprobado; reembolsos y contracargos conservan su significado |
+| 5 | Vencimiento sin depender de visitas a reservas | P2 · [PAY-003](BACKLOG.md#pay-003--vencimiento-dependiente-del-trafico) | Los turnos vencen dentro de un intervalo acordado aunque nadie abra `/booking` |
 
-### Phase 3 — Customer communications
+ERR-001 y ERR-002 son el siguiente trabajo recomendado. Los demás pueden avanzar
+en cambios independientes, pero PAY-001 y PAY-002 deben resolverse antes de exigir
+señas. No se corrigieron estos puntos durante la actualización documental.
 
-Outcome: customers receive timely confirmations and reminders.
+## Siguiente bloque — Operación diaria
 
-- Complete the production Resend sender-domain setup.
-- Send rescheduling, duration-change, confirmation, cancellation, and reminder messages from an outbox/worker flow.
-- Make reminder lead times configurable.
-- Add delivery status and retry visibility to the internal panel.
-- Introduce WhatsApp only after provider, consent, template, and cost decisions are recorded.
+Objetivo: reducir pasos para atender y administrar turnos.
 
-### Phase 4 — Deposits and payments
+- Navegación anterior/hoy/siguiente para día y semana.
+- Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.
+- Edición validada de contacto, moto y notas, con trazabilidad.
+- Mostrar historial de estados junto al historial de intervalos ya disponible.
+- Vista móvil compacta de agenda: evaluar lista o tres días.
+- Mantener la visualización de feriados y agregar una alerta para turnos antiguos
+  que hayan quedado dentro de un cierre o fuera de la capacidad actual.
+- Mejorar `/booking/status`: pasos siguientes según estado y acceso seguro al
+  reintento de pago cuando corresponda; revisar legibilidad en móvil.
 
-Outcome: the workshop can require and reconcile a configurable booking deposit.
+Aceptación: comprobar los recorridos cotidianos con el taller, teclado y móvil;
+conservar autorización, historial y validación de capacidad.
 
-- Use **Mercado Pago Checkout Pro** as the payment provider. Customers complete payment in Mercado Pago's hosted checkout; the application MUST NOT collect or store card data.
-- Replace the documented fixed ARS 5,000 assumption with configurable policy values.
-- Create one backend payment preference for each deposit attempt and correlate it to the appointment through an internal payment ID and Mercado Pago `external_reference`.
-- Treat browser return URLs as presentation only. Payment approval MUST be confirmed server-to-server from Mercado Pago data.
-- Receive the `payments` Webhook event through HTTPS, validate the `x-signature` secret signature, retrieve the referenced payment, and process every notification idempotently.
-- Model pending, approved, rejected, expired, and refunded payment states.
-- Define reservation expiry and capacity release behavior for unpaid bookings.
-- Keep separate test and production credentials in environment configuration and complete Mercado Pago test purchases before activation.
-- Add reconciliation, cancellation, refund, duplicate-notification, and chargeback handling before enabling mandatory deposits.
+## Siguiente bloque — Comunicaciones y señas operativas
 
-### Phase 5 — Capacity and reporting
+Se puede trabajar por separado en ambos frentes.
 
-Outcome: staff can understand workload and business performance.
+**Comunicaciones**
 
-- Add capacity-lane visualization for simultaneous motorcycles.
-- Show occupancy gaps and over-capacity legacy records.
-- Add weekly appointment, cancellation, no-show, service-demand, utilization, and returning-customer metrics.
-- Define metric semantics and timezone boundaries before building charts.
+- Verificar dominio/remitente de Resend y entrega real de los eventos existentes.
+- Guardar eventos de email en una outbox transaccional y enviarlos con un worker.
+- Agregar reintentos, estados de entrega visibles y recordatorios configurables.
+- Definir proveedor, consentimiento, plantillas y costos antes de automatizar WhatsApp.
 
-### Phase 6 — Roles and production operations
+**Señas**
 
-Outcome: the system is safe to operate with multiple staff members.
+- Resolver PAY-001/PAY-002/PAY-003 y ejecutar una compra sandbox completa.
+- Probar aprobación, rechazo, expiración, notificación duplicada y pago tardío.
+- Incorporar consulta/reconciliación operativa, devolución y contracargo.
+- Definir qué hace el taller ante un pago acreditado con turno cancelado.
+- Configurar credenciales y webhook de producción; activar la política en una
+  entrega explícita, con seguimiento del primer pago y posibilidad de desactivar
+  nuevos cobros sin borrar el historial.
 
-- Add least-privilege roles for administrator, reception, and mechanic workflows.
-- Add immutable audit events for protected mutations.
-- Add error monitoring, health checks, backup-restore drills, rate limits, and security review.
-- Extend Playwright coverage to mobile, rescheduling concurrency, payments, and reminder delivery.
+Aceptación: seguir un pago desde la reserva hasta el proveedor y el turno,
+incluyendo recuperaciones ante fallos; nunca tomar la URL de retorno como aprobación.
 
-## Release gates
+## Más adelante — Capacidad, reportes y acceso
 
-Every phase must:
+- Visualización de puestos/carriles para motos simultáneas y huecos de ocupación.
+- Indicadores de turnos, cancelaciones, ausencias, demanda por servicio,
+  utilización y clientes recurrentes; acordar definiciones y límites de fecha.
+- Roles de administrador, recepción y mecánico, con permisos por operación.
+- Auditoría de modificaciones, monitoreo de errores, health checks, límites de
+  solicitudes y ejercicios de restauración de backups.
+- Auditoría actualizada de dependencias y revisión de las actualizaciones automáticas.
 
-1. Start with accepted proposal, specification, design, and task artifacts.
-2. Keep each implementation review below the configured 800-line budget or split it into smaller changes.
-3. Use strict RED-GREEN-REFACTOR for behavior changes.
-4. Pass `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e`, and `pnpm build`.
-5. Deploy to `preview`, complete desktop/mobile acceptance checks, and only then promote the same commit to `main`.
+Inventario, sucursales, historia mecánica completa, pagos adicionales y
+reprogramación pública quedan fuera del alcance inmediato, hasta definir su necesidad.
+
+## Decisiones pendientes del taller
+
+Estos valores se administran desde **Interno → Configuración** y se guardan en la
+base de datos. El cambio `business-settings` agrega contacto, dominio, remitente,
+política de devolución, fecha de activación y edición de duraciones. La fecha
+controla el comienzo del cobro habilitado, en horario de Argentina. Cargar el
+dominio/remitente requiere que estén conectados/verificados con sus proveedores.
+El taller puede completar los datos reales desde el panel; ya no requiere editar código.
+
+| Tema | Decisión necesaria |
+| --- | --- |
+| Operación | Confirmar horarios, descansos, capacidad y duraciones reales de reparaciones |
+| Contacto | Número público/WhatsApp, dominio y remitente de email |
+| Señas | Monto, vencimiento, manejo de devolución y fecha de activación |
+| Prioridad de producto | Elegir entre mejoras de agenda, comunicaciones y activación de señas después del bloque de estabilidad |
+
+## Entrega y mantenimiento del plan
+
+1. Para cada cambio funcional, preparar propuesta, especificación, diseño y tareas OpenSpec.
+2. Mantener cada revisión por debajo del presupuesto de 800 líneas o dividirla.
+3. Reproducir el fallo con una prueba y seguir RED-GREEN-REFACTOR para cambios de comportamiento.
+4. Pasar `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm test:e2e` y `pnpm build`.
+5. Usar una base de pruebas aislada; nunca ejecutar suites que escriben datos contra producción.
+6. Verificar preview en escritorio/móvil y publicar el mismo commit en `main`.
+7. Comprobar migraciones, dominio final y rutas, y registrar SHA, fecha y evidencia.
+8. Al cerrar un ítem, actualizar este roadmap, el backlog y sus tareas; separar
+   código publicado de configuración activada y de verificaciones pendientes.

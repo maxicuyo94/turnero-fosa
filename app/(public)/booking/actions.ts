@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { db } from "@/src/lib/db";
-import { getMercadoPagoEnv, getNotificationEnv } from "@/src/lib/env";
+import { getWorkshopPaymentEnv, getWorkshopNotificationEnv } from "@/src/modules/settings/runtime-settings";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { cancelPublicAppointment, createPublicBooking } from "@/src/modules/booking/service";
 import { PrismaNotificationLogRepository } from "@/src/modules/notifications/prisma-repository";
@@ -13,7 +13,7 @@ import { initiateAppointmentDeposit } from "@/src/modules/payments/service";
 
 export async function createAppointmentAction(formData: FormData) {
   const repository = new PrismaBookingRepository(db);
-  const notificationEnv = getNotificationEnv();
+  const notificationEnv = await getWorkshopNotificationEnv(db);
   const result = await createPublicBooking(repository, {
     serviceId: stringValue(formData, "serviceId"),
     date: stringValue(formData, "date"),
@@ -50,7 +50,7 @@ export async function createAppointmentAction(formData: FormData) {
   if (cancellationUrl) params.set("cancel", cancellationUrl);
 
   if (result.depositRequired) {
-    const paymentEnv = getMercadoPagoEnv();
+    const paymentEnv = await getWorkshopPaymentEnv(db);
     if (paymentEnv) {
       const payment = await initiateAppointmentDeposit(
         new PrismaDepositPaymentRepository(db),
@@ -78,7 +78,7 @@ export async function retryDepositAction(formData: FormData) {
     redirect(`/booking?${params.toString()}`);
   }
 
-  const paymentEnv = getMercadoPagoEnv();
+  const paymentEnv = await getWorkshopPaymentEnv(db);
   if (!paymentEnv) {
     params.set("message", "El turno sigue registrado, pero la seña esta pendiente.");
     params.set("paymentError", "El pago online todavia no esta habilitado. El taller coordinara la seña.");

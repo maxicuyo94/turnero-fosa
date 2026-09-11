@@ -14,6 +14,7 @@ vi.mock("@/app/(internal)/internal/actions", () => ({
     ],
   }),
   updateServiceVisibilityAction: async () => undefined,
+  updateServiceDurationAction: async () => undefined,
   updateWorkshopSettingsAction: async () => undefined,
   updateWeeklyScheduleAction: async () => undefined,
   saveDateExceptionAction: async () => undefined,

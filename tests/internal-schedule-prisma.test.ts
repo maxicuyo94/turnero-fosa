@@ -45,6 +45,28 @@ describe("Prisma internal schedule integration", () => {
     expect(storedBreaks).toEqual([expect.objectContaining({ dayOfWeek: "MONDAY", startsAt: "12:00", endsAt: "13:00" })]);
   });
 
+  it("round-trips contact and deposit settings without replacing weekly schedules", async () => {
+    const current = await repository.getWorkshopSettings();
+    const contact = { publicPhone: "+54 261 5551234", whatsappNumber: "+5492615551234", publicAppUrl: "https://taller.example", emailFrom: "turnos@taller.example", depositRefundPolicy: "Solicitar al taller.", depositActivationDate: "2026-10-01" };
+    await repository.updateWorkshopSettings({ ...current, ...contact });
+    const fresh = new PrismaInternalRepository(prisma, { workshopSettingsId });
+    expect(await fresh.getWorkshopSettings()).toMatchObject(contact);
+    expect((await fresh.getWeeklySchedule()).schedules).toHaveLength(7);
+    await fresh.updateWorkshopSettings({ ...current, publicPhone: null, depositActivationDate: null });
+    expect(await repository.getWorkshopSettings()).toMatchObject({ publicPhone: null, depositActivationDate: null });
+  });
+
+  it("persists a service duration and prevents editing a service from another workshop", async () => {
+    const service = await prisma.service.create({ data: { workshopSettingsId, name: "Test duration", durationMinutes: 60, displayOrder: 99, isActive: false } });
+    try {
+      await repository.updateServiceDuration(service.id, 180);
+      expect(await prisma.service.findUnique({ where: { id: service.id } })).toMatchObject({ durationMinutes: 180 });
+      const foreign = new PrismaInternalRepository(prisma, { workshopSettingsId: "another-workshop" });
+      await expect(foreign.updateServiceDuration(service.id, 240)).rejects.toThrow();
+      expect(await prisma.service.findUnique({ where: { id: service.id } })).toMatchObject({ durationMinutes: 180 });
+    } finally { await prisma.service.delete({ where: { id: service.id } }); }
+  });
+
   it("keeps the previous configuration when the replacement fails midway", async () => {
     const invalidSchedules = [
       ...workshopSeedConfig.schedules.slice(0, 6),

@@ -1,4 +1,5 @@
 import type { DepositPaymentStatus, PrismaClient } from "@prisma/client";
+import { isDepositActive } from "@/src/modules/settings/business-settings";
 import type { DepositPaymentRepository } from "@/src/modules/payments/service";
 
 const unpaidStatuses: DepositPaymentStatus[] = ["CREATED", "PENDING", "ERROR", "REJECTED", "CANCELLED", "EXPIRED"];
@@ -9,7 +10,7 @@ export class PrismaDepositPaymentRepository implements DepositPaymentRepository 
   async getDepositPolicy() {
     const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
     return {
-      required: settings.depositRequired,
+      required: isDepositActive(settings),
       amountCents: settings.depositAmountCents,
       expirationMinutes: settings.depositExpirationMinutes,
     };
