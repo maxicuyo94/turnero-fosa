@@ -41,6 +41,12 @@ export class PrismaInternalRepository
   async getWorkshopSettings(): Promise<InternalWorkshopSettingsRecord> {
     const settings = await this.prisma.workshopSettings.findUniqueOrThrow({ where: { id: await this.resolveWorkshopSettingsId() } });
     return {
+      publicPhone: settings.publicPhone,
+      whatsappNumber: settings.whatsappNumber,
+      publicAppUrl: settings.publicAppUrl,
+      emailFrom: settings.emailFrom,
+      depositRefundPolicy: settings.depositRefundPolicy,
+      depositActivationDate: settings.depositActivationDate,
       capacity: settings.capacity,
       slotStepMinutes: settings.slotStepMinutes,
       minimumNoticeMinutes: settings.minimumNoticeMinutes,
@@ -52,7 +58,7 @@ export class PrismaInternalRepository
   }
 
   async listServices() {
-    const services = await this.prisma.service.findMany({ orderBy: [{ displayOrder: "asc" }, { name: "asc" }] });
+    const services = await this.prisma.service.findMany({ where: { workshopSettingsId: await this.resolveWorkshopSettingsId() }, orderBy: [{ displayOrder: "asc" }, { name: "asc" }] });
     return services.map((service) => ({
       id: service.id,
       name: service.name,
@@ -269,6 +275,12 @@ export class PrismaInternalRepository
   async updateWorkshopSettings(input: InternalWorkshopSettingsRecord): Promise<InternalWorkshopSettingsRecord> {
     const updated = await this.prisma.workshopSettings.update({ where: { id: await this.resolveWorkshopSettingsId() }, data: input });
     return {
+      publicPhone: updated.publicPhone,
+      whatsappNumber: updated.whatsappNumber,
+      publicAppUrl: updated.publicAppUrl,
+      emailFrom: updated.emailFrom,
+      depositRefundPolicy: updated.depositRefundPolicy,
+      depositActivationDate: updated.depositActivationDate,
       capacity: updated.capacity,
       slotStepMinutes: updated.slotStepMinutes,
       minimumNoticeMinutes: updated.minimumNoticeMinutes,
@@ -288,6 +300,13 @@ export class PrismaInternalRepository
       isActive: service.isActive,
       displayOrder: service.displayOrder,
     };
+  }
+
+  async updateServiceDuration(serviceId: string, durationMinutes: number) {
+    return this.prisma.service.update({
+      where: { id: serviceId, workshopSettingsId: await this.resolveWorkshopSettingsId() },
+      data: { durationMinutes },
+    });
   }
 }
 

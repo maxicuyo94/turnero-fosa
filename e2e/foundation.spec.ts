@@ -34,6 +34,44 @@ test("foundation routes are reachable", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Acceso interno" })).toBeVisible();
 });
 
+test("internal settings persist business details and service durations", async ({ page }) => {
+  test.slow();
+  const original = await prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
+  const service = await prisma.service.findFirstOrThrow({ where: { workshopSettingsId: original.id } });
+  const restore = { publicPhone: original.publicPhone, whatsappNumber: original.whatsappNumber, publicAppUrl: original.publicAppUrl, emailFrom: original.emailFrom, depositRefundPolicy: original.depositRefundPolicy, depositActivationDate: original.depositActivationDate };
+  try {
+    await ensureE2EAdminUser();
+    await page.goto("/internal/login");
+    await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
+    await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
+    await page.getByRole("button", { name: "Ingresar" }).click();
+    await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+    await page.getByRole("link", { name: "Configuración", exact: true }).click();
+    await page.getByLabel("Teléfono público").fill("+54 261 5551234");
+    await page.getByLabel("WhatsApp", { exact: false }).fill("+5492615551234");
+    await page.getByLabel("Dominio público", { exact: false }).fill("https://taller.example");
+    await page.getByLabel("Remitente de email", { exact: false }).fill("turnos@taller.example");
+    await page.getByLabel("Fecha de activación de señas", { exact: false }).fill("2026-10-01");
+    await page.getByLabel("Política de devolución", { exact: false }).fill("Contactanos para solicitar una devolución.");
+    await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
+    await expect(page.getByText("Guardamos la configuración del taller.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Teléfono público")).toHaveValue("+54 261 5551234");
+    await expect(page.getByLabel("Fecha de activación de señas", { exact: false })).toHaveValue("2026-10-01");
+    const duration = page.getByLabel(`Duración de ${service.name}`, { exact: false });
+    await duration.fill("180");
+    await duration.locator("xpath=ancestor::form").getByRole("button", { name: "Guardar duración" }).click();
+    await expect(page.getByText("Guardamos la duración para los nuevos turnos. Los turnos existentes conservan su horario.")).toBeVisible();
+    expect(await prisma.service.findUnique({ where: { id: service.id } })).toMatchObject({ durationMinutes: 180 });
+    await page.goto("/booking/status");
+    await expect(page.getByRole("link", { name: "Consultar por WhatsApp" })).toHaveAttribute("href", "https://wa.me/5492615551234");
+    await expect(page.getByText("Contactanos para solicitar una devolución.")).toBeVisible();
+  } finally {
+    await prisma.workshopSettings.update({ where: { id: original.id }, data: restore });
+    await prisma.service.update({ where: { id: service.id }, data: { durationMinutes: service.durationMinutes } });
+  }
+});
+
 test("public booking happy path creates a pending request", async ({ page }) => {
   const runId = Date.now().toString();
   const bookingDate = await findNextPublicBookingDate();

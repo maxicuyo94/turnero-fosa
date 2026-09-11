@@ -24,3 +24,7 @@
 - [x] 4.2 Deploy migration and code to Preview with deposit collection disabled by default.
 - [x] 4.3 Configure Preview webhook and complete signed-notification acceptance.
 - [ ] 4.4 Configure production credentials, enable the policy, and monitor first live payment.
+
+Release note (2026-09-09): code and migration published to production in `e15ebe8`.
+This does not complete 3.5 or 4.4: a full sandbox purchase and live collection
+activation remain pending. Track the remaining payment risks in [BACKLOG.md](../../BACKLOG.md).

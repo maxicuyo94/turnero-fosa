@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 
 export const dayOfWeekSchema = z.enum([
   "MONDAY",
@@ -12,9 +13,9 @@ export const dayOfWeekSchema = z.enum([
 
 export type DayOfWeek = z.infer<typeof dayOfWeekSchema>;
 
-const timeSchema = z.string().regex(/^\d{2}:\d{2}$/u, "Time must use HH:mm format.");
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u, "Time must use HH:mm format.");
 
-const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, "Date must use YYYY-MM-DD format.");
+const dateSchema = calendarDateSchema;
 
 export const workshopSettingsSchema = z.object({
   workshopName: z.string().trim().min(1),

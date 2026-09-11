@@ -4,10 +4,12 @@ import {
   saveDateExceptionAction,
   signOutAction,
   updateServiceVisibilityAction,
+  updateServiceDurationAction,
   updateWeeklyScheduleAction,
   updateWorkshopSettingsAction,
 } from "@/app/(internal)/internal/actions";
 import Link from "next/link";
+import { ContactSettingsFields, DepositSettingsFields } from "@/src/modules/settings/business-settings-fields";
 import {
   Alert,
   Button,
@@ -32,6 +34,7 @@ import type { InternalAgenda } from "@/src/modules/internal/operations";
 import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
 
 export const internalFeedbackCodes = [
+  "settings-updated", "settings-invalid", "service-updated", "service-invalid",
   "schedule-updated",
   "schedule-invalid",
   "exception-saved",
@@ -46,6 +49,10 @@ export type InternalFeedbackCode = (typeof internalFeedbackCodes)[number];
 export type InternalSection = "agenda" | "settings";
 
 const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message: string }> = {
+  "settings-updated": { tone: "success", message: "Guardamos la configuración del taller." },
+  "settings-invalid": { tone: "danger", message: "Revisá los datos: teléfono y WhatsApp válidos, dominio HTTPS sin rutas, remitente de email, fecha existente y valores numéricos dentro del rango." },
+  "service-updated": { tone: "success", message: "Guardamos la duración para los nuevos turnos. Los turnos existentes conservan su horario." },
+  "service-invalid": { tone: "danger", message: "La duración debe ser de 1 a 1440 minutos." },
   "schedule-updated": { tone: "success", message: "Actualizamos el horario semanal del taller." },
   "schedule-invalid": {
     tone: "danger",
@@ -156,6 +163,8 @@ export function InternalAgendaScreen({
             <Card>
               <h2 className="text-2xl font-black text-white">Configuración general</h2>
               <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
+                <ContactSettingsFields settings={settings} />
+                <h3 className="mt-3 text-lg font-bold text-white">Operación y señas</h3>
                 <Field hint="(1-20)" label="Capacidad simultanea">
                   <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
                 </Field>
@@ -199,6 +208,7 @@ export function InternalAgendaScreen({
                     type="number"
                   />
                 </Field>
+                <DepositSettingsFields settings={settings} />
                 <Button className="mt-1 w-fit" size="md" type="submit">
                   Guardar cambios
                 </Button>
@@ -212,6 +222,7 @@ export function InternalAgendaScreen({
               <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad publica.</p>
               <div className="mt-5 grid gap-3">
                 {services.map((service) => (
+                  <div key={service.id} className="rounded-xl border border-white/5 bg-charcoal-950 p-3">
                   <form
                     action={updateServiceVisibilityAction}
                     className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
@@ -230,6 +241,14 @@ export function InternalAgendaScreen({
                       checked={service.isActive}
                     />
                   </form>
+                  <form action={updateServiceDurationAction} className="mt-3 flex flex-wrap items-end gap-3">
+                    <input name="serviceId" type="hidden" value={service.id} />
+                    <Field label={`Duración de ${service.name}`} hint="minutos">
+                      <TextInput name="durationMinutes" type="number" min={1} max={1440} step={1} required defaultValue={service.durationMinutes} />
+                    </Field>
+                    <Button type="submit" variant="ghost" size="sm">Guardar duración</Button>
+                  </form>
+                  </div>
                 ))}
               </div>
             </Card>

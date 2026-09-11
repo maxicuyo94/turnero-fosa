@@ -2,6 +2,15 @@
 
 This repository contains the Taller de motos Express appointment scheduler MVP: public booking, protected internal agenda, workshop settings, service visibility, and the dark/apple-green UI baseline.
 
+## Roadmap and known issues
+
+- [Product roadmap](openspec/ROADMAP.md): delivered capabilities, priorities, future changes, and release criteria. Updated 2026-09-11.
+- [Errors and risks backlog](openspec/BACKLOG.md): reproduction evidence, investigation status, and acceptance criteria.
+
+The latest verified production release recorded here is `e15ebe8` (2026-09-09).
+Internal rescheduling and the deposit integration code are delivered; enabling
+live Mercado Pago collection remains a separate pending rollout.
+
 ## Quick path
 
 1. Use Node.js 24 (`24.18.1` is pinned in `.nvmrc`) and pnpm `10.14.0` through Corepack.
@@ -68,6 +77,24 @@ The local `.env` file is intentionally ignored by git. Use `.env.example` as the
 
 ## Internal Access
 
+### Business configuration
+
+Internal → Configuración stores operating hours, breaks, capacity, booking windows,
+service durations, public phone/WhatsApp, public HTTPS origin, email sender, deposit
+amount/expiry, refund terms and activation date in PostgreSQL. Empty origin/sender
+fields fall back to deployment environment values. A configured domain must already
+point to the app, and the email sender must be verified by the email provider.
+Provider API credentials remain in environment variables.
+
+Deposit activation starts at midnight Argentina on the selected date, only while
+the deposit toggle is enabled. Empty activation dates preserve immediate activation.
+Refund terms are displayed publicly; refunds are processed manually. Duration edits
+affect new reservations and preserve existing appointment intervals.
+
+Apply `prisma migrate deploy` for existing databases; do not reseed to apply changes,
+since the seed resets the operational defaults. Migration columns are nullable and
+do not enable deposits or invent contact details.
+
 The seed creates an internal admin when `ADMIN_USERNAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are present. The email remains an internal Auth.js identifier; interactive login uses the username.
 
 Default local credentials from `.env.example`:
@@ -82,7 +109,9 @@ Default local credentials from `.env.example`:
 
 Implemented now: scaffold, shared dark/apple-green UI, typed env validation, test tooling, Prisma schema, safe seed defaults, availability calculation, public service/slot lookup, public booking creation, policy-based cancellation link handling, Resend email notifications with non-blocking failure logs, Auth.js internal login, session-aware navbar, protected internal agenda with date filter, appointment status updates with status history, settings maintenance, service visibility controls, and E2E coverage for the core public/internal workflows.
 
-Intentionally deferred: automatic WhatsApp, deposit/payment handling, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, inventory, and online rescheduling.
+Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. Live payment activation and end-to-end sandbox purchase acceptance remain pending in the roadmap.
+
+Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, inventory, and public online rescheduling.
 
 ## Taller Express Defaults
 
@@ -93,7 +122,7 @@ Intentionally deferred: automatic WhatsApp, deposit/payment handling, contact/so
 | Instagram | Expresstallerdemotos |
 | Booking mode | Turnos programados, automatically confirmed |
 | Public cancellation/rescheduling | Disabled |
-| Deposit policy | 5000 ARS deposit required, payment handling pending |
+| Deposit policy | Configurable amount (initial value ARS 5,000); collection disabled by default, live activation pending |
 | Services | Service Esencial 60 min, Service Deluxe 4 h, Reparaciones generales, Reparacion de motor, Enderezado de chasis, Enderezado de barrales |
 | Notifications requested | Email and WhatsApp |
 
@@ -114,11 +143,11 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 
 ## Next implementation slice
 
-The initial OpenSpec change is implemented, verified, and archived. The next priorities are production hardening: verify the sender domain in Resend, confirm workshop policy values, configure preview/development environments, and keep the deployment quality suite automated.
+The proposed next slice is atomic status transitions and strict date/time validation, followed by payment concurrency and reconciliation before live collection. See the [roadmap](openspec/ROADMAP.md) for the delivery order and the [backlog](openspec/BACKLOG.md) for evidence and closure criteria.
 
 ## Security maintenance
 
-Dependabot tracks npm and GitHub Actions updates weekly. `pnpm audit --prod` currently reports one transitive `sharp` advisory inherited from Next.js; do not force `sharp` 0.35 until the installed Next.js release supports that range, then update Next.js and rerun the complete quality suite.
+Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit recorded a transitive `sharp` advisory inherited from Next.js. Run a fresh `pnpm audit --prod` before using that historical result to plan an update, and verify compatibility and the quality suite for the chosen versions.
 
 ## Environment strategy
 

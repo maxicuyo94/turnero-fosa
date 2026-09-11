@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isDepositActive } from "@/src/modules/settings/business-settings";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { BookingRepository, PublicAppointmentRecord, PublicServiceRecord } from "@/src/modules/booking/service";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
@@ -35,7 +36,7 @@ export class PrismaBookingRepository implements BookingRepository {
         confirmationMode: settings.confirmationMode,
         cancellationEnabled: settings.cancellationEnabled,
         reschedulingEnabled: settings.reschedulingEnabled,
-        depositRequired: settings.depositRequired,
+        depositRequired: isDepositActive(settings),
         depositAmountCents: settings.depositAmountCents,
         depositExpirationMinutes: settings.depositExpirationMinutes,
       },

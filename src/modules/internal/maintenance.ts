@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { businessSettingsSchema, type BusinessSettings } from "@/src/modules/settings/business-settings";
 import {
   scheduleBreakSchema,
   scheduleDateExceptionSchema,
@@ -34,7 +35,7 @@ export type InternalScheduleRepository = {
   upsertImportedDateExceptions(holidays: ImportedHoliday[]): Promise<DateExceptionImportSummary>;
 };
 
-export type InternalWorkshopSettingsRecord = {
+export type InternalWorkshopSettingsRecord = Partial<BusinessSettings> & {
   capacity: number;
   slotStepMinutes?: number;
   minimumNoticeMinutes: number;
@@ -59,11 +60,11 @@ export type InternalMaintenanceRepository = {
   updateServiceVisibility(serviceId: string, isActive: boolean): Promise<InternalServiceRecord>;
 };
 
-const settingsInputSchema = z.object({
+const settingsInputSchema = businessSettingsSchema.extend({
   capacity: z.coerce.number().int().min(1).max(20),
   minimumNoticeMinutes: z.coerce.number().int().min(0).max(10_080),
   maximumBookingWindowDays: z.coerce.number().int().min(1).max(365),
-  depositRequired: z.coerce.boolean(),
+  depositRequired: z.boolean(),
   depositAmountArs: z.coerce.number().positive().max(10_000_000),
   depositExpirationMinutes: z.coerce.number().int().min(5).max(10_080),
 });
@@ -76,6 +77,7 @@ export async function updateInternalWorkshopSettings(
   return {
     accepted: true,
     settings: await repository.updateWorkshopSettings({
+      ...businessSettingsSchema.parse(parsed),
       capacity: parsed.capacity,
       minimumNoticeMinutes: parsed.minimumNoticeMinutes,
       maximumBookingWindowDays: parsed.maximumBookingWindowDays,
@@ -192,4 +194,15 @@ export async function updateInternalServiceVisibility(
   input: { serviceId: string; isActive: boolean },
 ): Promise<{ accepted: true; service: InternalServiceRecord }> {
   return { accepted: true, service: await repository.updateServiceVisibility(input.serviceId, input.isActive) };
+}
+
+export const serviceDurationSchema = z.coerce.number().int().min(1).max(1440);
+
+export async function updateInternalServiceDuration(
+  repository: { updateServiceDuration(serviceId: string, durationMinutes: number): Promise<InternalServiceRecord> },
+  input: { serviceId: string; durationMinutes: unknown },
+) {
+  const parsed = serviceDurationSchema.safeParse(input.durationMinutes);
+  if (!parsed.success) return rejection("La duración debe ser de 1 a 1440 minutos.");
+  return { accepted: true as const, service: await repository.updateServiceDuration(input.serviceId, parsed.data) };
 }
