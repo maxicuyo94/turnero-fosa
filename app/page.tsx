@@ -29,7 +29,7 @@ export default async function HomePage() {
           />
           <RouteCard
             actionLabel="Ingresar →"
-            description="Agenda del dia, configuracion y catalogo de servicios."
+            description="Agenda del día, configuración e inventario de repuestos."
             eyebrow="Internos"
             href="/internal"
             linkComponent={Link}

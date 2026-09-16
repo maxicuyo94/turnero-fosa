@@ -2,6 +2,28 @@
 
 This repository contains the Taller de motos Express appointment scheduler MVP: public booking, protected internal agenda, workshop settings, service visibility, and the dark/apple-green UI baseline.
 
+## Shop development — incremental delivery
+
+The shop is being built in [independently verifiable deliveries](openspec/changes/spare-parts-shop/deliverables.md).
+Current scope is **E1: internal inventory**, verified in local DEV. The authorized deployment target is Vercel Preview on the `preview` branch; production publication is outside this delivery.
+
+- `/internal/shop`: inventory totals, availability, low-stock alerts and recent products.
+- `/internal/shop/inventory`: search/filter and create products with SKU, optional barcode, ARS price, physical location and opening stock.
+- `/internal/shop/inventory/[id]`: edit product details, record receipts, physical-count adjustments and repair consumption, and inspect the last 50 movements.
+
+All routes/actions require the existing internal session. Quantities change through audited movements;
+product edits do not overwrite stock. Available stock is physical stock minus reserved units.
+Optimistic versions protect concurrent edits; repeated operation keys do not create duplicate movements.
+The additive migration `20260915150000_shop_inventory` creates independent tables and does not change appointments.
+Do not reseed an existing database to apply this delivery; use its migration.
+
+The first delivery accepts barcode text and a manual physical-count adjustment. Camera scanning, count sessions,
+labels, customer accounts, point of sale, quotes, storefront, checkout and shipping belong to later deliveries.
+The catalog starts empty; add actual products from the panel. Production publication is outside the current authorization.
+
+On Windows, if Vitest's default fork workers time out during startup, run `pnpm exec vitest run --pool=threads --maxWorkers=1`.
+The inventory database tests guard against production/non-allowlisted targets and remove only their own fixtures.
+
 ## Roadmap and known issues
 
 - [Product roadmap](openspec/ROADMAP.md): delivered capabilities, priorities, future changes, and release criteria. Updated 2026-09-11.
@@ -116,7 +138,7 @@ Implemented now: scaffold, shared dark/apple-green UI, typed env validation, tes
 
 Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. Live payment activation and end-to-end sandbox purchase acceptance remain pending in the roadmap.
 
-Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, inventory, and public online rescheduling.
+Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, and public online rescheduling. Internal inventory is now in local DEV as described above.
 
 ## Taller Express Defaults
 
