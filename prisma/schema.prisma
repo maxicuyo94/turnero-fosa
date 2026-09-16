@@ -262,6 +262,57 @@ model User {
   sessions      Session[]
   statusChanges AppointmentStatusHistory[]
   intervalChanges AppointmentIntervalHistory[]
+  inventoryMovements InventoryMovement[]
+}
+
+enum InventoryMovementKind {
+  INITIAL
+  RECEIPT
+  ADJUSTMENT
+  REPAIR
+}
+
+model ShopProduct {
+  id            String   @id @default(cuid())
+  sku           String   @unique
+  barcode       String?  @unique
+  name          String
+  description   String?
+  category      String
+  brand         String?
+  compatibility String?
+  location      String?
+  priceCents    Int
+  stock         Int      @default(0)
+  reservedStock Int      @default(0)
+  minimumStock  Int      @default(0)
+  isActive      Boolean  @default(true)
+  version       Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  movements     InventoryMovement[]
+
+  @@index([isActive, name])
+  @@index([category])
+}
+
+model InventoryMovement {
+  id                 String                @id @default(cuid())
+  productId          String
+  kind               InventoryMovementKind
+  quantityDelta      Int
+  stockBefore        Int
+  stockAfter         Int
+  reason             String
+  reference          String?
+  actorId            String?
+  requestKey         String                @unique
+  requestFingerprint String
+  createdAt          DateTime              @default(now())
+  product            ShopProduct           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  actor              User?                 @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
 }
 
 model Account {
