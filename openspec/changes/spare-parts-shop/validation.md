@@ -22,6 +22,11 @@
   no lo publica.
 - Límite: sin prueba en teléfono físico Android ni iPhone; la emulación no usa la
   cámara real ni el lector nativo.
+- Ajuste por prueba del usuario en celular (códigos muy chicos sin enfoque): se pide
+  1920×1080, foco continuo y zoom inicial 2× cuando el equipo los ofrece, con zoom
+  ajustable, linterna, toque para enfocar y cambio de lente recordado en el equipo.
+  Sin esas capacidades (iPhone) la lectura sigue igual. 9 pruebas del componente;
+  suite 226 y navegador 38 aprobadas. Pendiente confirmar en el mismo celular.
 
 ## Publicación en producción — 18 de septiembre de 2026
 
