@@ -218,7 +218,7 @@ export function InventoryProductScreen({ product, history, historyLimit, movemen
 export type InventoryLinkCandidate = InventoryCodeMatch & { version: number };
 
 /** Codigo leido que no identifica un unico repuesto: se ofrece alta o vinculacion, sin inventar datos. */
-export function InventoryCodeScreen({ code, matches, linkCandidates, linkQuery, error, signedInUserName }: { code: string; matches: InventoryCodeMatch[]; linkCandidates: InventoryLinkCandidate[]; linkQuery: string; error?: string; signedInUserName?: string | null }) {
+export function InventoryCodeScreen({ code, matches, similar = [], linkCandidates, linkQuery, error, signedInUserName }: { code: string; matches: InventoryCodeMatch[]; similar?: InventoryCodeMatch[]; linkCandidates: InventoryLinkCandidate[]; linkQuery: string; error?: string; signedInUserName?: string | null }) {
   const ambiguous = matches.length > 1;
   return (
     <ShopShell active="inventory" signedInUserName={signedInUserName}>
@@ -237,6 +237,13 @@ export function InventoryCodeScreen({ code, matches, linkCandidates, linkQuery, 
           <ul className="divide-y divide-white/10">{matches.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
         </Card>
       ) : (
+        <>
+        {similar.length ? (
+          <Card padding="none" className="mt-8 overflow-hidden border-apple-400/40" aria-label="Códigos parecidos">
+            <div className="border-b border-white/10 px-6 py-5"><h2 className="font-bold text-white">¿Es alguno de estos?</h2><p className="mt-1 text-sm text-zinc-500">Tienen un código casi igual al leído. Si es el mismo repuesto, abrí la ficha y corregí el código de barras para que coincida con el impreso.</p></div>
+            <ul className="divide-y divide-white/10">{similar.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">Código guardado: <span className="text-apple-300">{product.barcode}</span> · {product.sku}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
+          </Card>
+        ) : null}
         <section className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           <Card aria-label="Crear un repuesto nuevo" className="flex flex-col justify-between">
             <div><h2 className="text-2xl font-black text-white">Es un repuesto nuevo</h2><p className="mt-2 text-sm leading-6 text-zinc-400">Abrí el alta con el código ya cargado. Nombre, precio y stock los completás vos: el código no trae esos datos.</p></div>
@@ -267,6 +274,7 @@ export function InventoryCodeScreen({ code, matches, linkCandidates, linkQuery, 
             ) : <EmptyState className="m-6">{linkQuery ? "No hay repuestos sin código que coincidan con la búsqueda." : "No hay repuestos sin código de barras."}</EmptyState>}
           </Card>
         </section>
+        </>
       )}
     </ShopShell>
   );

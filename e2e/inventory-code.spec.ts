@@ -86,6 +86,22 @@ test("buscar un código escrito abre la ficha, también por SKU", async ({ page 
   await expect(page).toHaveURL(new RegExp(`/internal/shop/inventory/${product.id}$`));
 });
 
+test("encuentra códigos cargados con espacios y sugiere los casi iguales", async ({ page }) => {
+  const digits = ean13(`778${String(randomInt(0, 1_000_000_000)).padStart(9, "0")}`);
+  const spaced = await createProduct({ sku: `${fixturePrefix}ESPACIOS`, barcode: `${digits[0]} ${digits.slice(1, 7)} ${digits.slice(7)}` });
+  await login(page);
+
+  await searchCode(page, digits);
+  await expect(page).toHaveURL(new RegExp(`/internal/shop/inventory/${spaced.id}$`));
+
+  // Ficha cargada sin el digito verificador: no se abre sola, pero se sugiere.
+  const other = ean13(`776${String(randomInt(0, 1_000_000_000)).padStart(9, "0")}`);
+  const typo = await createProduct({ sku: `${fixturePrefix}CASI`, barcode: other.slice(0, 12) });
+  await searchCode(page, other);
+  await expect(page.getByRole("heading", { name: "Código no registrado" })).toBeVisible();
+  await expect(page.getByLabel("Códigos parecidos", { exact: true }).getByRole("link", { name: new RegExp(typo.name) })).toBeVisible();
+});
+
 test("un código desconocido se vincula a un repuesto sin código", async ({ page }) => {
   const product = await createProduct({ sku: `${fixturePrefix}SIN-CODIGO`, barcode: null });
   const code = `${fixturePrefix}NUEVO`;

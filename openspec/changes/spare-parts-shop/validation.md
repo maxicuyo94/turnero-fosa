@@ -27,6 +27,12 @@
   ajustable, linterna, toque para enfocar y cambio de lente recordado en el equipo.
   Sin esas capacidades (iPhone) la lectura sigue igual. 9 pruebas del componente;
   suite 226 y navegador 38 aprobadas. Pendiente confirmar en el mismo celular.
+- Reporte en producción: la cámara leía pero mostraba "Código no registrado" para un
+  repuesto existente. La búsqueda exigía igualdad exacta; ahora compara la forma
+  compacta (solo letras y números, en mayúsculas) de lo guardado y lo leído, sin
+  modificar datos. Los códigos nuevos se guardan sin espacios y la pantalla de código
+  no registrado sugiere fichas con un código casi igual. Causa exacta sin confirmar:
+  no se inspeccionaron los datos de producción. Suite 237 y navegador 40 aprobadas.
 
 ## Publicación en producción — 18 de septiembre de 2026
 

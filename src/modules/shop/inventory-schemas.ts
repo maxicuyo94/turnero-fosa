@@ -45,7 +45,8 @@ const priceArsSchema = z
 
 const productFields = z.object({
   sku: requiredText(80).transform((value) => value.toUpperCase()),
-  barcode: optionalText(128),
+  // Se guarda como lo devuelve un lector: sin los espacios con que suele imprimirse.
+  barcode: optionalText(128).transform((value) => value?.replace(/\s+/gu, "") || null),
   name: requiredText(160),
   description: optionalText(2_000),
   category: requiredText(80),
