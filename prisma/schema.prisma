@@ -315,6 +315,15 @@ model InventoryMovement {
   @@index([productId, createdAt])
 }
 
+/// Failed internal sign-ins per key ("user:<username>" or "ip:<address>"), shared by every server instance.
+model LoginThrottle {
+  key         String    @id
+  failures    Int       @default(0)
+  windowStart DateTime
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String

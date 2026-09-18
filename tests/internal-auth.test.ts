@@ -3,6 +3,7 @@ import { vi } from "vitest";
 
 vi.mock("next-auth", () => ({
   default: () => ({ handlers: {}, auth: async () => null, signIn: async () => undefined, signOut: async () => undefined }),
+  CredentialsSignin: class CredentialsSignin extends Error {},
 }));
 vi.mock("next-auth/providers/credentials", () => ({ default: (config: unknown) => config }));
 

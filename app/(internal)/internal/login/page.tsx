@@ -11,7 +11,7 @@ import {
   SiteHeader,
   TextInput,
 } from "@/src/components/ui";
-import { auth, isInternalSession, signIn } from "@/src/lib/auth";
+import { TooManyLoginAttemptsError, auth, isInternalSession, signIn } from "@/src/lib/auth";
 
 type InternalLoginPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -21,7 +21,7 @@ export default async function InternalLoginPage({ searchParams }: InternalLoginP
   const session = await auth();
   if (isInternalSession(session)) redirect("/internal");
   const params = (await searchParams) ?? {};
-  const hasCredentialError = stringParam(params.error) === "credentials";
+  const error = stringParam(params.error);
 
   return (
     <>
@@ -40,8 +40,10 @@ export default async function InternalLoginPage({ searchParams }: InternalLoginP
             <Field label="Contraseña">
               <TextInput name="password" required type="password" />
             </Field>
-            {hasCredentialError ? (
+            {error === "credentials" ? (
               <Alert tone="danger">Usuario o contraseña incorrectos.</Alert>
+            ) : error === "locked" ? (
+              <Alert tone="danger">Demasiados intentos fallidos. Esperá 15 minutos y volvé a intentar.</Alert>
             ) : null}
             <Button size="md" type="submit">
               Ingresar
@@ -66,6 +68,7 @@ async function loginAction(formData: FormData) {
       redirectTo: "/internal",
     });
   } catch (error) {
+    if (error instanceof TooManyLoginAttemptsError) redirect("/internal/login?error=locked");
     if (error instanceof AuthError) redirect("/internal/login?error=credentials");
     throw error;
   }
