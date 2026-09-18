@@ -1,14 +1,17 @@
 // @vitest-environment node
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
+import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { createPasswordHash } from "@/src/lib/password";
 import { resolveTestDataTarget } from "@/src/modules/testing/test-data-guard";
+import { parseInventoryExcel } from "@/src/modules/shop/inventory-excel";
 import {
   createInventoryProduct,
+  importInventoryProducts,
   recordInventoryMovement,
   updateInventoryProduct,
 } from "@/src/modules/shop/inventory-service";
@@ -235,9 +238,84 @@ inventorySuite("inventario Prisma E1", () => {
     expect(await prisma.shopProduct.findUniqueOrThrow({ where: { id: product.id } })).toMatchObject({ stock: 0, version: 1 });
     expect(await prisma.inventoryMovement.count({ where: { productId: product.id, kind: "REPAIR" } })).toBe(1);
   });
+
+  it("importa un Excel como una sola operación con auditoría por producto", async () => {
+    const inputs = [createInput({ initialStock: 2 }), createInput({ initialStock: 5 })];
+    const result = await importInventoryProducts(prisma, inputs, actorId);
+    expect(result).toEqual({ count: 2, initialUnits: 7 });
+    const products = await prisma.shopProduct.findMany({ where: { sku: { in: inputs.map((input) => input.sku.trim().toUpperCase()) } }, include: { movements: true } });
+    expect(products).toHaveLength(2);
+    expect(products.every((product) => product.movements.length === 1 && product.movements[0].reason === "Importación desde Excel")).toBe(true);
+  });
+
+  it("no importa ninguna fila si un SKU del Excel ya existe", async () => {
+    const existing = await createProduct({ initialStock: 1 });
+    const newInput = createInput({ initialStock: 4 });
+    await expect(importInventoryProducts(prisma, [createInput({ initialStock: 2, barcode: null, description: null, sku: existing.sku }), newInput], actorId))
+      .rejects.toThrow("Ya existe un producto");
+    expect(await prisma.shopProduct.findUnique({ where: { sku: newInput.sku.trim().toUpperCase() } })).toBeNull();
+  });
+
+  it("preserva el precio desde el archivo hasta la base de datos y rechaza reimportarlo", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile("public/plantilla-carga-inventario.xlsx");
+    const sku = `${fixturePrefix}EXCEL`;
+    workbook.getWorksheet("Carga")!.getRow(5).values = [];
+    workbook.getWorksheet("Carga")!.getRow(15).values = [sku, "", "Filtro Excel", "Filtros", "", "", "", 1250.50, 3, 1, "A-2", "Sí"];
+    const buffer = await workbook.xlsx.writeBuffer();
+    const file = new File([buffer], "inventario.xlsx");
+    await importInventoryProducts(prisma, await parseInventoryExcel(file), actorId);
+    await expect(importInventoryProducts(prisma, await parseInventoryExcel(file), actorId)).rejects.toThrow("Ya existe");
+    const product = await prisma.shopProduct.findUniqueOrThrow({ where: { sku }, include: { movements: true } });
+    expect(product).toMatchObject({ priceCents: 125050, stock: 3 });
+    expect(product.movements).toHaveLength(1);
+    expect(product.movements[0]).toMatchObject({ actorId, stockBefore: 0, stockAfter: 3 });
+  });
+
+  it("rechaza duplicados normalizados de SKU y código dentro del archivo", async () => {
+    const first = createInput();
+    await expect(importInventoryProducts(prisma, [first, createInput({ sku: ` ${first.sku.toLowerCase()} ` })], actorId)).rejects.toThrow("repetido dentro del Excel");
+    await expect(importInventoryProducts(prisma, [first, createInput({ barcode: first.barcode })], actorId)).rejects.toThrow("repetido dentro del Excel");
+    expect(await prisma.shopProduct.count({ where: { sku: { startsWith: fixturePrefix } } })).toBe(0);
+  });
+
+  it("revierte todos los productos si falla la escritura de auditoría", async () => {
+    await expect(importInventoryProducts(prisma, [createInput(), createInput()], `missing-${randomUUID()}`)).rejects.toMatchObject({ code: "P2003" });
+    expect(await prisma.shopProduct.count({ where: { sku: { startsWith: fixturePrefix } } })).toBe(0);
+  });
+
+  it("dos importaciones simultáneas no duplican productos ni movimientos", async () => {
+    const inputs = [createInput(), createInput()];
+    const results = await Promise.allSettled([
+      importInventoryProducts(prisma, inputs, actorId),
+      importInventoryProducts(prisma, inputs, actorId),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(await prisma.shopProduct.count({ where: { sku: { startsWith: fixturePrefix } } })).toBe(2);
+    expect(await prisma.inventoryMovement.count({ where: { product: { sku: { startsWith: fixturePrefix } } } })).toBe(2);
+  });
+
+  it("importa el máximo de 1000 productos de forma atómica", async () => {
+    const inputs = Array.from({ length: 1000 }, () => createInput({ initialStock: 1, barcode: null }));
+    await expect(importInventoryProducts(prisma, inputs, actorId)).resolves.toEqual({ count: 1000, initialUnits: 1000 });
+    expect(await prisma.inventoryMovement.count({ where: { product: { sku: { startsWith: fixturePrefix } } } })).toBe(1000);
+  }, 20000);
+
+  it("importa filas sin SKU y rechaza el mismo Excel sin duplicar stock", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile("public/plantilla-carga-inventario.xlsx");
+    workbook.getWorksheet("Carga")!.getRow(5).values = ["", "", `${fixturePrefix}Sin SKU`, "Filtros", "", "", "", 12.5, 3, 0, "", "Sí"];
+    const file = new File([await workbook.xlsx.writeBuffer()], "inventario.xlsx");
+    const rows = await parseInventoryExcel(file);
+    await importInventoryProducts(prisma, rows, actorId);
+    await expect(importInventoryProducts(prisma, await parseInventoryExcel(file), actorId)).rejects.toThrow("Ya existe");
+    const product = await prisma.shopProduct.findUniqueOrThrow({ where: { sku: rows[0].sku! }, include: { movements: true } });
+    expect(product).toMatchObject({ stock: 3, priceCents: 1250 });
+    expect(product.movements).toHaveLength(1);
+  });
 });
 
-type CreateOverrides = Partial<{ initialStock: string | number; priceArs: string | number; barcode: string | null; description: string | null }>;
+type CreateOverrides = Partial<{ initialStock: string | number; priceArs: string | number; barcode: string | null; description: string | null; sku: string }>;
 
 function createInput(overrides: CreateOverrides = {}) {
   const id = randomUUID();
@@ -266,7 +344,7 @@ async function createProduct(overrides: CreateOverrides = {}) {
 }
 
 async function cleanupFixtures() {
-  const products = await prisma.shopProduct.findMany({ where: { sku: { startsWith: fixturePrefix } }, select: { id: true } });
+  const products = await prisma.shopProduct.findMany({ where: { OR: [{ sku: { startsWith: fixturePrefix } }, ...(actorId ? [{ movements: { some: { actorId } } }] : [])] }, select: { id: true } });
   const productIds = products.map(({ id }) => id);
   if (productIds.length === 0) return;
   await prisma.inventoryMovement.deleteMany({ where: { productId: { in: productIds } } });

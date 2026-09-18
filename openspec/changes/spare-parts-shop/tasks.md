@@ -6,6 +6,18 @@ Estado: implementación autorizada por el usuario. Ver [entregables incrementale
 
 Sumar al sitio del taller una tienda de repuestos con catálogo público, carrito, inventario y gestión interna de pedidos. Conservar las reservas de turnos y aprovechar el diseño y el acceso interno existentes.
 
+### Ampliación E1: importación desde Excel
+
+- [x] Plantilla descargable y compatible con el lector, con instrucciones por columna.
+- [x] Importación autenticada de hasta 1.000 productos nuevos y archivos de hasta 3 MB.
+- [x] Validación de filas, precio en ARS, códigos repetidos y productos existentes.
+- [x] Escritura atómica de productos e historial, con atribución al usuario.
+- [x] Regresiones de precios, filas separadas, auditoría, concurrencia y lote máximo.
+- [x] Recorrido real de descarga y carga en navegador de escritorio y móvil.
+
+Contrato y diseño: [importación desde Excel](inventory-excel-import.md).
+Resultados y límites: [verificación](validation.md).
+
 ## Alcance confirmado
 
 - Pagos en el taller y mediante Mercado Pago.

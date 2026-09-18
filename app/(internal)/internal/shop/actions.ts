@@ -8,9 +8,11 @@ import { db } from "@/src/lib/db";
 import {
   InventoryError,
   createInventoryProduct,
+  importInventoryProducts,
   recordInventoryMovement,
   updateInventoryProduct,
 } from "@/src/modules/shop/inventory-service";
+import { InventoryExcelError, parseInventoryExcel } from "@/src/modules/shop/inventory-excel";
 import type { ShopActionState } from "@/src/modules/shop/inventory-action-state";
 
 export async function createInventoryProductAction(
@@ -40,6 +42,29 @@ export async function createInventoryProductAction(
     return { status: "success", message: "Repuesto cargado correctamente.", productId: product.id };
   } catch (error) {
     return actionFailure(error, values);
+  }
+}
+
+export async function importInventoryExcelAction(
+  _previous: ShopActionState,
+  formData: FormData,
+): Promise<ShopActionState> {
+  const actorId = await requireShopAccess();
+  try {
+    const file = formData.get("file");
+    if (!(file instanceof File)) return { status: "error", message: "Seleccioná un archivo Excel para importar." };
+    const products = await parseInventoryExcel(file);
+    const result = await importInventoryProducts(db, products, actorId);
+    revalidatePath("/internal/shop");
+    revalidatePath("/internal/shop/inventory");
+    return {
+      status: "success",
+      message: `Importamos ${result.count} ${result.count === 1 ? "repuesto" : "repuestos"} y ${result.initialUnits.toLocaleString("es-AR")} unidades iniciales.`,
+      importedCount: result.count,
+    };
+  } catch (error) {
+    if (error instanceof InventoryExcelError) return { status: "error", message: error.message, issues: error.issues };
+    return actionFailure(error, {});
   }
 }
 

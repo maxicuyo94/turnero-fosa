@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   movement: vi.fn(),
+  importProducts: vi.fn(),
+  parseExcel: vi.fn(),
   revalidate: vi.fn(),
   db: {},
 }));
@@ -21,11 +23,17 @@ vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Erro
 vi.mock("@/src/modules/shop/inventory-service", () => ({
   InventoryError: class extends Error {},
   createInventoryProduct: mocks.create,
+  importInventoryProducts: mocks.importProducts,
   updateInventoryProduct: mocks.update,
   recordInventoryMovement: mocks.movement,
 }));
+vi.mock("@/src/modules/shop/inventory-excel", () => ({
+  InventoryExcelError: class extends Error { issues: string[] = []; },
+  parseInventoryExcel: mocks.parseExcel,
+}));
 
-import { createInventoryProductAction, recordInventoryMovementAction, updateInventoryProductAction } from "@/app/(internal)/internal/shop/actions";
+import { createInventoryProductAction, importInventoryExcelAction, recordInventoryMovementAction, updateInventoryProductAction } from "@/app/(internal)/internal/shop/actions";
+import { InventoryExcelError } from "@/src/modules/shop/inventory-excel";
 
 describe("inventory server action authorization", () => {
   beforeEach(() => {
@@ -34,13 +42,45 @@ describe("inventory server action authorization", () => {
     mocks.create.mockResolvedValue({ id: "part-1" });
     mocks.update.mockResolvedValue({ id: "part-1" });
     mocks.movement.mockResolvedValue({ id: "part-1" });
+    mocks.parseExcel.mockResolvedValue([{ sku: "EXCEL-1" }]);
+    mocks.importProducts.mockResolvedValue({ count: 1, initialUnits: 2 });
   });
 
-  it.each([createInventoryProductAction, updateInventoryProductAction, recordInventoryMovementAction])("rejects direct anonymous calls before accessing inventory", async (action) => {
+  it.each([createInventoryProductAction, updateInventoryProductAction, recordInventoryMovementAction, importInventoryExcelAction])("rejects direct anonymous calls before accessing inventory", async (action) => {
     await expect(action({ status: "idle" }, new FormData())).rejects.toThrow("redirect:/internal/login");
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.update).not.toHaveBeenCalled();
     expect(mocks.movement).not.toHaveBeenCalled();
+    expect(mocks.importProducts).not.toHaveBeenCalled();
+  });
+
+  it("imports the uploaded workbook under the authenticated user", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "staff-1" } });
+    const data = new FormData();
+    data.set("file", new File(["xlsx"], "repuestos.xlsx"));
+    const result = await importInventoryExcelAction({ status: "idle" }, data);
+    expect(mocks.parseExcel).toHaveBeenCalled();
+    expect(mocks.importProducts).toHaveBeenCalledWith(mocks.db, [{ sku: "EXCEL-1" }], "staff-1");
+    expect(result).toMatchObject({ status: "success", importedCount: 1 });
+  });
+
+  it("rejects a missing file without accessing the importer", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "staff-1" } });
+    expect(await importInventoryExcelAction({ status: "idle" }, new FormData())).toMatchObject({ status: "error" });
+    expect(mocks.parseExcel).not.toHaveBeenCalled();
+    expect(mocks.importProducts).not.toHaveBeenCalled();
+  });
+
+  it("returns row errors without writing or refreshing inventory", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "staff-1" } });
+    const error = new InventoryExcelError("Archivo inválido");
+    error.issues.push("Fila 5 · Stock inicial: La cantidad no puede ser negativa.");
+    mocks.parseExcel.mockRejectedValueOnce(error);
+    const data = new FormData();
+    data.set("file", new File(["xlsx"], "repuestos.xlsx"));
+    expect(await importInventoryExcelAction({ status: "idle" }, data)).toMatchObject({ status: "error", issues: error.issues });
+    expect(mocks.importProducts).not.toHaveBeenCalled();
+    expect(mocks.revalidate).not.toHaveBeenCalled();
   });
 
   it("attributes a movement to the session user, ignoring a submitted actor", async () => {

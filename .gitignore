@@ -52,3 +52,6 @@ ds-bundle/
 # Local environment credentials and operational notes.
 PRODUCTION.local.md
 PREVIEW.local.md
+
+# scratch: plantillas y volcados generados localmente
+outputs/
