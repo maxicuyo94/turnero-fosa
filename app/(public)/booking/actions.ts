@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { auth, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { getWorkshopPaymentEnv, getWorkshopNotificationEnv } from "@/src/modules/settings/runtime-settings";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
@@ -14,11 +15,13 @@ import { initiateAppointmentDeposit } from "@/src/modules/payments/service";
 export async function createAppointmentAction(formData: FormData) {
   const repository = new PrismaBookingRepository(db);
   const notificationEnv = await getWorkshopNotificationEnv(db);
+  // La duracion total la define el servicio salvo que reserve una sesion interna.
+  const canEditDuration = isInternalSession(await auth());
   const result = await createPublicBooking(repository, {
     serviceId: stringValue(formData, "serviceId"),
     date: stringValue(formData, "date"),
     startTime: stringValue(formData, "startTime"),
-    durationMinutes: numberValue(formData, "durationMinutes"),
+    durationMinutes: canEditDuration ? numberValue(formData, "durationMinutes") : undefined,
     customer: {
       fullName: stringValue(formData, "fullName"),
       phone: stringValue(formData, "phone"),

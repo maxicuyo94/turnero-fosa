@@ -8,13 +8,13 @@ import {
   Field,
   PageHeading,
   PageShell,
-  Select,
   SiteHeader,
   SlotOption,
   Textarea,
   TextInput,
 } from "@/src/components/ui";
 import type { AvailableSlot } from "@/src/modules/availability";
+import { BookingSearchForm } from "@/src/modules/booking/booking-search-form";
 import type { PublicServiceRecord } from "@/src/modules/booking/service";
 
 type PublicBookingScreenProps = {
@@ -23,6 +23,8 @@ type PublicBookingScreenProps = {
   selectedDate: string;
   selectedDurationMinutes: number;
   durationStepMinutes?: number;
+  /** La duracion total solo se edita desde una sesion interna. */
+  canEditDuration?: boolean;
   slots: AvailableSlot[];
   idempotencyKey?: string;
   action?: (formData: FormData) => void | Promise<void>;
@@ -47,6 +49,7 @@ export function PublicBookingScreen({
   selectedDate,
   selectedDurationMinutes,
   durationStepMinutes = 1,
+  canEditDuration = false,
   slots,
   action,
   paymentAction,
@@ -129,41 +132,23 @@ export function PublicBookingScreen({
                 {slots.length} horarios
               </p>
             </div>
-            <form
-              action="/booking"
-              className="grid gap-3 md:min-w-[38rem] md:grid-cols-[1fr_9rem_9rem_auto] md:items-end"
-            >
-              <Field label="Servicio">
-                <Select defaultValue={selectedServiceId} density="sm" name="serviceId">
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} - {service.durationMinutes} min
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Fecha">
-                <TextInput defaultValue={selectedDate} density="sm" name="date" type="date" />
-              </Field>
-              <Field hint={selectedService ? `(min. ${selectedService.durationMinutes})` : undefined} label="Duracion total">
-                <TextInput
-                  defaultValue={selectedDurationMinutes}
-                  density="sm"
-                  min={selectedService?.durationMinutes}
-                  name="durationMinutes"
-                  step={durationStepMinutes}
-                  type="number"
-                />
-              </Field>
-              <Button type="submit">Ver</Button>
-            </form>
+            <BookingSearchForm
+              canEditDuration={canEditDuration}
+              durationStepMinutes={durationStepMinutes}
+              selectedDate={selectedDate}
+              selectedDurationMinutes={selectedDurationMinutes}
+              selectedServiceId={selectedServiceId}
+              services={services}
+            />
           </div>
         </Card>
 
         <form action={action} className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <input type="hidden" name="serviceId" value={selectedServiceId} />
           <input type="hidden" name="date" value={selectedDate} />
-          <input type="hidden" name="durationMinutes" value={selectedDurationMinutes} />
+          {canEditDuration ? (
+            <input type="hidden" name="durationMinutes" value={selectedDurationMinutes} />
+          ) : null}
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
 
           <Card>
