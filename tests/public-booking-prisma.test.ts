@@ -5,7 +5,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
-import { createPublicBooking, getPublicAppointmentStatus } from "@/src/modules/booking/service";
+import { cancelPublicAppointment, createPublicBooking, getPublicAppointmentStatus } from "@/src/modules/booking/service";
+import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
@@ -55,6 +57,25 @@ describe("Prisma public booking integration", () => {
     expect(lookup).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
   });
 
+  it("lets only one of a public cancellation and a concurrent internal confirmation apply", async () => {
+    await applyExpressBookingPolicy({ cancellationEnabled: true });
+    const repository = new PrismaBookingRepository(prisma);
+    const booking = await createPublicBooking(repository, bookingInput({ idempotencyKey: "it-public-cancel-race", startTime: "11:00" }));
+    if (!booking.accepted || !booking.cancellationToken) throw new Error("Expected a cancellable booking.");
+    const appointmentId = booking.appointment.id;
+
+    const [cancellation, confirmation] = await Promise.all([
+      cancelPublicAppointment(new PrismaBookingRepository(prisma), { appointmentId, token: booking.cancellationToken, now }),
+      updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId, nextStatus: "CONFIRMED", changedById: null }),
+    ]);
+
+    expect([cancellation.accepted, confirmation.accepted].filter(Boolean)).toHaveLength(1);
+    const stored = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId } });
+    expect(stored.status).toBe(cancellation.accepted ? "CANCELLED" : "CONFIRMED");
+    const transitions = await prisma.appointmentStatusHistory.findMany({ where: { appointmentId, fromStatus: { not: null } } });
+    expect(transitions).toEqual([expect.objectContaining({ fromStatus: "PENDING_CONFIRMATION", toStatus: stored.status })]);
+  });
+
   it("accepts at most one concurrent request for the final remaining capacity in PostgreSQL", async () => {
     const seededRepository = new PrismaBookingRepository(prisma);
     const seed = await createPublicBooking(seededRepository, bookingInput({ idempotencyKey: "it-public-capacity-seed", startTime: "10:00" }));
@@ -90,13 +111,13 @@ async function activeServiceId(): Promise<string> {
 }
 
 async function applyExpressBookingPolicy(
-  overrides: { confirmationMode?: "MANUAL" | "AUTOMATIC" } = {},
+  overrides: { confirmationMode?: "MANUAL" | "AUTOMATIC"; cancellationEnabled?: boolean } = {},
 ) {
   await prisma.workshopSettings.updateMany({
     data: {
       confirmationMode: overrides.confirmationMode ?? workshopSeedConfig.settings.confirmationMode,
       depositRequired: false,
-      cancellationEnabled: workshopSeedConfig.settings.cancellationEnabled,
+      cancellationEnabled: overrides.cancellationEnabled ?? workshopSeedConfig.settings.cancellationEnabled,
       reschedulingEnabled: workshopSeedConfig.settings.reschedulingEnabled,
     },
   });

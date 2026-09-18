@@ -152,14 +152,21 @@ export class PrismaBookingRepository implements BookingRepository {
     return appointment ? mapAppointment(appointment) : null;
   }
 
-  async cancelAppointment(appointmentId: string): Promise<void> {
-    await this.client.appointment.update({
-      where: { id: appointmentId },
-      data: {
-        status: "CANCELLED",
-        statusHistory: { create: { toStatus: "CANCELLED", note: "Cancelled by public token." } },
-      },
-    });
+  async cancelAppointment(appointmentId: string, fromStatus: AppointmentStatus): Promise<boolean> {
+    try {
+      // The status filter makes the check and the write one statement, together with the history row.
+      await this.client.appointment.update({
+        where: { id: appointmentId, status: fromStatus },
+        data: {
+          status: "CANCELLED",
+          statusHistory: { create: { fromStatus, toStatus: "CANCELLED", note: "Cancelled by public token." } },
+        },
+      });
+      return true;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") return false;
+      throw error;
+    }
   }
 }
 
