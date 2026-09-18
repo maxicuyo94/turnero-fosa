@@ -3,6 +3,7 @@ import { createAppointmentAction, retryDepositAction } from "@/app/(public)/book
 import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { workshopDate } from "@/src/lib/workshop-date";
+import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
 import { PublicBookingScreen } from "@/src/modules/booking/public-booking-screen";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
@@ -22,7 +23,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
   ]);
   const selectedServiceId = stringParam(params.serviceId) ?? services[0]?.id ?? "";
   const selectedService = services.find((service) => service.id === selectedServiceId);
-  const selectedDate = stringParam(params.date) ?? defaultBookingDate();
+  const selectedDate = calendarDateSchema.safeParse(stringParam(params.date)).data ?? defaultBookingDate();
   const canEditDuration = isInternalSession(session);
   const requestedDurationMinutes = canEditDuration ? numberParam(params.durationMinutes) : undefined;
   const availability = selectedServiceId
