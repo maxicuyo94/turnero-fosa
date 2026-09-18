@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Local Vercel CLI metadata and ad-hoc scripts; ignored by Git as well.
+    ".vercel/**",
     // Design-system build output and the staged design-sync converter scripts.
     "ds-dist/**",
     "ds-bundle/**",

@@ -4,13 +4,13 @@
 
 El usuario autorizó comenzar la implementación usando agentes, priorizando modelos de menor costo que GPT-6 Astra. El plan se implementará por avances utilizables y verificables. Esta primera ejecución cubre E1; no supone que las etapas restantes estén terminadas ni publica automáticamente en producción.
 
-Restricción confirmada por el usuario: trabajar sólo en DEV. Tras verificar E1 localmente, el usuario autorizó explícitamente desplegar en Vercel. El destino es Vercel Preview y la rama `preview`, con su base de pruebas; producción queda fuera del alcance. El usuario pidió continuar tras la interrupción por límites de uso de los agentes.
+Restricción confirmada por el usuario: trabajar sólo en DEV. Tras verificar E1 localmente, el usuario autorizó explícitamente desplegar en Vercel. El destino es Vercel Preview y la rama `preview`, con su base de pruebas; producción queda fuera del alcance. El usuario pidió continuar tras la interrupción por límites de uso de los agentes. El 18 de septiembre de 2026 el usuario pidió explícitamente publicar en producción: E1 y la importación desde Excel se promovieron de `preview` a `main`.
 
 Equipo para E1: dos agentes GPT-5.6 Terra para servicio transaccional y pantallas, y un agente GPT-5.6 Luna para pruebas independientes. Coordinador: esquema/migración, integración, revisión y verificaciones. Asignar archivos sin superposición; compartir contratos antes de implementar.
 
 La secuencia prioriza inventario interno para entregar utilidad inmediata sin depender de proveedores de pago/correo/transporte. Cuentas de clientes y autorización de roles deben quedar verificadas antes de habilitar registro público. Todos los entregables mantienen carbón y verde manzana.
 
-## E1 — Inventario interno operativo (implementado y verificado en DEV local)
+## E1 — Inventario interno operativo (implementado, verificado y publicado en producción)
 
 **Resultado:** el taller puede cargar repuestos reales y registrar movimientos desde el panel.
 
@@ -23,7 +23,7 @@ La secuencia prioriza inventario interno para entregar utilidad inmediata sin de
 
 **Aceptación:** crear un repuesto, cargar entrada, registrar consumo, consultar historial y rechazar stock insuficiente. Páginas y acciones requieren sesión interna. Migración aditiva, tests, typecheck, lint y verificación del recorrido. No alterar turnos.
 
-**Verificación:** ver [resultados y límites de las pruebas](validation.md). Despliegue a Vercel Preview autorizado; no publicar en producción.
+**Verificación:** ver [resultados y límites de las pruebas](validation.md). Publicado en producción el 18 de septiembre de 2026 a pedido del usuario.
 
 ## E2 — Escaneo, etiquetas y conteo de stock
 

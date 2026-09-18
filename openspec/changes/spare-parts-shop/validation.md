@@ -1,5 +1,22 @@
 # Verificación de E1 — Inventario interno
 
+## Publicación en producción — 18 de septiembre de 2026
+
+- A pedido explícito del usuario, `main` avanzó a `bd42853` (inventario) y luego
+  a `e74ad92` (importación desde Excel y restricción de duración en reservas).
+  Vercel publica `main` en https://turnero-fosa.vercel.app.
+- Migración aplicada en producción por `prebuild`: `20260915150000_shop_inventory`.
+- En producción: `/internal/login` responde 200, `/internal/shop/inventory` redirige
+  al acceso sin sesión y la plantilla pública se descarga (200, 12 KB, `.xlsx`).
+- Verificación posterior en PostgreSQL 17 local (Docker): **24 archivos, 206
+  pruebas aprobadas** y **28 pruebas de navegador aprobadas** en Chromium de
+  escritorio y emulación Pixel 5, incluidas las de inventario e importación.
+- Los recorridos internos devolvían 404 en el servidor de desarrollo por caché
+  desactualizada de Turbopack; se resolvió borrando `.next`. No afecta producción.
+- ESLint ahora ignora `.vercel/**`, carpeta local ignorada por Git; `pnpm lint`
+  queda limpio sin modificar `load-shop-demo.cjs`.
+- No se cargaron datos ni se hicieron operaciones en la base de producción.
+
 ## SKU automático — 18 de septiembre de 2026
 
 - Alta manual e importación admiten SKU vacío. Los SKU escritos se conservan
@@ -74,4 +91,4 @@ Las pruebas crean usuarios y productos propios y eliminan únicamente esos regis
 - La emulación móvil verifica disposición y funcionamiento en Chromium; no equivale a una prueba con cámara ni en un teléfono físico.
 - El código de barras se carga como texto en E1. La cámara y las sesiones de conteo pertenecen a E2.
 - Mostrador, presupuestos, cuentas de clientes, tienda pública y pagos siguen en las siguientes entregas.
-- No se ejecutó un despliegue a Vercel Preview ni a producción.
+- Esta verificación no incluyó despliegue; la publicación posterior en producción figura al inicio del documento.
