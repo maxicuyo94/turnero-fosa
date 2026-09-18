@@ -283,12 +283,13 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
 function ShopShell({ active, children, signedInUserName }: { active: "summary" | "inventory"; children: ReactNode; signedInUserName?: string | null }) {
   return (
     <>
-      <SiteHeader active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
+      <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
       <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-8 sm:px-6 lg:py-10">
         <nav aria-label="Secciones internas" className="mb-8 flex min-w-0 gap-2 overflow-x-auto border-b border-white/10 whitespace-nowrap">
           <ShopNavLink href="/internal">Agenda</ShopNavLink>
           <ShopNavLink active={active === "summary"} href="/internal/shop">Resumen</ShopNavLink>
           <ShopNavLink active={active === "inventory"} href="/internal/shop/inventory">Inventario</ShopNavLink>
+          <ShopNavLink href="/internal/account">Mi cuenta</ShopNavLink>
         </nav>
         {children}
       </main>

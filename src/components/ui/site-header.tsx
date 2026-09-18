@@ -8,6 +8,8 @@ export type SiteHeaderProps = {
   active?: SiteHeaderSection;
   /** Shown to the right of the nav when an internal user is signed in. */
   userName?: string | null;
+  /** Turns the user name into a link to the signed-in user's account page. */
+  accountHref?: string;
   /** Renders the sign-out form when provided. */
   onSignOut?: () => void | Promise<void>;
   brand?: string;
@@ -23,6 +25,7 @@ export type SiteHeaderProps = {
 export function SiteHeader({
   active,
   userName,
+  accountHref,
   onSignOut,
   brand = "Taller Express",
   linkComponent,
@@ -49,7 +52,13 @@ export function SiteHeader({
           <Link className={navClass(active === "internal")} href="/internal">
             Internos
           </Link>
-          {userName ? <span className="hidden text-zinc-500 sm:inline">{userName}</span> : null}
+          {userName && accountHref ? (
+            <Link className="hidden text-zinc-500 transition hover:text-white sm:inline" href={accountHref} title="Mi cuenta">
+              {userName}
+            </Link>
+          ) : userName ? (
+            <span className="hidden text-zinc-500 sm:inline">{userName}</span>
+          ) : null}
           {onSignOut ? (
             <form action={onSignOut}>
               <button
