@@ -101,19 +101,24 @@ export class PrismaInternalRepository
     return appointment ? mapInternalAppointment(appointment) : null;
   }
 
-  async updateAppointmentStatus(input: { appointmentId: string; nextStatus: AppointmentStatus; changedById: string | null; note?: string }) {
-    const current = await this.client.appointment.findUniqueOrThrow({ where: { id: input.appointmentId } });
-    const appointment = await this.client.appointment.update({
-      where: { id: input.appointmentId },
-      data: {
-        status: input.nextStatus,
-        statusHistory: {
-          create: { fromStatus: current.status, toStatus: input.nextStatus, changedById: input.changedById, note: input.note },
+  async updateAppointmentStatus(input: Parameters<InternalOperationsRepository["updateAppointmentStatus"]>[0]) {
+    try {
+      // The status filter makes the check and the write one statement, together with the history row.
+      const appointment = await this.client.appointment.update({
+        where: { id: input.appointmentId, status: input.fromStatus },
+        data: {
+          status: input.nextStatus,
+          statusHistory: {
+            create: { fromStatus: input.fromStatus, toStatus: input.nextStatus, changedById: input.changedById, note: input.note },
+          },
         },
-      },
-      include: appointmentInclude,
-    });
-    return mapInternalAppointment(appointment);
+        include: appointmentInclude,
+      });
+      return mapInternalAppointment(appointment);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") return null;
+      throw error;
+    }
   }
 
   async withSchedulingTransaction<T>(operation: () => Promise<T>): Promise<T> {
@@ -140,13 +145,13 @@ export class PrismaInternalRepository
   }
 
   async getSchedulingContext() {
-    const workshopSettingsId = await this.resolveWorkshopSettingsId();
-    const [settings, schedules, breaks, exceptions] = await Promise.all([
-      this.client.workshopSettings.findUniqueOrThrow({ where: { id: workshopSettingsId } }),
-      this.client.weeklySchedule.findMany({ where: { workshopSettingsId } }),
-      this.client.scheduleBreak.findMany({ where: { workshopSettingsId }, orderBy: { startsAt: "asc" } }),
-      this.client.scheduleDateException.findMany({ where: { workshopSettingsId } }),
-    ]);
+    // One query instead of parallel ones: this runs inside the scheduling transaction, whose single
+    // connection must not receive concurrent queries.
+    const { weeklySchedules: schedules, scheduleBreaks: breaks, dateExceptions: exceptions, ...settings } =
+      await this.client.workshopSettings.findUniqueOrThrow({
+        where: { id: await this.resolveWorkshopSettingsId() },
+        include: { weeklySchedules: true, scheduleBreaks: { orderBy: { startsAt: "asc" } }, dateExceptions: true },
+      });
     return {
       settings: { capacity: settings.capacity, slotStepMinutes: settings.slotStepMinutes },
       schedules: schedules.map(({ dayOfWeek, opensAt, closesAt, isOpen }) => ({ dayOfWeek, opensAt, closesAt, isOpen })),

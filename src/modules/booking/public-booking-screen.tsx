@@ -79,7 +79,7 @@ export function PublicBookingScreen({
         />
 
         {outcome ? (
-          <Alert className="mt-8" tone="success">
+          <Alert className="mt-8" tone={outcome.accepted ? "success" : "danger"}>
             <p>{outcome.message}</p>
             {outcome.publicCode ? (
               <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-apple-300/30 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -116,9 +116,11 @@ export function PublicBookingScreen({
                 ) : null}
               </div>
             ) : null}
-            <p className="mt-3 text-sm text-apple-100/80">
-              La reprogramacion online no esta disponible por ahora.
-            </p>
+            {outcome.accepted ? (
+              <p className="mt-3 text-sm text-apple-100/80">
+                La reprogramacion online no esta disponible por ahora.
+              </p>
+            ) : null}
           </Alert>
         ) : null}
 

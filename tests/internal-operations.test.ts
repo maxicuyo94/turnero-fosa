@@ -66,6 +66,22 @@ describe("internal status transitions", () => {
     expect(repository.statusHistory).toEqual([]);
   });
 
+  it("rejects a status change when the appointment changed after it was read", async () => {
+    const repository = new InMemoryInternalRepository([appointment({ id: "appt_race", status: "PENDING_CONFIRMATION" })]);
+    const originalFind = repository.findAppointmentById.bind(repository);
+    repository.findAppointmentById = async (id) => {
+      const snapshot = await originalFind(id);
+      const stored = repository.appointments.find((item) => item.id === id);
+      if (stored) stored.status = "CANCELLED";
+      return snapshot ? { ...snapshot, status: "PENDING_CONFIRMATION" } : null;
+    };
+
+    const result = await updateInternalAppointmentStatus(repository, { appointmentId: "appt_race", nextStatus: "CONFIRMED", changedById: null });
+
+    expect(result).toMatchObject({ accepted: false, reason: "INVALID_TRANSITION" });
+    expect(repository.statusHistory).toHaveLength(0);
+  });
+
   it("sends and logs a provider-neutral notification after a status change", async () => {
     const repository = new InMemoryInternalRepository([appointment({ id: "appt_3", status: "CONFIRMED" })]);
     const port = new CollectingNotificationPort();
@@ -231,6 +247,7 @@ class InMemoryInternalRepository implements InternalOperationsRepository, Intern
   async updateAppointmentStatus(input: Parameters<InternalOperationsRepository["updateAppointmentStatus"]>[0]) {
     const found = this.appointments.find((item) => item.id === input.appointmentId);
     if (!found) throw new Error("Appointment not found");
+    if (found.status !== input.fromStatus) return null;
     const previous = found.status;
     found.status = input.nextStatus;
     this.statusHistory.push({

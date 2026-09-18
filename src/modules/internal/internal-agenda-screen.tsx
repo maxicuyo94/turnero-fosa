@@ -34,7 +34,7 @@ import type {
   InternalWorkshopSettingsRecord,
 } from "@/src/modules/internal/maintenance";
 import { InternalAgendaWorkspace } from "@/src/modules/internal/internal-agenda-workspace";
-import type { InternalAgenda } from "@/src/modules/internal/operations";
+import { intervalRejectionMessage, type InternalAgenda } from "@/src/modules/internal/operations";
 import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
 
 export const internalFeedbackCodes = [
@@ -50,6 +50,15 @@ export const internalFeedbackCodes = [
   "status-updated",
   "status-invalid",
   "appointment-not-found",
+  "appointment-rescheduled",
+  "reschedule-invalid-input",
+  "reschedule-terminal",
+  "reschedule-invalid-duration",
+  "reschedule-closed-date",
+  "reschedule-outside-opening-hours",
+  "reschedule-break-overlap",
+  "reschedule-day-boundary-exceeded",
+  "reschedule-capacity-exhausted",
 ] as const;
 
 export type InternalFeedbackCode = (typeof internalFeedbackCodes)[number];
@@ -86,6 +95,15 @@ const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message:
     message: "No se pudo cambiar el estado: el turno ya no admite ese cambio. Recargá la agenda para ver su estado actual.",
   },
   "appointment-not-found": { tone: "danger", message: "No encontramos el turno. Puede haber sido eliminado." },
+  "appointment-rescheduled": { tone: "success", message: "El turno fue reprogramado correctamente." },
+  "reschedule-invalid-input": { tone: "danger", message: "Revisá la fecha, el horario y la duración elegidos." },
+  "reschedule-terminal": { tone: "danger", message: "No se puede reprogramar un turno finalizado." },
+  "reschedule-invalid-duration": { tone: "danger", message: intervalRejectionMessage("INVALID_DURATION") },
+  "reschedule-closed-date": { tone: "danger", message: intervalRejectionMessage("CLOSED_DATE") },
+  "reschedule-outside-opening-hours": { tone: "danger", message: intervalRejectionMessage("OUTSIDE_OPENING_HOURS") },
+  "reschedule-break-overlap": { tone: "danger", message: intervalRejectionMessage("BREAK_OVERLAP") },
+  "reschedule-day-boundary-exceeded": { tone: "danger", message: intervalRejectionMessage("DAY_BOUNDARY_EXCEEDED") },
+  "reschedule-capacity-exhausted": { tone: "danger", message: intervalRejectionMessage("CAPACITY_EXHAUSTED") },
 };
 
 const dayLabels: Record<DayOfWeek, string> = {
@@ -110,7 +128,6 @@ export function InternalAgendaScreen({
   exceptions = [],
   feedback,
   signedInUserName,
-  appointmentUpdateOutcome,
 }: {
   agenda: InternalAgenda;
   weekAgendas?: InternalAgenda[];
@@ -123,7 +140,6 @@ export function InternalAgendaScreen({
   exceptions?: ScheduleDateException[];
   feedback?: InternalFeedbackCode | null;
   signedInUserName?: string | null;
-  appointmentUpdateOutcome?: { accepted: boolean; message: string };
 }) {
   const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
 
@@ -158,12 +174,6 @@ export function InternalAgendaScreen({
         {feedbackAlert ? (
           <Alert className="mt-6" tone={feedbackAlert.tone}>
             {feedbackAlert.message}
-          </Alert>
-        ) : null}
-
-        {appointmentUpdateOutcome ? (
-          <Alert className="mt-6" tone={appointmentUpdateOutcome.accepted ? "success" : "danger"}>
-            {appointmentUpdateOutcome.message}
           </Alert>
         ) : null}
 

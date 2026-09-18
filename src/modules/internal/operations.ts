@@ -62,12 +62,17 @@ export type InternalAgenda = {
 export type InternalOperationsRepository = {
   listAppointmentsForDate(date: string): Promise<InternalAppointmentRecord[]>;
   findAppointmentById(appointmentId: string): Promise<InternalAppointmentRecord | null>;
+  /**
+   * Applies the change only if the appointment is still in `fromStatus`; returns null when another
+   * change got there first, so a transition is never validated against a stale status.
+   */
   updateAppointmentStatus(input: {
     appointmentId: string;
+    fromStatus: AppointmentStatus;
     nextStatus: AppointmentStatus;
     changedById: string | null;
     note?: string;
-  }): Promise<InternalAppointmentRecord>;
+  }): Promise<InternalAppointmentRecord | null>;
 };
 
 export type InternalStatusNotificationOptions = {
@@ -129,7 +134,14 @@ export async function updateInternalAppointmentStatus(
     };
   }
 
-  const updated = await repository.updateAppointmentStatus(parsed);
+  const updated = await repository.updateAppointmentStatus({ ...parsed, fromStatus: appointment.status });
+  if (!updated) {
+    return {
+      accepted: false,
+      reason: "INVALID_TRANSITION",
+      message: "El turno cambio de estado mientras lo editabas. Recarga la agenda e intenta de nuevo.",
+    };
+  }
   if (updated.customerEmail && notifications) {
     await sendEmailAndLog(notifications.logRepository, notifications.port, {
       event: "APPOINTMENT_STATUS_CHANGED",
@@ -165,10 +177,9 @@ export async function rescheduleInternalAppointment(
       return { accepted: false as const, reason: "TERMINAL_APPOINTMENT" as const, message: "No se puede reprogramar un turno finalizado." };
     }
 
-    const [context, appointments] = await Promise.all([
-      repository.getSchedulingContext(),
-      repository.listAppointmentsForDate(parsed.date),
-    ]);
+    // Sequential on purpose: a transaction's connection must not run concurrent queries.
+    const context = await repository.getSchedulingContext();
+    const appointments = await repository.listAppointmentsForDate(parsed.date);
     const validation = validateAppointmentInterval({
       ...context,
       date: parsed.date,
@@ -279,7 +290,7 @@ export function statusLabel(status: AppointmentStatus): string {
 
 export const internalStatusOptions = appointmentStatusSchema.options;
 
-function intervalRejectionMessage(reason: AppointmentIntervalRejection): string {
+export function intervalRejectionMessage(reason: AppointmentIntervalRejection): string {
   const messages: Record<AppointmentIntervalRejection, string> = {
     INVALID_DURATION: "La duracion no respeta el minimo del servicio o el paso del taller.",
     CLOSED_DATE: "El taller esta cerrado en la fecha seleccionada.",

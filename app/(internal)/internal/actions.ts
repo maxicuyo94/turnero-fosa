@@ -31,13 +31,10 @@ import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapt
 
 export async function updateAppointmentStatusAction(formData: FormData) {
   const changedById = await requireInternalAccess();
-  const agendaUrl = (feedback: InternalFeedbackCode) => {
-    const date = stringValue(formData, "date");
-    return `/internal?${new URLSearchParams(date ? { date, feedback } : { feedback }).toString()}`;
-  };
+  const date = stringValue(formData, "date");
   const nextStatus = appointmentStatusSchema.safeParse(stringValue(formData, "nextStatus"));
   const appointmentId = stringValue(formData, "appointmentId").trim();
-  if (!nextStatus.success || !appointmentId) redirect(agendaUrl("status-invalid"));
+  if (!nextStatus.success || !appointmentId) redirect(agendaUrl(date, "status-invalid"));
 
   const notificationEnv = await getWorkshopNotificationEnv(db);
   const result = await updateInternalAppointmentStatus(new PrismaInternalRepository(db), {
@@ -51,6 +48,7 @@ export async function updateAppointmentStatusAction(formData: FormData) {
       }
     : undefined);
   redirect(agendaUrl(
+    date,
     result.accepted ? "status-updated" : result.reason === "APPOINTMENT_NOT_FOUND" ? "appointment-not-found" : "status-invalid",
   ));
 }
@@ -58,9 +56,10 @@ export async function updateAppointmentStatusAction(formData: FormData) {
 export async function rescheduleAppointmentAction(formData: FormData) {
   const changedById = await requireInternalAccess();
   const notificationEnv = await getWorkshopNotificationEnv(db);
-  let result: Awaited<ReturnType<typeof rescheduleInternalAppointment>>;
+  let feedback: InternalFeedbackCode;
+  let accepted = false;
   try {
-    result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
+    const result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
       appointmentId: stringValue(formData, "appointmentId"),
       date: stringValue(formData, "targetDate"),
       startTime: stringValue(formData, "startTime"),
@@ -73,17 +72,32 @@ export async function rescheduleAppointmentAction(formData: FormData) {
           port: new ResendNotificationPort(notificationEnv),
         }
       : undefined);
+    accepted = result.accepted;
+    feedback = result.accepted ? "appointment-rescheduled" : rescheduleFeedback[result.reason];
   } catch (error) {
     if (!(error instanceof ZodError)) throw error;
-    result = {
-      accepted: false,
-      reason: "INVALID_DURATION",
-      message: "Revisá la fecha, el horario y la duración elegidos.",
-    };
+    feedback = "reschedule-invalid-input";
   }
-  const message = result.accepted ? "El turno fue reprogramado correctamente." : result.message;
-  const date = result.accepted ? stringValue(formData, "targetDate") : stringValue(formData, "agendaDate");
-  redirect(`/internal?date=${encodeURIComponent(date)}&appointmentUpdated=${result.accepted ? "1" : "0"}&message=${encodeURIComponent(message)}`);
+  redirect(agendaUrl(stringValue(formData, accepted ? "targetDate" : "agendaDate"), feedback));
+}
+
+const rescheduleFeedback: Record<
+  Exclude<Awaited<ReturnType<typeof rescheduleInternalAppointment>>, { accepted: true }>["reason"],
+  InternalFeedbackCode
+> = {
+  APPOINTMENT_NOT_FOUND: "appointment-not-found",
+  TERMINAL_APPOINTMENT: "reschedule-terminal",
+  INVALID_DURATION: "reschedule-invalid-duration",
+  CLOSED_DATE: "reschedule-closed-date",
+  OUTSIDE_OPENING_HOURS: "reschedule-outside-opening-hours",
+  BREAK_OVERLAP: "reschedule-break-overlap",
+  DAY_BOUNDARY_EXCEEDED: "reschedule-day-boundary-exceeded",
+  CAPACITY_EXHAUSTED: "reschedule-capacity-exhausted",
+};
+
+/** Agenda outcomes travel as codes, like the settings feedback, so no URL text is ever rendered. */
+function agendaUrl(date: string, feedback: InternalFeedbackCode): string {
+  return `/internal?${new URLSearchParams(date ? { date, feedback } : { feedback }).toString()}`;
 }
 
 export async function previewAppointmentAvailabilityAction(input: {
