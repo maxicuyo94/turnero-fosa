@@ -34,6 +34,29 @@ test("foundation routes are reachable", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Acceso interno" })).toBeVisible();
 });
 
+test("malformed date links fall back to a usable page instead of failing", async ({ page }) => {
+  const malformedDates = ["2026-02-31", "2026-13-01", "not-a-date", "2026-02-29T25:00"];
+
+  for (const date of malformedDates) {
+    const response = await page.goto(`/booking?date=${encodeURIComponent(date)}`);
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Reservar turno" })).toBeVisible();
+  }
+
+  await ensureE2EAdminUser();
+  await page.goto("/internal/login");
+  await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
+  await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+
+  for (const date of malformedDates) {
+    const response = await page.goto(`/internal?date=${encodeURIComponent(date)}`);
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+  }
+});
+
 test("capacity changes keep appointments and show a persistent conflict warning", async ({ page }) => {
   test.slow();
   const settings = await prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });

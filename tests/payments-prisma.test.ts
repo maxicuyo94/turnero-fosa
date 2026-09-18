@@ -11,6 +11,8 @@ import {
   expireOverdueDepositReservations,
   listPaidUnconfirmedDeposits,
 } from "@/src/modules/payments/prisma-repository";
+import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 const repository = new PrismaDepositPaymentRepository(prisma);
@@ -215,6 +217,26 @@ describe("Prisma deposit reservations", () => {
 
     await repository.applyProviderPayment(paymentUpdate(attempt.id, "REFUNDED"));
     expect((await listPaidUnconfirmedDeposits(prisma)).some((item) => item.publicCode === appointment.publicCode)).toBe(false);
+  });
+
+  it("keeps a coherent status history when a deposit approval races an internal cancellation", async () => {
+    for (let round = 0; round < 5; round += 1) {
+      const appointment = await createAppointment(isolatedFutureSlot());
+      const attempt = await createAttempt(appointment.id, "PENDING", 30);
+
+      const [, cancellation] = await Promise.all([
+        repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED")),
+        updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId: appointment.id, nextStatus: "CANCELLED", changedById: null }),
+      ]);
+
+      const history = await prisma.appointmentStatusHistory.findMany({ where: { appointmentId: appointment.id }, orderBy: { changedAt: "asc" } });
+      // Every accepted change starts from the status the previous one left, whichever side won.
+      history.forEach((row, index) => expect(row.fromStatus).toBe(index === 0 ? "PENDING_CONFIRMATION" : history[index - 1]!.toStatus));
+      const finalStatus = await appointmentStatus(appointment.id);
+      expect(history.at(-1)?.toStatus).toBe(finalStatus);
+      expect(finalStatus).toBe(cancellation.accepted ? "CANCELLED" : "CONFIRMED");
+      expect((await prisma.depositPaymentAttempt.findUniqueOrThrow({ where: { id: attempt.id } })).status).toBe("APPROVED");
+    }
   });
 
   it("ignores stale notifications and mismatches once a deposit is approved", async () => {
