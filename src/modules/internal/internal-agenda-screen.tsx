@@ -129,7 +129,7 @@ export function InternalAgendaScreen({
 
   return (
     <>
-      <SiteHeader active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
+      <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
 
       <PageShell>
         <PageHeading
@@ -146,6 +146,9 @@ export function InternalAgendaScreen({
           </InternalNavLink>
           <InternalNavLink active={false} href="/internal/shop">
             Repuestos
+          </InternalNavLink>
+          <InternalNavLink active={false} href="/internal/account">
+            Mi cuenta
           </InternalNavLink>
         </nav>
 
