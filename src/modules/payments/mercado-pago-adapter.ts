@@ -14,6 +14,8 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
       sandbox_init_point?: string;
     }>("/checkout/preferences", {
       method: "POST",
+      // One external reference is one checkout: concurrent starts get the same preference back.
+      headers: { "X-Idempotency-Key": input.externalReference },
       body: JSON.stringify({
         items: [{
           id: input.externalReference,
@@ -33,6 +35,10 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
         auto_return: "approved",
         expires: true,
         expiration_date_to: input.expiresAt.toISOString(),
+        // The reservation lasts minutes. Cash vouchers and ATM payments stay payable for at least a
+        // day, and pending card reviews settle later, so only instant approve-or-reject is offered.
+        binary_mode: true,
+        payment_methods: { excluded_payment_types: [{ id: "ticket" }, { id: "atm" }] },
       }),
     });
 
@@ -43,26 +49,17 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
   }
 
   async getPayment(paymentId: string) {
-    const payment = await this.request<{
-      id: number | string;
-      external_reference?: string | null;
-      transaction_amount: number;
-      currency_id: string;
-      status: string;
-      status_detail?: string | null;
-      live_mode: boolean;
-      date_approved?: string | null;
-    }>(`/v1/payments/${encodeURIComponent(paymentId)}`);
-    return {
-      id: String(payment.id),
-      externalReference: payment.external_reference ?? null,
-      amount: payment.transaction_amount,
-      currency: payment.currency_id,
-      status: payment.status,
-      statusDetail: payment.status_detail ?? null,
-      liveMode: payment.live_mode,
-      approvedAt: payment.date_approved ? new Date(payment.date_approved) : null,
-    };
+    return mapPayment(await this.request<ProviderPayment>(`/v1/payments/${encodeURIComponent(paymentId)}`));
+  }
+
+  async searchPayments(externalReference: string) {
+    const query = new URLSearchParams({
+      external_reference: externalReference,
+      sort: "date_created",
+      criteria: "desc",
+    });
+    const response = await this.request<{ results?: ProviderPayment[] }>(`/v1/payments/search?${query.toString()}`);
+    return (response.results ?? []).map(mapPayment);
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -79,6 +76,37 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
   }
 }
 
+type ProviderPayment = {
+  id: number | string;
+  external_reference?: string | null;
+  transaction_amount: number;
+  currency_id: string;
+  status: string;
+  status_detail?: string | null;
+  live_mode: boolean;
+  date_approved?: string | null;
+};
+
+function mapPayment(payment: ProviderPayment) {
+  return {
+    id: String(payment.id),
+    externalReference: payment.external_reference ?? null,
+    amount: payment.transaction_amount,
+    currency: payment.currency_id,
+    status: payment.status,
+    statusDetail: payment.status_detail ?? null,
+    liveMode: payment.live_mode,
+    approvedAt: payment.date_approved ? new Date(payment.date_approved) : null,
+  };
+}
+
+/** Timestamps above this are milliseconds; below, seconds (both appear in Mercado Pago's docs). */
+const MILLISECOND_TIMESTAMP_THRESHOLD = 1e11;
+
+/**
+ * Validates `x-signature` as documented: `id:[data.id_url];request-id:[x-request-id];ts:[ts];`,
+ * where `data.id` comes from the URL query, is lowercased, and any missing value is left out.
+ */
 export function validateMercadoPagoSignature(input: {
   xSignature: string | null;
   xRequestId: string | null;
@@ -86,16 +114,21 @@ export function validateMercadoPagoSignature(input: {
   secret: string;
   nowSeconds?: number;
 }): boolean {
-  if (!input.xSignature || !input.xRequestId || !input.dataId) return false;
+  if (!input.xSignature) return false;
   const parts = new Map(input.xSignature.split(",").map((part) => part.trim().split("=", 2) as [string, string]));
   const timestamp = parts.get("ts");
   const signature = parts.get("v1");
   if (!timestamp || !signature) return false;
-  const timestampSeconds = Number(timestamp);
+  const rawTimestamp = Number(timestamp);
+  const timestampSeconds = rawTimestamp > MILLISECOND_TIMESTAMP_THRESHOLD ? rawTimestamp / 1_000 : rawTimestamp;
   const nowSeconds = input.nowSeconds ?? Math.floor(Date.now() / 1_000);
   if (!Number.isFinite(timestampSeconds) || timestampSeconds > nowSeconds + 60 || nowSeconds - timestampSeconds > 300) return false;
 
-  const manifest = `id:${input.dataId.toLowerCase()};request-id:${input.xRequestId};ts:${timestamp};`;
+  const manifest = [
+    input.dataId ? `id:${input.dataId.toLowerCase()};` : "",
+    input.xRequestId ? `request-id:${input.xRequestId};` : "",
+    `ts:${timestamp};`,
+  ].join("");
   const expected = createHmac("sha256", input.secret).update(manifest).digest("hex");
   const expectedBuffer = Buffer.from(expected, "hex");
   const signatureBuffer = Buffer.from(signature, "hex");

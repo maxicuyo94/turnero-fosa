@@ -25,6 +25,12 @@
 - [x] 4.3 Configure Preview webhook and complete signed-notification acceptance.
 - [ ] 4.4 Configure production credentials, enable the policy, and monitor first live payment.
 
+Hardening (2026-09-18, `fix/mercado-pago`): instant-only payment methods
+(`binary_mode`, no cash/ATM), atomic checkout start with idempotency key,
+reconciliation on return and before expiry (test credentials send no webhooks, which
+is why 3.5 could not complete through the webhook alone), signature `ts` accepted in
+seconds or milliseconds, and a `CRON_SECRET`-protected sweep endpoint.
+
 Release note (2026-09-09): code and migration published to production in `e15ebe8`.
 This does not complete 3.5 or 4.4: a full sandbox purchase and live collection
 activation remain pending. Track the remaining payment risks in [BACKLOG.md](../../BACKLOG.md).

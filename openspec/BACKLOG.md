@@ -48,6 +48,12 @@ páginas públicas/internas antes de acceder a Prisma; el ítem permanece abiert
 
 ## PAY-001 — Inicio de pago concurrente
 
+Avance 2026-09-18 (`fix/mercado-pago`): `createAttempt` vuelve a buscar el intento
+vigente bajo el bloqueo del turno, `markPreferenceCreated` solo guarda el primer
+checkout y la preferencia usa la referencia externa como `X-Idempotency-Key`. Probado
+con dos inicios simultáneos en memoria y en PostgreSQL. Pendiente: doble clic real
+contra el sandbox.
+
 - **Prioridad:** P1 antes de activar señas. **Evidencia:** reproducido en memoria;
   pendiente confirmar concurrencia con PostgreSQL y sandbox.
 - **Reproducción:** dos `initiateAppointmentDeposit` simultáneos, sin intento
@@ -61,6 +67,10 @@ páginas públicas/internas antes de acceder a Prisma; el ítem permanece abiert
   después de la respuesta del proveedor. No deben quedar dos enlaces cobrables.
 
 ## PAY-002 — Actualizaciones de pago fuera de orden
+
+Avance 2026-09-18 (`ee0e378`): un intento aprobado solo pasa a reembolso o
+contracargo, que son finales; `markAttemptError` no degrada pagos cobrados. La
+conciliación aplica todos los pagos de la referencia en orden cronológico.
 
 - **Prioridad:** P1 antes de activar señas. **Evidencia:** riesgo por inspección;
   todavía no reproducido con solicitudes reales del proveedor.
@@ -78,6 +88,11 @@ páginas públicas/internas antes de acceder a Prisma; el ítem permanece abiert
   todas las actualizaciones posteriores a `APPROVED`.
 
 ## PAY-003 — Vencimiento dependiente del trafico
+
+Avance 2026-09-18 (`fix/mercado-pago`): nuevo endpoint `/api/cron/deposits`
+protegido con `CRON_SECRET`; la agenda interna también ejecuta el barrido. Antes de
+cancelar se consulta a Mercado Pago por la referencia. Pendiente: programar el cron
+(Vercel Pro o programador externo) y monitorearlo.
 
 - **Prioridad:** P2, resolver antes de operar señas obligatorias.
 - **Evidencia:** limitación confirmada por inspección de los puntos de llamada.

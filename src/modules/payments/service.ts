@@ -25,17 +25,25 @@ export type DepositPaymentRepository = {
     status: AppointmentStatus;
   } | null>;
   findReusableAttempt(appointmentId: string, now: Date): Promise<DepositPaymentAttemptRecord | null>;
+  /**
+   * Atomically returns the appointment's still-valid attempt or creates a new one, so concurrent
+   * starts share a single checkout. Returns null when the appointment no longer accepts a deposit.
+   */
   createAttempt(input: {
     appointmentId: string;
     externalReference: string;
     amountCents: number;
     expiresAt: Date;
+    now: Date;
   }): Promise<DepositPaymentAttemptRecord | null>;
+  /** Stores the checkout only if the attempt has none yet and returns the attempt as stored. */
   markPreferenceCreated(input: {
     attemptId: string;
     preferenceId: string;
     checkoutUrl: string;
   }): Promise<DepositPaymentAttemptRecord>;
+  /** Marks a checkout that could not be created, unless a concurrent start already stored one. */
+  markPreferenceFailed(attemptId: string, detail: string): Promise<void>;
   markAttemptError(attemptId: string, detail: string): Promise<void>;
   findByExternalReference(externalReference: string): Promise<DepositPaymentAttemptRecord | null>;
   applyProviderPayment(input: {
@@ -56,16 +64,20 @@ export type MercadoPagoPort = {
     payerEmail: string | null;
     expiresAt: Date;
   }): Promise<{ preferenceId: string; checkoutUrl: string }>;
-  getPayment(paymentId: string): Promise<{
-    id: string;
-    externalReference: string | null;
-    amount: number;
-    currency: string;
-    status: string;
-    statusDetail: string | null;
-    liveMode: boolean;
-    approvedAt: Date | null;
-  }>;
+  getPayment(paymentId: string): Promise<ProviderPayment>;
+  /** Payments created for one external reference, newest first. */
+  searchPayments(externalReference: string): Promise<ProviderPayment[]>;
+};
+
+export type ProviderPayment = {
+  id: string;
+  externalReference: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  statusDetail: string | null;
+  liveMode: boolean;
+  approvedAt: Date | null;
 };
 
 export async function initiateAppointmentDeposit(
@@ -110,12 +122,23 @@ export async function initiateAppointmentDeposit(
     externalReference: `deposit:${randomUUID()}`,
     amountCents: policy.amountCents,
     expiresAt: new Date(now.getTime() + policy.expirationMinutes * 60_000),
+    now,
   });
   if (!attempt) {
     return {
       accepted: false,
       reason: "APPOINTMENT_NOT_PAYABLE",
       message: "Este turno ya no admite el pago de una seña.",
+    };
+  }
+  // A concurrent start may have finished the checkout while this one waited for the lock.
+  if (attempt.checkoutUrl) {
+    return {
+      accepted: true,
+      required: true,
+      checkoutUrl: attempt.checkoutUrl,
+      reference: attempt.externalReference,
+      amountCents: attempt.amountCents,
     };
   }
 
@@ -127,7 +150,8 @@ export async function initiateAppointmentDeposit(
       payerEmail: appointment.customerEmail,
       expiresAt: attempt.expiresAt,
     });
-    await repository.markPreferenceCreated({
+    // Whoever stores first wins; everyone is sent to that single stored checkout.
+    const stored = await repository.markPreferenceCreated({
       attemptId: attempt.id,
       preferenceId: preference.preferenceId,
       checkoutUrl: preference.checkoutUrl,
@@ -135,12 +159,12 @@ export async function initiateAppointmentDeposit(
     return {
       accepted: true,
       required: true,
-      checkoutUrl: preference.checkoutUrl,
+      checkoutUrl: stored.checkoutUrl ?? preference.checkoutUrl,
       reference: attempt.externalReference,
       amountCents: attempt.amountCents,
     };
   } catch (error) {
-    await repository.markAttemptError(attempt.id, safeErrorMessage(error));
+    await repository.markPreferenceFailed(attempt.id, safeErrorMessage(error));
     return {
       accepted: false,
       reason: "PAYMENT_UNAVAILABLE",
@@ -153,8 +177,41 @@ export async function processMercadoPagoPayment(
   repository: DepositPaymentRepository,
   port: MercadoPagoPort,
   input: { paymentId: string; expectedLiveMode?: boolean },
-): Promise<{ accepted: true; status: DepositPaymentStatus } | { accepted: false; reason: "UNKNOWN_REFERENCE" | "PAYMENT_MISMATCH" }> {
-  const payment = await port.getPayment(input.paymentId);
+): Promise<PaymentProcessingResult> {
+  return applyMercadoPagoPayment(repository, await port.getPayment(input.paymentId), input.expectedLiveMode);
+}
+
+type PaymentProcessingResult =
+  | { accepted: true; status: DepositPaymentStatus }
+  | { accepted: false; reason: "UNKNOWN_REFERENCE" | "PAYMENT_MISMATCH" };
+
+/**
+ * Pulls every payment Mercado Pago holds for an attempt and applies them oldest first. This is how
+ * a deposit is settled when no webhook arrives: test credentials never send notifications, and a
+ * notification can be lost. Status rules keep the result independent of the order.
+ */
+export async function reconcileDepositAttempt(
+  repository: DepositPaymentRepository,
+  port: MercadoPagoPort,
+  input: { externalReference: string; expectedLiveMode?: boolean },
+): Promise<DepositPaymentStatus | null> {
+  const payments = (await port.searchPayments(input.externalReference)).reverse();
+  let status: DepositPaymentStatus | null = null;
+  for (const payment of payments) {
+    const result = await applyMercadoPagoPayment(repository, payment, input.expectedLiveMode);
+    if (result.accepted) status = result.status;
+  }
+  return status;
+}
+
+/** Hook the expiry sweep calls before cancelling a reservation, so a paid one is confirmed instead. */
+export type DepositReconciler = (externalReference: string) => Promise<void>;
+
+async function applyMercadoPagoPayment(
+  repository: DepositPaymentRepository,
+  payment: ProviderPayment,
+  expectedLiveMode: boolean | undefined,
+): Promise<PaymentProcessingResult> {
   if (!payment.externalReference) return { accepted: false, reason: "UNKNOWN_REFERENCE" };
   const attempt = await repository.findByExternalReference(payment.externalReference);
   if (!attempt) return { accepted: false, reason: "UNKNOWN_REFERENCE" };
@@ -162,7 +219,7 @@ export async function processMercadoPagoPayment(
   if (
     Math.round(payment.amount * 100) !== attempt.amountCents ||
     payment.currency !== attempt.currency ||
-    (input.expectedLiveMode !== undefined && payment.liveMode !== input.expectedLiveMode)
+    (expectedLiveMode !== undefined && payment.liveMode !== expectedLiveMode)
   ) {
     await repository.markAttemptError(attempt.id, "Provider amount or currency did not match the deposit attempt.");
     return { accepted: false, reason: "PAYMENT_MISMATCH" };
