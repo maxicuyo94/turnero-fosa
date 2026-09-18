@@ -168,16 +168,28 @@ export async function processMercadoPagoPayment(
     return { accepted: false, reason: "PAYMENT_MISMATCH" };
   }
 
-  const status = mapMercadoPagoStatus(payment.status);
-  await repository.applyProviderPayment({
+  const updated = await repository.applyProviderPayment({
     attemptId: attempt.id,
     providerPaymentId: payment.id,
-    status,
+    status: mapMercadoPagoStatus(payment.status),
     statusDetail: payment.statusDetail,
     liveMode: payment.liveMode,
     approvedAt: payment.approvedAt,
   });
-  return { accepted: true, status };
+  return { accepted: true, status: updated.status };
+}
+
+/** Money already collected is never "un-collected" by a late or out-of-order notification. */
+export const settledPaymentStatuses: readonly DepositPaymentStatus[] = ["APPROVED", "REFUNDED", "CHARGED_BACK"];
+
+/**
+ * Webhooks can arrive out of order and several payments can share one checkout. Once an attempt is
+ * approved it may only move to a refund or chargeback; refunds and chargebacks are final.
+ */
+export function resolveAttemptStatus(current: DepositPaymentStatus, incoming: DepositPaymentStatus): DepositPaymentStatus {
+  if (current === "REFUNDED" || current === "CHARGED_BACK") return current;
+  if (current === "APPROVED") return settledPaymentStatuses.includes(incoming) ? incoming : current;
+  return incoming;
 }
 
 export function mapMercadoPagoStatus(status: string): DepositPaymentStatus {

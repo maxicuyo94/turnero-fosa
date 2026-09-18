@@ -4,6 +4,7 @@ import { validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pag
 import {
   initiateAppointmentDeposit,
   processMercadoPagoPayment,
+  resolveAttemptStatus,
   type DepositPaymentAttemptRecord,
   type DepositPaymentRepository,
   type MercadoPagoPort,
@@ -85,6 +86,18 @@ describe("Mercado Pago deposit flow", () => {
 });
 
 describe("Mercado Pago webhook signature", () => {
+  it("never lets a late or out-of-order notification undo a settled deposit", () => {
+    expect(resolveAttemptStatus("PENDING", "REJECTED")).toBe("REJECTED");
+    expect(resolveAttemptStatus("REJECTED", "APPROVED")).toBe("APPROVED");
+    expect(resolveAttemptStatus("APPROVED", "PENDING")).toBe("APPROVED");
+    expect(resolveAttemptStatus("APPROVED", "REJECTED")).toBe("APPROVED");
+    expect(resolveAttemptStatus("APPROVED", "ERROR")).toBe("APPROVED");
+    expect(resolveAttemptStatus("APPROVED", "REFUNDED")).toBe("REFUNDED");
+    expect(resolveAttemptStatus("APPROVED", "CHARGED_BACK")).toBe("CHARGED_BACK");
+    expect(resolveAttemptStatus("REFUNDED", "APPROVED")).toBe("REFUNDED");
+    expect(resolveAttemptStatus("CHARGED_BACK", "PENDING")).toBe("CHARGED_BACK");
+  });
+
   it("validates the signed manifest and rejects stale or changed notifications", () => {
     const secret = "webhook-secret";
     const timestamp = 1_785_690_000;
