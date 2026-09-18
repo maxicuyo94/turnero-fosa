@@ -11,6 +11,8 @@ import {
 import Link from "next/link";
 import { CapacityWarning } from "@/src/modules/internal/capacity-warning";
 import type { CapacityConflict } from "@/src/modules/internal/capacity-conflicts";
+import { PaidDepositWarning } from "@/src/modules/internal/paid-deposit-warning";
+import type { PaidUnconfirmedDeposit } from "@/src/modules/payments/prisma-repository";
 import { ContactSettingsFields, DepositSettingsFields } from "@/src/modules/settings/business-settings-fields";
 import {
   Alert,
@@ -45,6 +47,9 @@ export const internalFeedbackCodes = [
   "holidays-imported",
   "holidays-unavailable",
   "holidays-invalid",
+  "status-updated",
+  "status-invalid",
+  "appointment-not-found",
 ] as const;
 
 export type InternalFeedbackCode = (typeof internalFeedbackCodes)[number];
@@ -75,6 +80,12 @@ const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message:
     tone: "danger",
     message: "La respuesta de feriados no tiene el formato esperado. No se modifico ninguna fecha.",
   },
+  "status-updated": { tone: "success", message: "Actualizamos el estado del turno." },
+  "status-invalid": {
+    tone: "danger",
+    message: "No se pudo cambiar el estado: el turno ya no admite ese cambio. Recargá la agenda para ver su estado actual.",
+  },
+  "appointment-not-found": { tone: "danger", message: "No encontramos el turno. Puede haber sido eliminado." },
 };
 
 const dayLabels: Record<DayOfWeek, string> = {
@@ -93,6 +104,7 @@ export function InternalAgendaScreen({
   section = "agenda",
   settings,
   capacityConflicts = [],
+  paidUnconfirmedDeposits = [],
   services = [],
   schedule,
   exceptions = [],
@@ -105,6 +117,7 @@ export function InternalAgendaScreen({
   section?: InternalSection;
   settings?: InternalWorkshopSettingsRecord;
   capacityConflicts?: CapacityConflict[];
+  paidUnconfirmedDeposits?: PaidUnconfirmedDeposit[];
   services?: InternalServiceRecord[];
   schedule?: InternalWeeklyScheduleRecord;
   exceptions?: ScheduleDateException[];
@@ -137,6 +150,7 @@ export function InternalAgendaScreen({
         </nav>
 
         {settings ? <CapacityWarning capacity={settings.capacity} conflicts={capacityConflicts} /> : null}
+        <PaidDepositWarning deposits={paidUnconfirmedDeposits} />
 
         {feedbackAlert ? (
           <Alert className="mt-6" tone={feedbackAlert.tone}>

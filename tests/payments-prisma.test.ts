@@ -1,11 +1,16 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { PrismaClient, type DepositPaymentStatus } from "@prisma/client";
+import { PrismaClient, type AppointmentStatus, type DepositPaymentStatus } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
-import { PrismaDepositPaymentRepository, expireOverdueDepositReservations } from "@/src/modules/payments/prisma-repository";
+import {
+  PrismaDepositPaymentRepository,
+  depositExpiredNote,
+  expireOverdueDepositReservations,
+  listPaidUnconfirmedDeposits,
+} from "@/src/modules/payments/prisma-repository";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 const repository = new PrismaDepositPaymentRepository(prisma);
@@ -116,6 +121,69 @@ describe("Prisma deposit reservations", () => {
     expect(await appointmentStatus(appointment.id)).toBe(retry ? "PENDING_CONFIRMATION" : "CANCELLED");
   });
 
+  it("reinstates an expired reservation when its deposit is approved late and the slot still fits", async () => {
+    const appointment = await createAppointment(isolatedFutureSlot());
+    const attempt = await createAttempt(appointment.id, "PENDING", -5);
+    await expireOverdueDepositReservations(prisma, now);
+    expect(await appointmentStatus(appointment.id)).toBe("CANCELLED");
+
+    await repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED"));
+    expect(await appointmentStatus(appointment.id)).toBe("CONFIRMED");
+    expect(await lastHistoryNote(appointment.id)).toMatch(/reinstated/u);
+    expect((await listPaidUnconfirmedDeposits(prisma)).some((item) => item.publicCode === appointment.publicCode)).toBe(false);
+  });
+
+  it("keeps a late-paid reservation cancelled and flags it when the slot is already full", async () => {
+    const startAt = isolatedFutureSlot();
+    const workshopSettingsId = (await prisma.service.findUniqueOrThrow({ where: { id: serviceId } })).workshopSettingsId;
+    const { capacity } = await prisma.workshopSettings.findUniqueOrThrow({ where: { id: workshopSettingsId } });
+    await prisma.workshopSettings.update({ where: { id: workshopSettingsId }, data: { capacity: 1 } });
+    try {
+      const appointment = await createAppointment(startAt);
+      const attempt = await createAttempt(appointment.id, "PENDING", -5);
+      await expireOverdueDepositReservations(prisma, now);
+      await createAppointment(startAt, "CONFIRMED");
+
+      await repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED"));
+      expect(await appointmentStatus(appointment.id)).toBe("CANCELLED");
+      expect(await lastHistoryNote(appointment.id)).toBe(depositExpiredNote);
+      const flagged = (await listPaidUnconfirmedDeposits(prisma)).find((item) => item.publicCode === appointment.publicCode);
+      expect(flagged).toMatchObject({ amountCents: 500_000, customerName: "Payment regression rider" });
+    } finally {
+      await prisma.workshopSettings.update({ where: { id: workshopSettingsId }, data: { capacity } });
+    }
+  });
+
+  it("does not undo a cancellation made by a person when a deposit is approved later", async () => {
+    const appointment = await createAppointment(isolatedFutureSlot());
+    const attempt = await createAttempt(appointment.id, "PENDING", 30);
+    await prisma.appointment.update({
+      where: { id: appointment.id },
+      data: { status: "CANCELLED", statusHistory: { create: { toStatus: "CANCELLED", note: "Cancelled by public token." } } },
+    });
+
+    await repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED"));
+    expect(await appointmentStatus(appointment.id)).toBe("CANCELLED");
+    expect((await listPaidUnconfirmedDeposits(prisma)).some((item) => item.publicCode === appointment.publicCode)).toBe(true);
+
+    await repository.applyProviderPayment(paymentUpdate(attempt.id, "REFUNDED"));
+    expect((await listPaidUnconfirmedDeposits(prisma)).some((item) => item.publicCode === appointment.publicCode)).toBe(false);
+  });
+
+  it("ignores stale notifications and mismatches once a deposit is approved", async () => {
+    const appointment = await createAppointment();
+    const attempt = await createAttempt(appointment.id, "PENDING", 30);
+    await repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED"));
+
+    const stale = await repository.applyProviderPayment({ ...paymentUpdate(attempt.id, "REJECTED"), providerPaymentId: `rejected-${attempt.id}` });
+    await repository.markAttemptError(attempt.id, "mismatch");
+    const stored = await prisma.depositPaymentAttempt.findUniqueOrThrow({ where: { id: attempt.id } });
+    expect(stale.status).toBe("APPROVED");
+    expect(stored).toMatchObject({ status: "APPROVED", providerPaymentId: `provider-${attempt.id}` });
+    expect(stored.lastNotificationAt).not.toBeNull();
+    expect(await appointmentStatus(appointment.id)).toBe("CONFIRMED");
+  });
+
   it("only exposes a stored, unexpired checkout for the requested pending appointment", async () => {
     const appointment = await createAppointment();
     const attempt = await createAttempt(appointment.id, "PENDING", 30);
@@ -128,13 +196,24 @@ describe("Prisma deposit reservations", () => {
   });
 });
 
-function createAppointment() {
+function createAppointment(startAt = new Date("2026-09-10T12:00:00Z"), status: AppointmentStatus = "PENDING_CONFIRMATION") {
   return prisma.appointment.create({ data: {
-    serviceId, customerId, motorcycleId,
+    serviceId, customerId, motorcycleId, status,
     idempotencyKey: `${prefix}${randomUUID()}`,
-    startAt: new Date("2026-09-10T12:00:00Z"),
-    endAt: new Date("2026-09-10T13:00:00Z"),
+    startAt,
+    endAt: new Date(startAt.getTime() + 60 * 60_000),
   } });
+}
+
+/** A future slot far from other suites' fixtures, so capacity checks only see this test's rows. */
+function isolatedFutureSlot(): Date {
+  const start = new Date("2031-01-01T12:00:00Z");
+  start.setUTCDate(start.getUTCDate() + Math.floor(Math.random() * 3_000));
+  return start;
+}
+
+async function lastHistoryNote(appointmentId: string) {
+  return (await prisma.appointmentStatusHistory.findFirst({ where: { appointmentId }, orderBy: { changedAt: "desc" } }))?.note;
 }
 
 function createAttempt(appointmentId: string, status: DepositPaymentStatus, minutes: number) {

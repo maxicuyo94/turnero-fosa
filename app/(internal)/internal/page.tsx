@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
+import { workshopDate } from "@/src/lib/workshop-date";
+import { listPaidUnconfirmedDeposits } from "@/src/modules/payments/prisma-repository";
+import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import {
   InternalAgendaScreen,
   internalFeedbackCodes,
@@ -25,15 +28,17 @@ export default async function InternalPage({
   if (!isInternalSession(session)) redirect("/internal/login");
 
   const params = await searchParams;
-  const date = params?.date ?? localDate(new Date());
+  // A hand-edited or stale link falls back to today instead of failing the whole panel.
+  const date = calendarDateSchema.safeParse(params?.date).data ?? workshopDate(new Date());
   const repository = new PrismaInternalRepository(db);
   const weekDates = datesForWeek(date);
-  const [weekAgendas, settings, services, schedule, exceptions] = await Promise.all([
+  const [weekAgendas, settings, services, schedule, exceptions, paidUnconfirmedDeposits] = await Promise.all([
     Promise.all(weekDates.map((weekDate) => getInternalAgenda(repository, { date: weekDate }))),
     repository.getWorkshopSettings(),
     repository.listServices(),
     repository.getWeeklySchedule(),
     repository.listDateExceptions(exceptionRange(date)),
+    listPaidUnconfirmedDeposits(db),
   ]);
   const agenda = weekAgendas.find((item) => item.date === date) ?? await getInternalAgenda(repository, { date });
   const capacityConflicts = await repository.getCapacityConflicts(settings.capacity);
@@ -41,6 +46,7 @@ export default async function InternalPage({
     <InternalAgendaScreen
       agenda={agenda}
       capacityConflicts={capacityConflicts}
+      paidUnconfirmedDeposits={paidUnconfirmedDeposits}
       appointmentUpdateOutcome={params?.message ? { accepted: params.appointmentUpdated === "1", message: params.message } : undefined}
       exceptions={exceptions}
       feedback={parseFeedback(params?.feedback)}
@@ -80,8 +86,4 @@ function datesForWeek(date: string): string[] {
     current.setUTCDate(monday.getUTCDate() + index);
     return current.toISOString().slice(0, 10);
   });
-}
-
-function localDate(date: Date): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(date);
 }
