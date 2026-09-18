@@ -55,7 +55,11 @@ export type BookingRepository = {
     notes?: string;
   }): Promise<PublicAppointmentRecord>;
   findCancellableAppointment(appointmentId: string, token: string): Promise<PublicAppointmentRecord | null>;
-  cancelAppointment(appointmentId: string): Promise<void>;
+  /**
+   * Cancels only if the appointment is still in `fromStatus`; returns false when another change got
+   * there first, so a cancellation is never validated against a stale status.
+   */
+  cancelAppointment(appointmentId: string, fromStatus: AppointmentStatus): Promise<boolean>;
 };
 
 const bookingInputSchema = z.object({
@@ -333,7 +337,13 @@ export async function cancelPublicAppointment(
     };
   }
 
-  await repository.cancelAppointment(appointment.id);
+  if (!(await repository.cancelAppointment(appointment.id, appointment.status))) {
+    return {
+      accepted: false,
+      reason: "CANCELLATION_UNAVAILABLE",
+      message: "Este turno no se puede cancelar online.",
+    };
+  }
   return { accepted: true, message: "Tu turno fue cancelado.", reschedulingAvailable: false };
 }
 

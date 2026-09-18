@@ -9,6 +9,7 @@ import {
   type PublicAppointmentRecord,
   type PublicServiceRecord,
 } from "@/src/modules/booking/service";
+import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import type { EmailNotificationMessage, NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import type { ScheduleDateException } from "@/src/modules/settings/schemas";
@@ -271,6 +272,27 @@ describe("cancelPublicAppointment", () => {
     expect(repository.appointments[0]?.status).toBe("CANCELLED");
   });
 
+  it("rejects a cancellation when the appointment changed status after it was read", async () => {
+    const repository = new InMemoryBookingRepository({
+      settings: { ...workshopSeedConfig.settings, cancellationEnabled: true },
+      services: [service({ id: "oil" })],
+      appointments: [appointment({ id: "appt_1", cancellationToken: "valid-token", startAt: "2026-07-06T09:00:00-03:00" })],
+    });
+    const find = repository.findCancellableAppointment.bind(repository);
+    repository.findCancellableAppointment = async (appointmentId, token) => {
+      const found = await find(appointmentId, token);
+      const snapshot = found && { ...found };
+      // Another request confirms the appointment between the read and the write.
+      repository.appointments[0]!.status = "CONFIRMED";
+      return snapshot;
+    };
+
+    const result = await cancelPublicAppointment(repository, { appointmentId: "appt_1", token: "valid-token", now });
+
+    expect(result).toMatchObject({ accepted: false, reason: "CANCELLATION_UNAVAILABLE" });
+    expect(repository.appointments[0]?.status).toBe("CONFIRMED");
+  });
+
   it("rejects cancellation with an invalid token or disabled policy", async () => {
     const repository = new InMemoryBookingRepository({
       settings: { ...workshopSeedConfig.settings, cancellationEnabled: false },
@@ -448,10 +470,12 @@ class InMemoryBookingRepository implements BookingRepository {
     return this.appointments.find((item) => item.id === appointmentId && item.cancellationToken === token) ?? null;
   }
 
-  async cancelAppointment(appointmentId: string) {
+  async cancelAppointment(appointmentId: string, fromStatus: AppointmentStatus) {
     const found = this.appointments.find((item) => item.id === appointmentId);
     if (!found) throw new Error("Appointment not found");
+    if (found.status !== fromStatus) return false;
     found.status = "CANCELLED";
+    return true;
   }
 }
 

@@ -9,6 +9,13 @@ pero no acredita por sí sola un incidente en PostgreSQL o en producción.
 
 ## ERR-001 — Cambios de estado concurrentes
 
+Avance 2026-09-18: los cambios internos (`1f1624d`) y la cancelación pública solo
+escriben si el turno sigue en el estado validado, con una única fila de historial
+por transición aceptada. Probado en PostgreSQL con confirmar/cancelar internos en
+paralelo y con cancelación pública contra confirmación interna. Reprogramar ya
+corría bajo el bloqueo de agenda. Pendiente para cerrar: coordinar los webhooks de
+pago con el mismo criterio.
+
 - **Prioridad:** P1. **Evidencia:** reproducido en el servicio con repositorio en
   memoria; pendiente prueba concurrente con PostgreSQL.
 - **Escenario:** dos solicitudes leen `PENDING_CONFIRMATION`; una cancela y otra
@@ -28,8 +35,9 @@ pero no acredita por sí sola un incidente en PostgreSQL o en producción.
 
 Avance 2026-09-11 (`business-settings`): corregida la validación de horas y fechas
 en Configuración, incluyendo excepciones y fecha de activación de señas, con
-pruebas de regresión. Sigue pendiente validar los parámetros de fecha de las
-páginas públicas/internas antes de acceder a Prisma; el ítem permanece abierto.
+pruebas de regresión. Avance 2026-09-18 (`e471060`): `?date=` malformado en la
+agenda interna y en `/booking` vuelve a una fecha válida, y la reserva rechaza
+fechas de calendario inexistentes. Falta una prueba E2E con URLs malformadas.
 
 - **Prioridad:** P1. **Evidencia:** reproducido en los esquemas; errores HTTP
   específicos pendientes de reproducción local.
