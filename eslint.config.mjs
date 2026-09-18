@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "test-results/**",
     // Local Vercel CLI metadata and ad-hoc scripts; ignored by Git as well.
     ".vercel/**",
+    // Agent worktrees are full checkouts, build output included; each lints itself.
+    ".claude/**",
     // Design-system build output and the staged design-sync converter scripts.
     "ds-dist/**",
     "ds-bundle/**",

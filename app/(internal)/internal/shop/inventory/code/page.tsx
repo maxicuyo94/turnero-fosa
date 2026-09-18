@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
-import { resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
+import { findSimilarInventoryCodes, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
 import { InventoryCodeScreen } from "@/src/modules/shop/inventory-screen";
 
 type Search = { value?: string | string[]; q?: string | string[]; error?: string | string[] };
@@ -18,6 +18,7 @@ export default async function InventoryCodePage({ searchParams }: { searchParams
   if (resolution.status === "found") redirect(`/internal/shop/inventory/${resolution.product.id}`);
 
   const linkQuery = (first(raw.q) ?? "").trim().slice(0, 120);
+  const similar = resolution.status === "unknown" ? await findSimilarInventoryCodes(db, resolution.code) : [];
   const linkCandidates = resolution.status === "unknown"
     ? await db.shopProduct.findMany({
         where: {
@@ -41,6 +42,7 @@ export default async function InventoryCodePage({ searchParams }: { searchParams
       linkCandidates={linkCandidates}
       linkQuery={linkQuery}
       matches={resolution.status === "ambiguous" ? resolution.products : []}
+      similar={similar}
       signedInUserName={getInternalSessionDisplayName(session)}
     />
   );

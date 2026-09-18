@@ -6,7 +6,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { resolveTestDataTarget } from "@/src/modules/testing/test-data-guard";
-import { linkInventoryBarcode, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
+import { findSimilarInventoryCodes, linkInventoryBarcode, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
+import { createInventoryProduct } from "@/src/modules/shop/inventory-service";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 const target = resolveTestDataTarget({
@@ -26,6 +27,7 @@ codeSuite("códigos de inventario con PostgreSQL", () => {
 
   afterAll(async () => {
     await cleanupFixtures();
+    if (actorId) await prisma.user.delete({ where: { id: actorId } });
     await prisma.$disconnect();
   });
 
@@ -40,6 +42,33 @@ codeSuite("códigos de inventario con PostgreSQL", () => {
     const product = await createProduct({ sku: `${fixturePrefix}UPC`, barcode: upc });
 
     expect(await resolveInventoryCode(prisma, `0${upc}`)).toMatchObject({ status: "found", product: { id: product.id } });
+  });
+
+  it("encuentra códigos guardados con espacios, guiones o caracteres invisibles", async () => {
+    const digits = `8${Date.now().toString().slice(-12)}`;
+    const spaced = await createProduct({ sku: `${fixturePrefix}ESP`, barcode: `${digits.slice(0, 1)} ${digits.slice(1, 7)} ${digits.slice(7)}` });
+    const dashed = await createProduct({ sku: `${fixturePrefix}GUION`, barcode: `${fixturePrefix}AB-12​` });
+
+    expect(await resolveInventoryCode(prisma, digits)).toMatchObject({ status: "found", product: { id: spaced.id } });
+    expect(await resolveInventoryCode(prisma, `${fixturePrefix}ab12`)).toMatchObject({ status: "found", product: { id: dashed.id } });
+  });
+
+  it("sugiere fichas con un código casi igual sin abrirlas", async () => {
+    const digits = `6${Date.now().toString().slice(-12)}`;
+    const missingCheckDigit = await createProduct({ sku: `${fixturePrefix}CASI`, barcode: digits.slice(0, 12) });
+
+    expect(await resolveInventoryCode(prisma, digits)).toMatchObject({ status: "unknown" });
+    expect((await findSimilarInventoryCodes(prisma, digits)).map((product) => product.id)).toContain(missingCheckDigit.id);
+    expect(await findSimilarInventoryCodes(prisma, "12345")).toEqual([]);
+  });
+
+  it("guarda sin espacios los códigos cargados desde la ficha", async () => {
+    const product = await createInventoryProduct(prisma, {
+      sku: `${fixturePrefix}ALTA`, barcode: " 7 791234 567890 ", name: "Alta con espacios", category: "Pruebas E2",
+      priceArs: "10", initialStock: "0", minimumStock: "0", isActive: true, requestKey: randomUUID(),
+    }, await fixtureActorId());
+
+    expect(product.barcode).toBe("7791234567890");
   });
 
   it("informa códigos desconocidos y no adivina cuando hay más de una coincidencia", async () => {
@@ -104,6 +133,18 @@ async function createProduct({ sku, barcode, stock = 0 }: { sku: string; barcode
   });
 }
 
+let actorId: string | undefined;
+
+async function fixtureActorId(): Promise<string> {
+  actorId ??= (await prisma.user.create({
+    data: { email: `code-${run.toLowerCase()}@test.invalid`, username: `code-${run.toLowerCase()}`, name: "Códigos E2 test", passwordHash: "x" },
+    select: { id: true },
+  })).id;
+  return actorId;
+}
+
 async function cleanupFixtures() {
-  await prisma.shopProduct.deleteMany({ where: { OR: [{ sku: { startsWith: fixturePrefix } }, { barcode: upc }] } });
+  const products = await prisma.shopProduct.findMany({ where: { OR: [{ sku: { startsWith: fixturePrefix } }, { barcode: upc }] }, select: { id: true } });
+  await prisma.inventoryMovement.deleteMany({ where: { productId: { in: products.map(({ id }) => id) } } });
+  await prisma.shopProduct.deleteMany({ where: { id: { in: products.map(({ id }) => id) } } });
 }
