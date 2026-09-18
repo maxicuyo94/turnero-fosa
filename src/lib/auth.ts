@@ -1,8 +1,21 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { verifyPassword } from "@/src/lib/password";
+import {
+  PrismaLoginThrottleStore,
+  checkLoginAllowed,
+  clientIpFromHeaders,
+  loginThrottleKeys,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from "@/src/lib/login-throttle";
+import { verifyPassword, verifyPasswordAgainstDummy } from "@/src/lib/password";
 
 export { createPasswordHash, verifyPassword } from "@/src/lib/password";
+
+/** Surfaces a lockout to the login page; the code never says whether the username exists. */
+export class TooManyLoginAttemptsError extends CredentialsSignin {
+  code = "too_many_attempts";
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -13,15 +26,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         username: { label: "Usuario", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const username = typeof credentials.username === "string" ? credentials.username.trim().toLowerCase() : "";
         const password = typeof credentials.password === "string" ? credentials.password : "";
         if (!username || !password) return null;
 
         const { db } = await import("@/src/lib/db");
-        const user = await db.user.findUnique({ where: { username } });
-        if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return null;
+        const throttle = new PrismaLoginThrottleStore(db);
+        const keys = loginThrottleKeys({ username, ip: clientIpFromHeaders(request?.headers) });
+        if (!(await checkLoginAllowed(throttle, keys))) throw new TooManyLoginAttemptsError();
 
+        const user = await db.user.findUnique({ where: { username } });
+        // Unknown users still pay for a scrypt run, so response time does not reveal valid usernames.
+        const valid = user?.passwordHash
+          ? await verifyPassword(password, user.passwordHash)
+          : await verifyPasswordAgainstDummy(password);
+        if (!user || !valid) {
+          await recordLoginFailure(throttle, keys);
+          return null;
+        }
+
+        await recordLoginSuccess(throttle, username);
         return { id: user.id, email: user.email, name: user.name, username: user.username };
       },
     }),

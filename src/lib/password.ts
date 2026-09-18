@@ -10,6 +10,15 @@ export async function createPasswordHash(password: string): Promise<string> {
   return `${PASSWORD_HASH_PREFIX}:${salt}:${derived.toString("hex")}`;
 }
 
+let dummyHash: Promise<string> | undefined;
+
+/** Runs the same scrypt work as a real check and always fails; used when the user does not exist. */
+export async function verifyPasswordAgainstDummy(password: string): Promise<false> {
+  dummyHash ??= createPasswordHash(randomBytes(16).toString("hex"));
+  await verifyPassword(password, await dummyHash);
+  return false;
+}
+
 export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
   const [prefix, salt, expectedHex] = storedHash.split(":");
   if (prefix !== PASSWORD_HASH_PREFIX || !salt || !expectedHex) return false;
