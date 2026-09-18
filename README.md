@@ -132,6 +132,24 @@ the deposit toggle is enabled. Empty activation dates preserve immediate activat
 Refund terms are displayed publicly; refunds are processed manually. Duration edits
 affect new reservations and preserve existing appointment intervals.
 
+### Mercado Pago deposits
+
+- **Checkout:** Checkout Pro with `binary_mode` and cash vouchers/ATM excluded, so a
+  payment is approved or rejected at once and never settles after the reservation
+  (`depositExpirationMinutes`) ends. One external reference per attempt doubles as the
+  `X-Idempotency-Key`, and concurrent starts share a single stored checkout link.
+- **Settlement:** the signed webhook (`/api/mercado-pago/webhook`) is the primary signal.
+  Test credentials never send webhooks, and one can be lost, so the return page and the
+  expiry sweep also read the payment from Mercado Pago. Browser data is never trusted:
+  every path re-reads the payment and checks reference, amount, currency and live mode.
+- **Expiry sweep:** `GET /api/cron/deposits` with `Authorization: Bearer $CRON_SECRET`
+  reconciles overdue checkouts, then releases unpaid reservations. If Mercado Pago cannot
+  answer, the reservation is kept for the next run. Schedule it every 5–10 minutes
+  (Vercel Cron on a Pro plan, or an external scheduler); Hobby plans only allow daily
+  crons. The booking page and the internal agenda also run the sweep on load.
+- **Refunds** are issued manually in the Mercado Pago panel. The refund webhook clears the
+  "Señas cobradas en turnos cancelados" warning in the internal panel.
+
 Lowering capacity preserves existing appointments. Both internal sections display
 a persistent warning with links to every future interval above capacity, including
 dates outside the selected week. The warning is recalculated from the database on

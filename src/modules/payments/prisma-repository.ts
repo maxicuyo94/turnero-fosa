@@ -2,7 +2,12 @@ import type { DepositPaymentStatus, PrismaClient } from "@prisma/client";
 import { activeAppointmentStatuses } from "@/src/modules/appointments/schemas";
 import { canAcceptAppointment } from "@/src/modules/availability";
 import { isDepositActive } from "@/src/modules/settings/business-settings";
-import { resolveAttemptStatus, settledPaymentStatuses, type DepositPaymentRepository } from "@/src/modules/payments/service";
+import {
+  resolveAttemptStatus,
+  settledPaymentStatuses,
+  type DepositPaymentRepository,
+  type DepositReconciler,
+} from "@/src/modules/payments/service";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -50,24 +55,38 @@ export class PrismaDepositPaymentRepository implements DepositPaymentRepository 
   }
 
   async createAttempt(input: Parameters<DepositPaymentRepository["createAttempt"]>[0]) {
+    const { now, ...data } = input;
     return this.prisma.$transaction(async (tx) => {
       // The same appointment row serializes checkout creation, expiry and webhooks.
       await tx.$queryRaw`SELECT id FROM "Appointment" WHERE id = ${input.appointmentId} FOR UPDATE`;
       const appointment = await tx.appointment.findUnique({ where: { id: input.appointmentId } });
       if (appointment?.status !== "PENDING_CONFIRMATION") return null;
-      return tx.depositPaymentAttempt.create({ data: input });
+      // Re-read under the lock: a concurrent start may have created the attempt meanwhile.
+      const current = await tx.depositPaymentAttempt.findFirst({
+        where: { appointmentId: input.appointmentId, status: { in: ["CREATED", "PENDING"] }, expiresAt: { gt: now } },
+        orderBy: { createdAt: "desc" },
+      });
+      return current ?? tx.depositPaymentAttempt.create({ data });
     });
   }
 
   async markPreferenceCreated(input: Parameters<DepositPaymentRepository["markPreferenceCreated"]>[0]) {
-    return this.prisma.depositPaymentAttempt.update({
-      where: { id: input.attemptId },
+    await this.prisma.depositPaymentAttempt.updateMany({
+      where: { id: input.attemptId, checkoutUrl: null, status: { in: ["CREATED", "ERROR"] } },
       data: {
         preferenceId: input.preferenceId,
         checkoutUrl: input.checkoutUrl,
         status: "PENDING",
         statusDetail: null,
       },
+    });
+    return this.prisma.depositPaymentAttempt.findUniqueOrThrow({ where: { id: input.attemptId } });
+  }
+
+  async markPreferenceFailed(attemptId: string, detail: string) {
+    await this.prisma.depositPaymentAttempt.updateMany({
+      where: { id: attemptId, checkoutUrl: null, status: "CREATED" },
+      data: { status: "ERROR", statusDetail: detail },
     });
   }
 
@@ -233,19 +252,44 @@ export async function listPaidUnconfirmedDeposits(prisma: PrismaClient) {
 
 export type PaidUnconfirmedDeposit = Awaited<ReturnType<typeof listPaidUnconfirmedDeposits>>[number];
 
-export async function expireOverdueDepositReservations(prisma: PrismaClient, now = new Date()): Promise<number> {
+/**
+ * Cancels reservations whose deposit deadline passed without an approved payment. With `reconcile`,
+ * Mercado Pago is asked about each overdue checkout first, so a paid reservation whose notification
+ * never arrived is confirmed instead of cancelled; if the provider cannot answer, the reservation
+ * is left for the next sweep rather than cancelled blindly.
+ */
+export async function expireOverdueDepositReservations(
+  prisma: PrismaClient,
+  now = new Date(),
+  options: {
+    reconcile?: DepositReconciler;
+    /** Builds the reconciler only when something is overdue, keeping the common empty sweep to one query. */
+    loadReconciler?: () => Promise<DepositReconciler | undefined>;
+  } = {},
+): Promise<number> {
   const overdue = await prisma.depositPaymentAttempt.findMany({
     where: {
       status: { in: unpaidStatuses },
       expiresAt: { lte: now },
       appointment: { status: "PENDING_CONFIRMATION", paymentAttempts: { none: { status: "APPROVED" } } },
     },
-    select: { id: true, appointmentId: true },
+    select: { id: true, appointmentId: true, externalReference: true },
   });
   if (overdue.length === 0) return 0;
 
+  const reconcile = options.reconcile ?? await options.loadReconciler?.();
   let expiredCount = 0;
   for (const appointmentId of new Set(overdue.map((item) => item.appointmentId))) {
+    if (reconcile) {
+      try {
+        for (const attempt of overdue.filter((item) => item.appointmentId === appointmentId)) {
+          await reconcile(attempt.externalReference);
+        }
+      } catch (error) {
+        console.error("deposit reconciliation failed; reservation kept for the next sweep", { appointmentId, error });
+        continue;
+      }
+    }
     expiredCount += await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Appointment" WHERE id = ${appointmentId} FOR UPDATE`;
       const appointment = await tx.appointment.findUnique({ where: { id: appointmentId }, select: { status: true } });

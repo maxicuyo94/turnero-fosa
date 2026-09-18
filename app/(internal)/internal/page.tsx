@@ -3,6 +3,7 @@ import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/li
 import { db } from "@/src/lib/db";
 import { workshopDate } from "@/src/lib/workshop-date";
 import { listPaidUnconfirmedDeposits } from "@/src/modules/payments/prisma-repository";
+import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
 import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import {
   InternalAgendaScreen,
@@ -28,6 +29,8 @@ export default async function InternalPage({
   const params = await searchParams;
   // A hand-edited or stale link falls back to today instead of failing the whole panel.
   const date = calendarDateSchema.safeParse(params?.date).data ?? workshopDate(new Date());
+  // The agenda must not show reservations whose deposit deadline already passed as still pending.
+  await settleOverdueDeposits(db);
   const repository = new PrismaInternalRepository(db);
   const weekDates = datesForWeek(date);
   const [weekAgendas, settings, services, schedule, exceptions, paidUnconfirmedDeposits] = await Promise.all([

@@ -14,15 +14,19 @@ export async function POST(request: Request) {
     type?: string;
     data?: { id?: string | number };
   } | null;
-  const dataId = url.searchParams.get("data.id") ?? (body?.data?.id === undefined ? null : String(body.data.id));
+  // Mercado Pago signs the id sent in the query string; the body copy is only a fallback to look the
+  // payment up, which is safe because the payment itself is always re-read from the API.
+  const signedDataId = url.searchParams.get("data.id");
+  const dataId = signedDataId ?? (body?.data?.id === undefined ? null : String(body.data.id));
   const signatureValid = validateMercadoPagoSignature({
     xSignature: request.headers.get("x-signature"),
     xRequestId: request.headers.get("x-request-id"),
-    dataId,
+    dataId: signedDataId,
     secret: env.MERCADO_PAGO_WEBHOOK_SECRET,
   });
   if (!signatureValid) return NextResponse.json({ received: false }, { status: 401 });
-  if (body?.type !== "payment" || !dataId) return NextResponse.json({ received: true });
+  const type = body?.type ?? url.searchParams.get("type");
+  if (type !== "payment" || !dataId) return NextResponse.json({ received: true });
 
   await processMercadoPagoPayment(
     new PrismaDepositPaymentRepository(db),

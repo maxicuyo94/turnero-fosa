@@ -2,7 +2,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { PrismaClient, type AppointmentStatus, type DepositPaymentStatus } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import {
@@ -108,17 +108,64 @@ describe("Prisma deposit reservations", () => {
     const appointment = await createAppointment();
     await createAttempt(appointment.id, "PENDING", -5);
     await expireOverdueDepositReservations(prisma, now);
-    expect(await repository.createAttempt({ appointmentId: appointment.id, externalReference: randomUUID(), amountCents: 500_000, expiresAt: new Date(now.getTime() + 60_000) })).toBeNull();
+    expect(await repository.createAttempt({ appointmentId: appointment.id, externalReference: randomUUID(), amountCents: 500_000, expiresAt: new Date(now.getTime() + 60_000), now })).toBeNull();
   });
 
   it("serializes retry creation against expiration", async () => {
     const appointment = await createAppointment();
     await createAttempt(appointment.id, "PENDING", -5);
     const [retry] = await Promise.all([
-      repository.createAttempt({ appointmentId: appointment.id, externalReference: randomUUID(), amountCents: 500_000, expiresAt: new Date(now.getTime() + 60_000) }),
+      repository.createAttempt({ appointmentId: appointment.id, externalReference: randomUUID(), amountCents: 500_000, expiresAt: new Date(now.getTime() + 60_000), now }),
       expireOverdueDepositReservations(prisma, now),
     ]);
     expect(await appointmentStatus(appointment.id)).toBe(retry ? "PENDING_CONFIRMATION" : "CANCELLED");
+  });
+
+  it("hands concurrent checkout starts the same attempt and keeps the first stored checkout", async () => {
+    const appointment = await createAppointment();
+    const start = () => repository.createAttempt({ appointmentId: appointment.id, externalReference: randomUUID(), amountCents: 500_000, expiresAt: new Date(now.getTime() + 60_000), now });
+    const [first, second] = await Promise.all([start(), start()]);
+
+    expect(first?.id).toBeDefined();
+    expect(second?.id).toBe(first?.id);
+    expect(await prisma.depositPaymentAttempt.count({ where: { appointmentId: appointment.id } })).toBe(1);
+
+    const winner = await repository.markPreferenceCreated({ attemptId: first!.id, preferenceId: "pref-a", checkoutUrl: "https://mp/a" });
+    const loser = await repository.markPreferenceCreated({ attemptId: first!.id, preferenceId: "pref-b", checkoutUrl: "https://mp/b" });
+    await repository.markPreferenceFailed(first!.id, "late timeout");
+    expect(winner.checkoutUrl).toBe("https://mp/a");
+    expect(loser).toMatchObject({ checkoutUrl: "https://mp/a", preferenceId: "pref-a", status: "PENDING" });
+  });
+
+  it("confirms instead of cancelling when the expiry sweep finds an approved payment", async () => {
+    const appointment = await createAppointment();
+    const attempt = await createAttempt(appointment.id, "PENDING", -5);
+    const reconciled: string[] = [];
+
+    await expireOverdueDepositReservations(prisma, now, {
+      reconcile: async (externalReference) => {
+        reconciled.push(externalReference);
+        await repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED"));
+      },
+    });
+
+    expect(reconciled).toEqual([attempt.externalReference]);
+    expect(await appointmentStatus(appointment.id)).toBe("CONFIRMED");
+  });
+
+  it("keeps the reservation for the next sweep when Mercado Pago cannot be reached", async () => {
+    const appointment = await createAppointment();
+    await createAttempt(appointment.id, "PENDING", -5);
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      await expireOverdueDepositReservations(prisma, now, { reconcile: async () => { throw new Error("Mercado Pago API returned 503."); } });
+    } finally {
+      consoleError.mockRestore();
+    }
+    expect(await appointmentStatus(appointment.id)).toBe("PENDING_CONFIRMATION");
+
+    await expireOverdueDepositReservations(prisma, now, { reconcile: async () => undefined });
+    expect(await appointmentStatus(appointment.id)).toBe("CANCELLED");
   });
 
   it("reinstates an expired reservation when its deposit is approved late and the slot still fits", async () => {

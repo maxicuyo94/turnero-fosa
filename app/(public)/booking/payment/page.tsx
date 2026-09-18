@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/src/lib/db";
 import { Alert, Card, PageHeading, PageShell, SiteHeader } from "@/src/components/ui";
 import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
+import { getDepositReconciler, reconcileReturnedPayment } from "@/src/modules/payments/reconciliation";
 
 export default async function PaymentReturnPage({
   searchParams,
@@ -10,6 +11,7 @@ export default async function PaymentReturnPage({
 }) {
   const params = (await searchParams) ?? {};
   const reference = first(params.reference) ?? first(params.external_reference) ?? "";
+  await reconcileOnReturn(first(params.payment_id) ?? first(params.collection_id), reference);
   const attempt = reference
     ? await new PrismaDepositPaymentRepository(db).getPublicAttempt(reference)
     : null;
@@ -26,7 +28,7 @@ export default async function PaymentReturnPage({
             <Alert tone="info">La seña fue acreditada, pero el turno no está confirmado. Contactá al taller para coordinar la atención o devolución.</Alert>
           ) : (
             <Alert tone="info">
-              Estamos verificando el pago con Mercado Pago. La confirmación depende del webhook seguro, no de esta página de retorno.
+              Todavía no tenemos la confirmación de Mercado Pago. Si el pago se aprobó, el turno se confirma automáticamente en unos minutos; podés consultarlo con tu código.
             </Alert>
           )}
           {attempt ? (
@@ -43,6 +45,23 @@ export default async function PaymentReturnPage({
       </PageShell>
     </>
   );
+}
+
+/**
+ * Webhooks stay the primary signal, but test credentials never send them and a real one can be
+ * delayed. Asking Mercado Pago here lets the customer see the settled state right away. Failures
+ * only mean the page shows the stored state; the webhook or the expiry sweep settles it later.
+ */
+async function reconcileOnReturn(paymentId: string | undefined, reference: string): Promise<void> {
+  try {
+    if (paymentId && paymentId !== "null") {
+      await reconcileReturnedPayment(db, paymentId);
+    } else if (reference) {
+      await (await getDepositReconciler(db))?.(reference);
+    }
+  } catch (error) {
+    console.error("payment return reconciliation failed", error);
+  }
 }
 
 function first(value: string | string[] | undefined): string | undefined {
