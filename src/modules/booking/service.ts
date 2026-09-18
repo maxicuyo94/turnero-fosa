@@ -80,6 +80,8 @@ export type CreatePublicBookingResult =
       cancellationToken: string | null;
       reschedulingAvailable: false;
       depositRequired: boolean;
+      /** True when the idempotency key matched an earlier request and nothing new was created. */
+      repeated: boolean;
     }
   | {
       accepted: false;
@@ -352,6 +354,7 @@ function bookingSuccess(
     cancellationToken,
     reschedulingAvailable: false,
     depositRequired: options.depositRequired ?? false,
+    repeated: options.repeated ?? false,
   };
 }
 

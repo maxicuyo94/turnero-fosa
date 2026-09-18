@@ -18,9 +18,7 @@ export default async function InternalPage({
 }: {
   searchParams?: Promise<{
     date?: string;
-    appointmentUpdated?: string;
     feedback?: string;
-    message?: string;
     section?: string;
   }>;
 }) {
@@ -47,7 +45,6 @@ export default async function InternalPage({
       agenda={agenda}
       capacityConflicts={capacityConflicts}
       paidUnconfirmedDeposits={paidUnconfirmedDeposits}
-      appointmentUpdateOutcome={params?.message ? { accepted: params.appointmentUpdated === "1", message: params.message } : undefined}
       exceptions={exceptions}
       feedback={parseFeedback(params?.feedback)}
       schedule={schedule}

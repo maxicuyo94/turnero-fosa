@@ -7,7 +7,13 @@ import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
 import { PublicBookingScreen } from "@/src/modules/booking/public-booking-screen";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
-import { getPublicAvailability, getPublicDepositPolicy, listPublicServices } from "@/src/modules/booking/service";
+import { describeBookingOutcome, parseBookingOutcome } from "@/src/modules/booking/booking-outcome";
+import {
+  getPublicAppointmentStatus,
+  getPublicAvailability,
+  getPublicDepositPolicy,
+  listPublicServices,
+} from "@/src/modules/booking/service";
 
 type BookingPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -39,7 +45,13 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     ? availability.durationMinutes
     : requestedDurationMinutes ?? selectedService?.durationMinutes ?? 0;
   const durationStepMinutes = availability.accepted ? availability.slotStepMinutes : availability.slotStepMinutes ?? 1;
-  const outcome = outcomeFromParams(params);
+  const outcomeParams = parseBookingOutcome(params);
+  const bookedAppointment = outcomeParams?.code
+    ? await getPublicAppointmentStatus(repository, { code: outcomeParams.code })
+    : undefined;
+  const outcome = outcomeParams
+    ? describeBookingOutcome(outcomeParams, bookedAppointment?.accepted ? bookedAppointment.appointment : null)
+    : undefined;
   const checkout = outcome?.publicCode
     ? await new PrismaDepositPaymentRepository(db).getPublicCheckout(outcome.publicCode)
     : null;
@@ -77,16 +89,4 @@ function stringParam(value: string | string[] | undefined): string | undefined {
 function numberParam(value: string | string[] | undefined): number | undefined {
   const parsed = Number(stringParam(value));
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
-}
-
-function outcomeFromParams(params: Record<string, string | string[] | undefined>) {
-  const message = stringParam(params.message);
-  if (!message) return undefined;
-  return {
-    accepted: stringParam(params.booked) === "1",
-    message,
-    cancellationUrl: stringParam(params.cancel)?.startsWith("/booking/cancel?") ? stringParam(params.cancel) : undefined,
-    publicCode: stringParam(params.code),
-    paymentError: stringParam(params.paymentError),
-  };
 }

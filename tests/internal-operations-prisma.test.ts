@@ -57,6 +57,21 @@ describe("Prisma internal operations integration", () => {
     expect(history).toEqual(expect.objectContaining({ appointmentId, fromStatus: "PENDING_CONFIRMATION", toStatus: "CONFIRMED", changedById: user.id }));
   });
 
+  it("lets only one of two concurrent status changes apply and records a single history row", async () => {
+    const appointmentId = await createInternalTestAppointment("it-internal-status-race");
+
+    const results = await Promise.all([
+      updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId, nextStatus: "CONFIRMED", changedById: null }),
+      updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId, nextStatus: "CANCELLED", changedById: null }),
+    ]);
+
+    expect(results.filter((result) => result.accepted)).toHaveLength(1);
+    expect(results.filter((result) => !result.accepted).map((result) => result.accepted ? "" : result.reason)).toEqual(["INVALID_TRANSITION"]);
+    const history = await prisma.appointmentStatusHistory.findMany({ where: { appointmentId } });
+    expect(history).toHaveLength(1);
+    expect(history[0]?.fromStatus).toBe("PENDING_CONFIRMATION");
+  });
+
   it("atomically reschedules an appointment and records its interval history", async () => {
     const appointmentId = await createInternalTestAppointment("it-internal-reschedule");
 

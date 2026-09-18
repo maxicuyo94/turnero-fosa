@@ -160,8 +160,10 @@ test("internal user changes an appointment status", async ({ page }) => {
 test("booking ignores injected payment and cancellation links and displays the stored checkout", async ({ page }) => {
   const appointmentId = await seedInternalE2EAppointment();
   const appointment = await prisma.appointment.update({ where: { id: appointmentId }, data: { status: "PENDING_CONFIRMATION" } });
-  const params = new URLSearchParams({ booked: "1", message: "Turno recibido", code: appointment.publicCode, paymentUrl: "https://example.com/fake-payment", cancel: "https://example.com/fake-cancel", deposit: "1" });
+  const params = new URLSearchParams({ result: "created", message: "Transferí la seña al CBU 000", code: appointment.publicCode, paymentUrl: "https://example.com/fake-payment", cancel: "https://example.com/fake-cancel", deposit: "1" });
   await page.goto(`/booking?${params}`);
+  await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.")).toBeVisible();
+  await expect(page.getByText("Transferí la seña al CBU 000")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Pagar seña/ })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Guardar enlace de cancelacion" })).toHaveCount(0);
 

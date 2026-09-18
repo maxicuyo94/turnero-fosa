@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { getWorkshopPaymentEnv, getWorkshopNotificationEnv } from "@/src/modules/settings/runtime-settings";
+import { bookingOutcomeQuery, type BookingResultCode, type PaymentIssueCode } from "@/src/modules/booking/booking-outcome";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { cancelPublicAppointment, createPublicBooking } from "@/src/modules/booking/service";
 import { PrismaNotificationLogRepository } from "@/src/modules/notifications/prisma-repository";
@@ -43,63 +44,52 @@ export async function createAppointmentAction(formData: FormData) {
     : undefined);
 
   if (!result.accepted) {
-    redirect(`/booking?serviceId=${encodeURIComponent(stringValue(formData, "serviceId"))}&date=${encodeURIComponent(stringValue(formData, "date"))}&message=${encodeURIComponent(result.message)}`);
+    const query = bookingOutcomeQuery({ result: bookingFailureCode(result) });
+    query.set("serviceId", stringValue(formData, "serviceId"));
+    query.set("date", stringValue(formData, "date"));
+    redirect(`/booking?${query.toString()}`);
   }
 
   const cancellationUrl = result.cancellationToken
     ? `/booking/cancel?appointmentId=${encodeURIComponent(result.appointment.id)}&token=${encodeURIComponent(result.cancellationToken)}`
     : undefined;
-  const params = new URLSearchParams({ booked: "1", message: result.message, code: result.appointment.publicCode });
-  if (cancellationUrl) params.set("cancel", cancellationUrl);
-
-  if (result.depositRequired) {
-    const paymentEnv = await getWorkshopPaymentEnv(db);
-    if (paymentEnv) {
-      const payment = await initiateAppointmentDeposit(
-        new PrismaDepositPaymentRepository(db),
-        new MercadoPagoAdapter(paymentEnv),
-        { appointmentId: result.appointment.id },
-      );
-      if (!payment.accepted) {
-        params.set("paymentError", payment.message);
-      }
-    } else {
-      params.set("paymentError", "El pago online todavia no esta habilitado. El taller coordinara la seña.");
-    }
-  }
-  redirect(`/booking?${params.toString()}`);
+  const payment = result.depositRequired ? await startDeposit(result.appointment.id) : undefined;
+  redirect(`/booking?${bookingOutcomeQuery({
+    result: result.repeated ? "repeated" : "created",
+    code: result.appointment.publicCode,
+    cancel: cancellationUrl,
+    payment,
+  }).toString()}`);
 }
 
 export async function retryDepositAction(formData: FormData) {
   const publicCode = stringValue(formData, "publicCode").trim().toUpperCase();
   const appointment = await new PrismaBookingRepository(db).findByPublicCode(publicCode);
-  const params = new URLSearchParams({ booked: "1", code: publicCode });
-
   if (!appointment) {
-    params.set("message", "No encontramos el turno para reintentar el pago.");
-    params.set("paymentError", "Revisa el codigo del turno e intenta nuevamente.");
-    redirect(`/booking?${params.toString()}`);
+    redirect(`/booking?${bookingOutcomeQuery({ result: "not-found", payment: "not-found" }).toString()}`);
   }
 
+  const payment = await startDeposit(appointment.id);
+  redirect(`/booking?${bookingOutcomeQuery({ result: "payment-retry", code: appointment.publicCode, payment }).toString()}`);
+}
+
+/** Starts or reuses the Mercado Pago checkout; returns the issue code when there is none to offer. */
+async function startDeposit(appointmentId: string): Promise<PaymentIssueCode | undefined> {
   const paymentEnv = await getWorkshopPaymentEnv(db);
-  if (!paymentEnv) {
-    params.set("message", "El turno sigue registrado, pero la seña esta pendiente.");
-    params.set("paymentError", "El pago online todavia no esta habilitado. El taller coordinara la seña.");
-    redirect(`/booking?${params.toString()}`);
-  }
-
+  if (!paymentEnv) return "disabled";
   const payment = await initiateAppointmentDeposit(
     new PrismaDepositPaymentRepository(db),
     new MercadoPagoAdapter(paymentEnv),
-    { appointmentId: appointment.id },
+    { appointmentId },
   );
-  params.set("message", payment.accepted
-    ? "Continua en Mercado Pago para confirmar el turno."
-    : "El turno sigue registrado, pero no pudimos iniciar la seña.");
-  if (!payment.accepted) {
-    params.set("paymentError", payment.message);
-  }
-  redirect(`/booking?${params.toString()}`);
+  if (payment.accepted) return undefined;
+  return payment.reason === "PAYMENT_UNAVAILABLE" ? "unavailable" : payment.reason === "APPOINTMENT_NOT_FOUND" ? "not-found" : "not-payable";
+}
+
+function bookingFailureCode(result: Extract<Awaited<ReturnType<typeof createPublicBooking>>, { accepted: false }>): BookingResultCode {
+  if (result.reason === "SLOT_UNAVAILABLE") return "slot-unavailable";
+  if (result.reason === "SERVICE_UNAVAILABLE") return "service-unavailable";
+  return result.fieldErrors?.durationMinutes ? "invalid-duration" : "invalid";
 }
 
 export async function cancelAppointmentAction(formData: FormData) {
