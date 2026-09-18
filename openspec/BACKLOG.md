@@ -13,8 +13,10 @@ Avance 2026-09-18: los cambios internos (`1f1624d`) y la cancelación pública s
 escriben si el turno sigue en el estado validado, con una única fila de historial
 por transición aceptada. Probado en PostgreSQL con confirmar/cancelar internos en
 paralelo y con cancelación pública contra confirmación interna. Reprogramar ya
-corría bajo el bloqueo de agenda. Pendiente para cerrar: coordinar los webhooks de
-pago con el mismo criterio.
+corría bajo el bloqueo de agenda. Los webhooks, la conciliación y el vencimiento de
+señas bloquean la fila del turno y leen su estado bajo ese bloqueo, así que se
+serializan con los cambios condicionales; lo cubre una prueba de aprobación contra
+cancelación interna en PostgreSQL. **Cerrado** salvo reproducción nueva.
 
 - **Prioridad:** P1. **Evidencia:** reproducido en el servicio con repositorio en
   memoria; pendiente prueba concurrente con PostgreSQL.
@@ -37,7 +39,9 @@ Avance 2026-09-11 (`business-settings`): corregida la validación de horas y fec
 en Configuración, incluyendo excepciones y fecha de activación de señas, con
 pruebas de regresión. Avance 2026-09-18 (`e471060`): `?date=` malformado en la
 agenda interna y en `/booking` vuelve a una fecha válida, y la reserva rechaza
-fechas de calendario inexistentes. Falta una prueba E2E con URLs malformadas.
+fechas de calendario inexistentes. Una prueba E2E recorre `/booking` y la agenda
+con fechas inexistentes, meses inválidos y texto arbitrario. **Cerrado** salvo
+reproducción nueva.
 
 - **Prioridad:** P1. **Evidencia:** reproducido en los esquemas; errores HTTP
   específicos pendientes de reproducción local.

@@ -40,7 +40,9 @@ consultar o modificar la base.
 | 4 | Orden de actualizaciones de pago y reconciliación | P1 antes de cobrar · [PAY-002](BACKLOG.md#pay-002--actualizaciones-de-pago-fuera-de-orden) | Una respuesta vieja no rebaja un pago aprobado; reembolsos y contracargos conservan su significado |
 | 5 | Vencimiento sin depender de visitas a reservas | P2 · [PAY-003](BACKLOG.md#pay-003--vencimiento-dependiente-del-trafico) | Los turnos vencen dentro de un intervalo acordado aunque nadie abra `/booking` |
 
-ERR-001 y ERR-002 son el siguiente trabajo recomendado. Los demás pueden avanzar
+Actualización 2026-09-18: ERR-001 y ERR-002 quedaron cerrados; PAY-001, PAY-002 y
+PAY-003 tienen avances registrados en el backlog y pendientes operativos (sandbox y
+programación del cron). Los demás pueden avanzar
 en cambios independientes, pero PAY-001 y PAY-002 deben resolverse antes de exigir
 señas. No se corrigieron estos puntos durante la actualización documental.
 
