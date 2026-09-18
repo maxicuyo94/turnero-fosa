@@ -1,8 +1,15 @@
 import type { DepositPaymentStatus, PrismaClient } from "@prisma/client";
+import { activeAppointmentStatuses } from "@/src/modules/appointments/schemas";
+import { canAcceptAppointment } from "@/src/modules/availability";
 import { isDepositActive } from "@/src/modules/settings/business-settings";
-import type { DepositPaymentRepository } from "@/src/modules/payments/service";
+import { resolveAttemptStatus, settledPaymentStatuses, type DepositPaymentRepository } from "@/src/modules/payments/service";
+
+type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 const unpaidStatuses: DepositPaymentStatus[] = ["CREATED", "PENDING", "ERROR", "REJECTED", "CANCELLED", "EXPIRED"];
+
+/** History note that marks a cancellation caused by the deposit deadline, not by a person. */
+export const depositExpiredNote = "Deposit reservation expired before approval.";
 
 export class PrismaDepositPaymentRepository implements DepositPaymentRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -65,8 +72,9 @@ export class PrismaDepositPaymentRepository implements DepositPaymentRepository 
   }
 
   async markAttemptError(attemptId: string, detail: string) {
-    await this.prisma.depositPaymentAttempt.update({
-      where: { id: attemptId },
+    // A mismatching notification must not hide money that was already collected.
+    await this.prisma.depositPaymentAttempt.updateMany({
+      where: { id: attemptId, status: { notIn: [...settledPaymentStatuses] } },
       data: { status: "ERROR", statusDetail: detail },
     });
   }
@@ -104,44 +112,126 @@ export class PrismaDepositPaymentRepository implements DepositPaymentRepository 
   async applyProviderPayment(input: Parameters<DepositPaymentRepository["applyProviderPayment"]>[0]) {
     return this.prisma.$transaction(async (tx) => {
       const target = await tx.depositPaymentAttempt.findUniqueOrThrow({ where: { id: input.attemptId } });
+      // Reinstating an expired reservation consumes capacity, so approvals queue behind bookings
+      // (same lock order as rescheduling: capacity lock first, then the appointment row).
+      if (input.status === "APPROVED") {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('public_booking_capacity'))`;
+      }
       await tx.$queryRaw`SELECT id FROM "Appointment" WHERE id = ${target.appointmentId} FOR UPDATE`;
       const current = await tx.depositPaymentAttempt.findUniqueOrThrow({
         where: { id: input.attemptId },
-        include: { appointment: true },
+        include: { appointment: { include: { service: { select: { workshopSettings: { select: { capacity: true } } } } } } },
       });
+      const status = resolveAttemptStatus(current.status, input.status);
       const attempt = await tx.depositPaymentAttempt.update({
         where: { id: current.id },
-        data: {
-          providerPaymentId: input.providerPaymentId,
-          status: input.status,
-          statusDetail: input.statusDetail,
-          liveMode: input.liveMode,
-          approvedAt: input.approvedAt,
-          lastNotificationAt: new Date(),
-        },
+        data: status === input.status
+          ? {
+              providerPaymentId: input.providerPaymentId,
+              status,
+              statusDetail: input.statusDetail,
+              liveMode: input.liveMode,
+              approvedAt: input.approvedAt,
+              lastNotificationAt: new Date(),
+            }
+          // A stale notification is recorded as seen but never rewrites a settled payment.
+          : { lastNotificationAt: new Date() },
       });
+      if (input.status !== "APPROVED" || status !== "APPROVED") return attempt;
 
+      const appointment = current.appointment;
       // A failed attempt does not cancel other checkouts. Reservation expiry owns
       // cancellation after the last attempt's deadline, leaving time to retry.
-      if (input.status === "APPROVED" && current.appointment.status === "PENDING_CONFIRMATION") {
-        await tx.appointment.update({
-          where: { id: current.appointmentId },
-          data: {
-            status: "CONFIRMED",
-            statusHistory: {
-              create: {
-                fromStatus: current.appointment.status,
-                toStatus: "CONFIRMED",
-                note: "Deposit approved by Mercado Pago webhook.",
-              },
-            },
-          },
+      if (appointment.status === "PENDING_CONFIRMATION") {
+        await confirmAfterDeposit(tx, appointment.id, appointment.status, "Deposit approved by Mercado Pago webhook.");
+        return attempt;
+      }
+
+      // A payment can settle after the local deadline (cash vouchers, manual reviews). Undo only the
+      // expiry cancellation, and only while the slot is still ahead and still fits the capacity.
+      // Anything else stays as is and surfaces in the internal panel as a paid, unconfirmed deposit.
+      if (appointment.status === "CANCELLED" && appointment.startAt > new Date()) {
+        const lastChange = await tx.appointmentStatusHistory.findFirst({
+          where: { appointmentId: appointment.id },
+          orderBy: { changedAt: "desc" },
+          select: { note: true },
         });
+        if (lastChange?.note !== depositExpiredNote) return attempt;
+
+        const overlapping = await tx.appointment.findMany({
+          where: {
+            id: { not: appointment.id },
+            status: { in: [...activeAppointmentStatuses] },
+            startAt: { lt: appointment.endAt },
+            endAt: { gt: appointment.startAt },
+          },
+          select: { startAt: true, endAt: true, status: true },
+        });
+        const fits = canAcceptAppointment({
+          settings: { capacity: appointment.service.workshopSettings.capacity },
+          startAt: appointment.startAt,
+          serviceDurationMinutes: (appointment.endAt.getTime() - appointment.startAt.getTime()) / 60_000,
+          appointments: overlapping,
+        }).accepted;
+        if (fits) {
+          await confirmAfterDeposit(tx, appointment.id, appointment.status, "Deposit approved after the reservation expired; appointment reinstated.");
+        }
       }
       return attempt;
     });
   }
 }
+
+async function confirmAfterDeposit(
+  tx: TransactionClient,
+  appointmentId: string,
+  fromStatus: "PENDING_CONFIRMATION" | "CANCELLED",
+  note: string,
+) {
+  await tx.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      status: "CONFIRMED",
+      statusHistory: { create: { fromStatus, toStatus: "CONFIRMED", note } },
+    },
+  });
+}
+
+/**
+ * Approved deposits on cancelled appointments: the workshop has to refund or rebook them. A refund
+ * or chargeback notification moves the attempt out of APPROVED and clears it from this list.
+ */
+export async function listPaidUnconfirmedDeposits(prisma: PrismaClient) {
+  const attempts = await prisma.depositPaymentAttempt.findMany({
+    where: { status: "APPROVED", appointment: { status: "CANCELLED" } },
+    orderBy: { approvedAt: "desc" },
+    select: {
+      id: true,
+      amountCents: true,
+      approvedAt: true,
+      appointment: {
+        select: {
+          publicCode: true,
+          startAt: true,
+          status: true,
+          customer: { select: { fullName: true, phone: true } },
+        },
+      },
+    },
+  });
+  return attempts.map((attempt) => ({
+    attemptId: attempt.id,
+    amountCents: attempt.amountCents,
+    approvedAt: attempt.approvedAt,
+    publicCode: attempt.appointment.publicCode,
+    startAt: attempt.appointment.startAt,
+    appointmentStatus: attempt.appointment.status,
+    customerName: attempt.appointment.customer.fullName,
+    customerPhone: attempt.appointment.customer.phone,
+  }));
+}
+
+export type PaidUnconfirmedDeposit = Awaited<ReturnType<typeof listPaidUnconfirmedDeposits>>[number];
 
 export async function expireOverdueDepositReservations(prisma: PrismaClient, now = new Date()): Promise<number> {
   const overdue = await prisma.depositPaymentAttempt.findMany({
@@ -181,7 +271,7 @@ export async function expireOverdueDepositReservations(prisma: PrismaClient, now
             create: {
               fromStatus: "PENDING_CONFIRMATION",
               toStatus: "CANCELLED",
-              note: "Deposit reservation expired before approval.",
+              note: depositExpiredNote,
             },
           },
         },

@@ -110,7 +110,8 @@ export async function cancelAppointmentAction(formData: FormData) {
     now: new Date(),
   });
 
-  redirect(`/booking/cancel?message=${encodeURIComponent(result.message)}`);
+  // The outcome travels as a code so the page picks its own wording and tone.
+  redirect(`/booking/cancel?result=${result.accepted ? "cancelled" : "unavailable"}`);
 }
 
 function stringValue(formData: FormData, key: string): string {

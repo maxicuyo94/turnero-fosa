@@ -22,6 +22,7 @@ import {
   updateInternalWorkshopSettings,
   type WeeklyScheduleUpdateInput,
 } from "@/src/modules/internal/maintenance";
+import type { InternalFeedbackCode } from "@/src/modules/internal/internal-agenda-screen";
 import { ArgentinaDatosHolidayProvider } from "@/src/modules/internal/argentinadatos-adapter";
 import { importArgentineHolidays } from "@/src/modules/internal/holiday-import";
 import { dayOfWeekSchema, type DayOfWeek } from "@/src/modules/settings/schemas";
@@ -30,11 +31,18 @@ import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapt
 
 export async function updateAppointmentStatusAction(formData: FormData) {
   const changedById = await requireInternalAccess();
-  const repository = new PrismaInternalRepository(db);
+  const agendaUrl = (feedback: InternalFeedbackCode) => {
+    const date = stringValue(formData, "date");
+    return `/internal?${new URLSearchParams(date ? { date, feedback } : { feedback }).toString()}`;
+  };
+  const nextStatus = appointmentStatusSchema.safeParse(stringValue(formData, "nextStatus"));
+  const appointmentId = stringValue(formData, "appointmentId").trim();
+  if (!nextStatus.success || !appointmentId) redirect(agendaUrl("status-invalid"));
+
   const notificationEnv = await getWorkshopNotificationEnv(db);
-  await updateInternalAppointmentStatus(repository, {
-    appointmentId: stringValue(formData, "appointmentId"),
-    nextStatus: appointmentStatusSchema.parse(stringValue(formData, "nextStatus")),
+  const result = await updateInternalAppointmentStatus(new PrismaInternalRepository(db), {
+    appointmentId,
+    nextStatus: nextStatus.data,
     changedById,
   }, notificationEnv
     ? {
@@ -42,25 +50,37 @@ export async function updateAppointmentStatusAction(formData: FormData) {
         port: new ResendNotificationPort(notificationEnv),
       }
     : undefined);
-  redirect(`/internal?date=${encodeURIComponent(stringValue(formData, "date"))}`);
+  redirect(agendaUrl(
+    result.accepted ? "status-updated" : result.reason === "APPOINTMENT_NOT_FOUND" ? "appointment-not-found" : "status-invalid",
+  ));
 }
 
 export async function rescheduleAppointmentAction(formData: FormData) {
   const changedById = await requireInternalAccess();
   const notificationEnv = await getWorkshopNotificationEnv(db);
-  const result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
-    appointmentId: stringValue(formData, "appointmentId"),
-    date: stringValue(formData, "targetDate"),
-    startTime: stringValue(formData, "startTime"),
-    durationMinutes: stringValue(formData, "durationMinutes"),
-    changedById,
-    reason: stringValue(formData, "reason") || undefined,
-  }, notificationEnv
-    ? {
-        logRepository: new PrismaNotificationLogRepository(db),
-        port: new ResendNotificationPort(notificationEnv),
-      }
-    : undefined);
+  let result: Awaited<ReturnType<typeof rescheduleInternalAppointment>>;
+  try {
+    result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
+      appointmentId: stringValue(formData, "appointmentId"),
+      date: stringValue(formData, "targetDate"),
+      startTime: stringValue(formData, "startTime"),
+      durationMinutes: stringValue(formData, "durationMinutes"),
+      changedById,
+      reason: stringValue(formData, "reason") || undefined,
+    }, notificationEnv
+      ? {
+          logRepository: new PrismaNotificationLogRepository(db),
+          port: new ResendNotificationPort(notificationEnv),
+        }
+      : undefined);
+  } catch (error) {
+    if (!(error instanceof ZodError)) throw error;
+    result = {
+      accepted: false,
+      reason: "INVALID_DURATION",
+      message: "Revisá la fecha, el horario y la duración elegidos.",
+    };
+  }
   const message = result.accepted ? "El turno fue reprogramado correctamente." : result.message;
   const date = result.accepted ? stringValue(formData, "targetDate") : stringValue(formData, "agendaDate");
   redirect(`/internal?date=${encodeURIComponent(date)}&appointmentUpdated=${result.accepted ? "1" : "0"}&message=${encodeURIComponent(message)}`);
