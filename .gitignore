@@ -55,3 +55,6 @@ PREVIEW.local.md
 
 # scratch: plantillas y volcados generados localmente
 outputs/
+
+# lector ZXing copiado desde node_modules en postinstall
+public/vendor/

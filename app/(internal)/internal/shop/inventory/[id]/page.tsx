@@ -6,11 +6,12 @@ import { InventoryProductScreen, type InventoryDetailProduct, type InventoryHist
 
 const historyLimit = 50;
 
-export default async function InventoryProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InventoryProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ linked?: string }> }) {
   const session = await auth();
   if (!isInternalSession(session)) redirect("/internal/login");
 
   const { id } = await params;
+  const linked = (await searchParams)?.linked === "1";
   const product = await db.shopProduct.findUnique({
     where: { id },
     select: {
@@ -30,5 +31,5 @@ export default async function InventoryProductPage({ params }: { params: Promise
   });
   if (!product) notFound();
   const { movements, ...detail } = product;
-  return <InventoryProductScreen history={movements as InventoryHistoryItem[]} historyLimit={historyLimit} movementRequestKey={randomUUID()} product={detail as InventoryDetailProduct} signedInUserName={getInternalSessionDisplayName(session)} />;
+  return <InventoryProductScreen history={movements as InventoryHistoryItem[]} historyLimit={historyLimit} movementRequestKey={randomUUID()} notice={linked ? "Código vinculado. La próxima lectura abre esta ficha." : undefined} product={detail as InventoryDetailProduct} signedInUserName={getInternalSessionDisplayName(session)} />;
 }

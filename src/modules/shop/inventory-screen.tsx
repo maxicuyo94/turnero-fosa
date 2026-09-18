@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, SiteHeader, TextInput, Textarea } from "@/src/components/ui";
@@ -8,10 +9,13 @@ import { signOutAction } from "@/app/(internal)/internal/actions";
 import {
   createInventoryProductAction,
   importInventoryExcelAction,
+  linkInventoryBarcodeAction,
   recordInventoryMovementAction,
   updateInventoryProductAction,
 } from "@/app/(internal)/internal/shop/actions";
+import { BarcodeScanner } from "@/src/modules/shop/barcode-scanner";
 import { shopInitialActionState, type ShopActionState } from "@/src/modules/shop/inventory-action-state";
+import type { InventoryCodeMatch } from "@/src/modules/shop/inventory-code-service";
 
 export type InventoryListProduct = {
   id: string;
@@ -101,6 +105,7 @@ export function InventoryScreen({
   locations,
   filters,
   createRequestKey,
+  initialBarcode,
   signedInUserName,
 }: {
   products: InventoryListProduct[];
@@ -108,12 +113,15 @@ export function InventoryScreen({
   locations: string[];
   filters: { q: string; status: string; category: string; location: string };
   createRequestKey: string;
+  /** Codigo leido que no existia; precarga el alta de un repuesto nuevo. */
+  initialBarcode?: string;
   signedInUserName?: string | null;
 }) {
   return (
     <ShopShell active="inventory" signedInUserName={signedInUserName}>
       <PageHeading eyebrow="Taller · stock" title="Repuestos" description="Buscá por nombre, SKU o código de barras. Las cantidades se actualizan desde cada ficha." action={<a className="rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href="#nuevo">Nuevo repuesto</a>} />
-      <Card className="mt-8" aria-label="Filtros de inventario">
+      <InventoryCodeLookup />
+      <Card className="mt-6" aria-label="Filtros de inventario">
         <form className="grid min-w-0 gap-3 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem_auto]" method="get">
           <TextInput aria-label="Buscar repuesto" defaultValue={filters.q} density="sm" name="q" placeholder="Buscar por nombre, SKU o código" />
           <Select aria-label="Estado" defaultValue={filters.status} density="sm" name="status"><option value="">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option><option value="low">En mínimo</option></Select>
@@ -127,8 +135,28 @@ export function InventoryScreen({
         {products.length ? <div className="divide-y divide-white/10">{products.map((product) => <InventoryRow key={product.id} product={product} />)}</div> : <EmptyState className="m-6">No encontramos repuestos con esos filtros.</EmptyState>}
       </Card>
       <ExcelImportCard />
-      <NewProductForm requestKey={createRequestKey} />
+      <NewProductForm initialBarcode={initialBarcode} requestKey={createRequestKey} />
     </ShopShell>
+  );
+}
+
+function InventoryCodeLookup() {
+  const router = useRouter();
+  return (
+    <Card className="mt-8" aria-label="Buscar por código">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Escaneo</p>
+          <h2 className="mt-3 text-2xl font-black text-white">Buscar por código</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">Escaneá con la cámara o escribí el código de barras o el SKU; también funciona con un lector USB. Leer un código abre la ficha: no cambia el stock.</p>
+          <form action="/internal/shop/inventory/code" className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end" method="get">
+            <Field className="min-w-0 flex-1" label="Código" htmlFor="inventory-code"><TextInput autoComplete="off" className="w-full min-w-0" enterKeyHint="search" id="inventory-code" name="value" required /></Field>
+            <Button className="justify-self-start" type="submit">Buscar código</Button>
+          </form>
+        </div>
+        <BarcodeScanner onDetected={(code) => router.push(`/internal/shop/inventory/code?value=${encodeURIComponent(code)}`)} />
+      </div>
+    </Card>
   );
 }
 
@@ -167,12 +195,13 @@ function ExcelImportCard() {
   );
 }
 
-export function InventoryProductScreen({ product, history, historyLimit, movementRequestKey, signedInUserName }: { product: InventoryDetailProduct; history: InventoryHistoryItem[]; historyLimit: number; movementRequestKey: string; signedInUserName?: string | null }) {
+export function InventoryProductScreen({ product, history, historyLimit, movementRequestKey, notice, signedInUserName }: { product: InventoryDetailProduct; history: InventoryHistoryItem[]; historyLimit: number; movementRequestKey: string; notice?: string; signedInUserName?: string | null }) {
   const available = product.stock - product.reservedStock;
   return (
     <ShopShell active="inventory" signedInUserName={signedInUserName}>
       <Link className="text-sm font-bold text-zinc-400 hover:text-white" href="/internal/shop/inventory">← Volver a inventario</Link>
       <div className="mt-7 flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div className="min-w-0"><p className="break-all font-mono text-xs font-bold tracking-[0.18em] text-apple-300">{product.sku}</p><h1 className="mt-2 break-words text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">{product.name}</h1><p className="mt-3 break-words text-zinc-400">{product.category}{product.brand ? ` · ${product.brand}` : ""}{product.location ? ` · ${product.location}` : ""}</p></div><StatusChip active={product.isActive} /></div>
+      {notice ? <Alert className="mt-6" tone="success">{notice}</Alert> : null}
       <section className="mt-8 grid gap-4 sm:grid-cols-3" aria-label="Stock actual"><Metric label="Físico" value={product.stock} note="Unidades en taller" /><Metric label="Reservado" value={product.reservedStock} note="Para pedidos futuros" /><Metric label="Disponible" value={available} note={`Mínimo: ${product.minimumStock}`} alert={available <= product.minimumStock} /></section>
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <ProductForm product={product} />
@@ -182,6 +211,63 @@ export function InventoryProductScreen({ product, history, historyLimit, movemen
         <div className="flex items-start justify-between gap-5 border-b border-white/10 px-6 py-5"><div><h2 className="font-bold text-white">Historial de movimientos</h2><p className="mt-1 text-sm text-zinc-500">Se muestran los últimos {historyLimit}. El historial no se puede editar ni borrar.</p></div></div>
         {history.length ? <ol className="divide-y divide-white/10">{history.map((movement) => <MovementRow key={movement.id} movement={movement} />)}</ol> : <EmptyState className="m-6">No hay movimientos registrados todavía.</EmptyState>}
       </Card>
+    </ShopShell>
+  );
+}
+
+export type InventoryLinkCandidate = InventoryCodeMatch & { version: number };
+
+/** Codigo leido que no identifica un unico repuesto: se ofrece alta o vinculacion, sin inventar datos. */
+export function InventoryCodeScreen({ code, matches, linkCandidates, linkQuery, error, signedInUserName }: { code: string; matches: InventoryCodeMatch[]; linkCandidates: InventoryLinkCandidate[]; linkQuery: string; error?: string; signedInUserName?: string | null }) {
+  const ambiguous = matches.length > 1;
+  return (
+    <ShopShell active="inventory" signedInUserName={signedInUserName}>
+      <Link className="text-sm font-bold text-zinc-400 hover:text-white" href="/internal/shop/inventory">← Volver a inventario</Link>
+      <PageHeading
+        className="mt-7"
+        eyebrow="Escaneo"
+        title={ambiguous ? "El código coincide con varios repuestos" : "Código no registrado"}
+        description={ambiguous ? "No elegimos uno por vos: revisá cuál corresponde." : "Ningún repuesto tiene este código de barras ni este SKU."}
+      />
+      <p className="mt-4 break-all font-mono text-lg font-bold tracking-[0.12em] text-apple-300">{code}</p>
+      {error ? <Alert className="mt-6" tone="danger">{error}</Alert> : null}
+      {ambiguous ? (
+        <Card padding="none" className="mt-8 overflow-hidden" aria-label="Repuestos con este código">
+          <div className="border-b border-white/10 px-6 py-5"><h2 className="font-bold text-white">Coincidencias</h2><p className="mt-1 text-sm text-zinc-500">Corregí el SKU o el código de barras de la ficha que no corresponda para que el código identifique un solo repuesto.</p></div>
+          <ul className="divide-y divide-white/10">{matches.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
+        </Card>
+      ) : (
+        <section className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
+          <Card aria-label="Crear un repuesto nuevo" className="flex flex-col justify-between">
+            <div><h2 className="text-2xl font-black text-white">Es un repuesto nuevo</h2><p className="mt-2 text-sm leading-6 text-zinc-400">Abrí el alta con el código ya cargado. Nombre, precio y stock los completás vos: el código no trae esos datos.</p></div>
+            <Link className="mt-6 inline-flex w-fit rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href={`/internal/shop/inventory?${new URLSearchParams({ barcode: code })}#nuevo`}>Crear con este código</Link>
+          </Card>
+          <Card padding="none" className="overflow-hidden" aria-label="Vincular a un repuesto existente">
+            <div className="border-b border-white/10 px-6 py-5">
+              <h2 className="text-2xl font-black text-white">Ya está cargado sin código</h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">Vinculá el código a un repuesto que todavía no tiene código de barras.</p>
+              <form className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end" method="get">
+                <input name="value" type="hidden" value={code} />
+                <TextInput aria-label="Buscar repuestos sin código" className="w-full min-w-0 flex-1" defaultValue={linkQuery} density="sm" name="q" placeholder="Nombre, SKU o marca" />
+                <Button className="justify-self-start" type="submit" variant="ghost">Buscar</Button>
+              </form>
+            </div>
+            {linkCandidates.length ? (
+              <ul className="divide-y divide-white/10">{linkCandidates.map((product) => (
+                <li className="flex min-w-0 flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between" key={product.id}>
+                  <div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.location ? ` · ${product.location}` : ""}</p></div>
+                  <form action={linkInventoryBarcodeAction}>
+                    <input name="productId" type="hidden" value={product.id} />
+                    <input name="barcode" type="hidden" value={code} />
+                    <input name="version" type="hidden" value={product.version} />
+                    <SubmitButton label="Vincular" pendingLabel="Vinculando…" />
+                  </form>
+                </li>
+              ))}</ul>
+            ) : <EmptyState className="m-6">{linkQuery ? "No hay repuestos sin código que coincidan con la búsqueda." : "No hay repuestos sin código de barras."}</EmptyState>}
+          </Card>
+        </section>
+      )}
     </ShopShell>
   );
 }
@@ -206,9 +292,9 @@ function ShopNavLink({ active = false, href, children }: { active?: boolean; hre
   return <Link aria-current={active ? "page" : undefined} className={`border-b-2 px-4 py-3 text-sm font-black transition sm:px-5 ${active ? "border-apple-400 text-white" : "border-transparent text-zinc-500 hover:text-white"}`} href={href}>{children}</Link>;
 }
 
-function NewProductForm({ requestKey }: { requestKey: string }) {
+function NewProductForm({ requestKey, initialBarcode }: { requestKey: string; initialBarcode?: string }) {
   const [state, action] = useActionState(createInventoryProductAction, shopInitialActionState);
-  return <Card className="mt-8 scroll-mt-6" aria-label="Nuevo repuesto"><div id="nuevo"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Alta de inventario</p><h2 className="mt-3 text-2xl font-black text-white">Nuevo repuesto</h2><p className="mt-2 text-sm leading-6 text-zinc-400">El stock inicial crea un movimiento de auditoría. Después, usá la ficha para ajustar cantidades.</p></div><ProductFields formAction={action} requestKey={requestKey} state={state} includeInitialStock /><ActionFeedback state={state} successHref={state.productId ? `/internal/shop/inventory/${state.productId}` : undefined} successLabel="Abrir ficha" /></Card>;
+  return <Card className="mt-8 scroll-mt-6" aria-label="Nuevo repuesto"><div id="nuevo"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Alta de inventario</p><h2 className="mt-3 text-2xl font-black text-white">Nuevo repuesto</h2><p className="mt-2 text-sm leading-6 text-zinc-400">El stock inicial crea un movimiento de auditoría. Después, usá la ficha para ajustar cantidades.</p></div><ProductFields defaults={initialBarcode ? { barcode: initialBarcode } : undefined} formAction={action} requestKey={requestKey} state={state} includeInitialStock /><ActionFeedback state={state} successHref={state.productId ? `/internal/shop/inventory/${state.productId}` : undefined} successLabel="Abrir ficha" /></Card>;
 }
 
 function ProductForm({ product }: { product: InventoryDetailProduct }) {
@@ -216,9 +302,9 @@ function ProductForm({ product }: { product: InventoryDetailProduct }) {
   return <Card aria-label="Editar ficha"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Ficha de producto</p><h2 className="mt-3 text-2xl font-black text-white">Datos del repuesto</h2><ProductFields key={product.version} formAction={action} product={product} state={state} version={String(product.version)} /><ActionFeedback state={state} /></Card>;
 }
 
-function ProductFields({ formAction, state, product, version, requestKey, includeInitialStock = false }: { formAction: (payload: FormData) => void; state: ShopActionState; product?: InventoryDetailProduct; version?: string; requestKey?: string; includeInitialStock?: boolean }) {
+function ProductFields({ formAction, state, product, version, requestKey, defaults, includeInitialStock = false }: { formAction: (payload: FormData) => void; state: ShopActionState; product?: InventoryDetailProduct; version?: string; requestKey?: string; defaults?: Record<string, string>; includeInitialStock?: boolean }) {
   const values = product && state.status === "error" && state.values?.version === String(product.version) ? state.values : !product ? state.values : undefined;
-  const value = (field: keyof InventoryDetailProduct | "priceArs" | "initialStock") => values?.[field] ?? (field === "priceArs" ? formatPrice(product?.priceCents) : field === "initialStock" ? "0" : String(product?.[field as keyof InventoryDetailProduct] ?? ""));
+  const value = (field: keyof InventoryDetailProduct | "priceArs" | "initialStock") => values?.[field] ?? defaults?.[field] ?? (field === "priceArs" ? formatPrice(product?.priceCents) : field === "initialStock" ? "0" : String(product?.[field as keyof InventoryDetailProduct] ?? ""));
   const baseId = product?.id ?? "new";
   return (
     <form action={formAction} className="mt-6 grid min-w-0 gap-4 [&_input]:min-w-0 [&_input:not([type=checkbox])]:w-full [&_textarea]:min-w-0 [&_textarea]:w-full sm:grid-cols-2">
