@@ -3,6 +3,7 @@ import { z } from "zod";
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
+import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
 import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
@@ -59,7 +60,7 @@ export type BookingRepository = {
 
 const bookingInputSchema = z.object({
   serviceId: z.string().trim().min(1),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u),
+  date: calendarDateSchema,
   startTime: z.string().regex(/^\d{2}:\d{2}$/u),
   durationMinutes: z.number().int().positive().optional(),
   customer: customerSchema,
