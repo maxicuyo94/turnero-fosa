@@ -58,9 +58,13 @@ const productFields = z.object({
 });
 
 export const createInventoryProductSchema = productFields.extend({
+  sku: optionalText(80).transform((value) => value?.toUpperCase() ?? null),
   initialStock: quantitySchema,
   requestKey: z.string().uuid("La clave de la operación no es válida."),
-});
+}).transform((input) => ({
+  ...input,
+  sku: input.sku ?? `REP-${input.requestKey.replaceAll("-", "").toUpperCase()}`,
+}));
 
 export const updateInventoryProductSchema = productFields.extend({
   id: requiredText(128),

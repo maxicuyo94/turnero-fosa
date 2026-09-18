@@ -21,6 +21,25 @@ The first delivery accepts barcode text and a manual physical-count adjustment. 
 labels, customer accounts, point of sale, quotes, storefront, checkout and shipping belong to later deliveries.
 The catalog starts empty; add actual products from the panel. Production publication is outside the current authorization.
 
+### Import inventory from Excel
+
+In **Interno → Inventario → Importar desde Excel**, download the template, fill the
+`Carga` sheet starting at row 5 (replace or delete the example row), select the `.xlsx` and click **Importar productos**.
+The `Ayuda` sheet explains each column. Limits: 3 MB and 1,000 products per file.
+Keep SKU and barcode cells as text to preserve leading zeros; prices are in ARS,
+with at most two decimal places. Stock quantities are whole numbers, including zero.
+SKU is optional when creating a product manually or importing it. Keep the Excel
+SKU column, but leave its cells blank to generate codes automatically. Unchanged
+rows receive the same generated code even if reordered, so reuploading them is
+rejected. Changing a blank-SKU row's content generates a different code; use the
+existing product's detail page for corrections or stock receipts.
+
+Imports create new products only. A repeated SKU/barcode within the file or already
+in inventory rejects the entire batch. Invalid rows are reported by their Excel row
+number (up to 25 details). No product or initial movement is saved unless the whole
+batch succeeds. Reuploading a successful file cannot add stock a second time.
+Each initial movement records the authenticated staff member and Excel origin.
+
 On Windows, if Vitest's default fork workers time out during startup, run `pnpm exec vitest run --pool=threads --maxWorkers=1`.
 The inventory database tests guard against production/non-allowlisted targets and remove only their own fixtures.
 

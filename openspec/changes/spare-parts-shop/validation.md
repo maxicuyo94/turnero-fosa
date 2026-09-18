@@ -1,5 +1,48 @@
 # Verificación de E1 — Inventario interno
 
+## SKU automático — 18 de septiembre de 2026
+
+- Alta manual e importación admiten SKU vacío. Los SKU escritos se conservan
+  normalizados; reimportar filas sin cambios, incluso reordenadas, mantiene su código.
+- 38 pruebas de lectura, servicio y acciones aprobadas; 19 pruebas de PostgreSQL
+  aprobadas. La prueba de lectura ampliada para reordenamiento pasó posteriormente
+  junto con las otras seis pruebas del archivo.
+- TypeScript correcto. Recorrido de importación aprobado en Chromium de escritorio
+  y emulación Pixel 5: descarga real, fila inválida, alta sin SKU, precio/stock y
+  rechazo de reimportación sin movimientos duplicados.
+- El primer intento de escritorio venció a los cinco segundos durante el ingreso.
+  Se amplió la espera de la agenda a treinta segundos; ambos recorridos pasaron.
+- Se utilizó la base temporal `turnero_import_test` en `127.0.0.1:5432`.
+  No se desplegó ni se ejecutó nuevamente la suite general.
+
+## Importación Excel — 17 de septiembre de 2026
+
+- Lectura de la plantilla pública real y conservación de códigos como texto.
+- Correcciones verificadas: incompatibilidad de prefijos XML de la plantilla,
+  doble conversión de ARS a centavos, filas omitidas después de espacios vacíos
+  y límite de subida distinto al anunciado en pantalla.
+- Archivos de hasta 3 MB y 1.000 productos. Altas por lotes y auditoría en la misma
+  transacción; duplicados dentro del archivo, contra inventario y concurrentes
+  rechazados sin duplicar stock. Fallo de auditoría revierte todas las altas.
+- Suite final completa: **24 archivos, 198 pruebas aprobadas**. Incluye 18 pruebas
+  de inventario con PostgreSQL y la importación efectiva de 1.000 productos.
+- Navegador: **8 pruebas aprobadas** en Chromium de escritorio y emulación Pixel 5.
+  El nuevo recorrido descarga la plantilla, carga una fila inválida, muestra su
+  número real, importa la versión corregida, verifica precio y stock persistidos
+  y rechaza reimportarla. Capturas de ambos tamaños revisadas, sin desborde horizontal.
+- TypeScript y compilación Next.js correctos. ESLint correcto excluyendo `.vercel/**`,
+  carpeta local ignorada por Git cuyo archivo previo `load-shop-demo.cjs` genera dos
+  errores por uso de `require`. No se modificó ese archivo ajeno a la importación.
+- Entorno: PostgreSQL temporal 18.4 en `127.0.0.1:55439/turnero_import_test`, con
+  migraciones y configuración inicial aplicadas sólo allí. Se utilizó porque Docker
+  no pudo iniciar. El entorno habitual del proyecto utiliza PostgreSQL 17.
+- La plantilla se inspeccionó y se revisó visualmente. La corrección sólo cambia
+  la representación del namespace XML, conservando valores, formato y validaciones.
+- No se ejecutaron los demás recorridos E2E ajenos al inventario ni un despliegue.
+  La base temporal se detuvo al finalizar. No se modificaron datos reales.
+
+Contrato: [importación desde Excel](inventory-excel-import.md).
+
 Fecha: 16 de septiembre de 2026. Destino: aplicación y PostgreSQL locales. No desplegado en Vercel.
 
 ## Comprobaciones completadas

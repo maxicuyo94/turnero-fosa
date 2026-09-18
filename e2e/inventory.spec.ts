@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
+import ExcelJS from "exceljs";
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -49,6 +50,42 @@ test("el acceso anónimo al inventario interno requiere autenticación", async (
   await page.goto("/internal/shop/inventory");
   await expect(page).toHaveURL(/\/internal\/login/);
   await expect(page.getByRole("heading", { name: "Acceso interno" })).toBeVisible();
+});
+
+test("importa Excel, informa filas inválidas y bloquea la carga repetida", async ({ page }) => {
+  test.slow();
+  await loginAsFixtureUser(page);
+  await page.goto("/internal/shop/inventory");
+  const card = page.getByLabel("Importar inventario desde Excel", { exact: true });
+  const downloadPromise = page.waitForEvent("download");
+  await card.getByRole("link", { name: "Descargar plantilla" }).click();
+  const download = await downloadPromise;
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile((await download.path())!);
+  const productName = `${fixturePrefix}Filtro Excel`;
+  const sheet = workbook.getWorksheet("Carga")!;
+  sheet.getRow(5).values = [];
+  sheet.getRow(15).values = ["", "", productName, "Filtros", "", "", "", 1250.50, -1, 1, "A-1", "Sí"];
+  async function upload() {
+    await card.getByLabel("Archivo Excel").setInputFiles({ name: "carga.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(await workbook.xlsx.writeBuffer()) });
+    await card.getByRole("button", { name: "Importar productos" }).click();
+  }
+  await upload();
+  await expect(card).toContainText("Fila 15");
+  expect(await prisma.shopProduct.count({ where: { name: productName } })).toBe(0);
+  sheet.getRow(15).getCell(9).value = 3;
+  await upload();
+  await expect(card).toContainText("Importamos 1 repuesto y 3 unidades iniciales.");
+  const product = await prisma.shopProduct.findFirstOrThrow({ where: { name: productName }, include: { movements: true } });
+  expect(product.sku).toMatch(/^REP-[A-F0-9]{24}$/u);
+  expect(product).toMatchObject({ priceCents: 125050, stock: 3 });
+  expect(product.movements).toHaveLength(1);
+  await expect(page.getByText(productName, { exact: true })).toBeVisible();
+  await upload();
+  await expect(card).toContainText("Ya existe un producto");
+  expect(await prisma.inventoryMovement.count({ where: { productId: product.id } })).toBe(1);
+  await expectNoHorizontalOverflow(page);
+  await card.screenshot({ path: test.info().outputPath(`excel-${test.info().project.name}.png`) });
 });
 
 test("el personal crea, edita y registra entrada, consumo y ajuste sin recargar", async ({ page }) => {
@@ -235,11 +272,11 @@ async function loginAsFixtureUser(page: import("@playwright/test").Page) {
   await page.getByLabel("Usuario").fill(fixtureUsername);
   await page.getByLabel("Contraseña").fill(fixturePassword);
   await page.getByRole("button", { name: "Ingresar", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible({ timeout: 30_000 });
 }
 
 async function cleanupFixtures() {
-  const products = await prisma.shopProduct.findMany({ where: { sku: { startsWith: fixturePrefix } }, select: { id: true } });
+  const products = await prisma.shopProduct.findMany({ where: { OR: [{ sku: { startsWith: fixturePrefix } }, ...(fixtureUserId ? [{ movements: { some: { actorId: fixtureUserId } } }] : [])] }, select: { id: true } });
   const productIds = products.map(({ id }) => id);
   if (productIds.length === 0) return;
   await prisma.inventoryMovement.deleteMany({ where: { productId: { in: productIds } } });

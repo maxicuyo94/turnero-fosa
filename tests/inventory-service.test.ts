@@ -84,6 +84,19 @@ const createInput = () => ({
 });
 
 describe("inventory service", () => {
+  it.each([undefined, null, "", "   "])("generates a stable SKU for missing input %j and does not duplicate retries", async (sku) => {
+    const { prisma, state } = inventoryPrisma();
+    const input = { ...createInput(), sku };
+    const first = await createInventoryProduct(prisma, input, "user-1");
+    const repeated = await createInventoryProduct(prisma, input, "user-1");
+    expect(first.sku).toMatch(/^REP-[A-F0-9]{32}$/u);
+    expect(repeated.id).toBe(first.id);
+    expect(state.products).toHaveLength(1);
+    expect(state.movements).toHaveLength(1);
+    const second = await createInventoryProduct(prisma, { ...input, requestKey: randomUUID(), barcode: null }, "user-1");
+    expect(second.sku).not.toBe(first.sku);
+  });
+
   it.each([null, true, false, {}, [], "", "1.5", "-1"])("rejects non-integer stock inputs: %j", (initialStock) => {
     expect(createInventoryProductSchema.safeParse({ ...createInput(), initialStock }).success).toBe(false);
   });

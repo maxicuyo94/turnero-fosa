@@ -7,6 +7,7 @@ import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, SiteHeader
 import { signOutAction } from "@/app/(internal)/internal/actions";
 import {
   createInventoryProductAction,
+  importInventoryExcelAction,
   recordInventoryMovementAction,
   updateInventoryProductAction,
 } from "@/app/(internal)/internal/shop/actions";
@@ -125,8 +126,44 @@ export function InventoryScreen({
         <div className="flex items-center justify-between px-6 py-5"><div><h2 className="font-bold text-white">Listado</h2><p className="mt-1 text-sm text-zinc-500">{products.length} {products.length === 1 ? "resultado" : "resultados"}</p></div></div>
         {products.length ? <div className="divide-y divide-white/10">{products.map((product) => <InventoryRow key={product.id} product={product} />)}</div> : <EmptyState className="m-6">No encontramos repuestos con esos filtros.</EmptyState>}
       </Card>
+      <ExcelImportCard />
       <NewProductForm requestKey={createRequestKey} />
     </ShopShell>
+  );
+}
+
+function ExcelImportCard() {
+  const [state, action] = useActionState(importInventoryExcelAction, shopInitialActionState);
+  return (
+    <Card className="mt-8" aria-label="Importar inventario desde Excel">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Carga masiva</p>
+          <h2 className="mt-3 text-2xl font-black text-white">Importar desde Excel</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">Descargá la plantilla, completá una fila por repuesto nuevo y subila. Se valida todo el archivo antes de guardar; un error o producto repetido cancela la carga completa. No actualiza productos existentes ni suma stock a sus fichas.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">Reemplazá o borrá la fila de ejemplo. Podés dejar el SKU vacío para generarlo automáticamente; conservá la columna en la planilla.</p>
+        </div>
+        <Link className="w-fit rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white hover:bg-white/[0.08]" href="/plantilla-carga-inventario.xlsx" download>Descargar plantilla</Link>
+      </div>
+      <form action={action} onSubmit={(event) => {
+        const input = event.currentTarget.elements.namedItem("file") as HTMLInputElement;
+        input.setCustomValidity(input.files?.[0] && input.files[0].size > 3 * 1024 * 1024 ? "El archivo no puede superar 3 MB." : "");
+        if (!input.reportValidity()) event.preventDefault();
+      }} onChange={(event) => {
+        if (event.target instanceof HTMLInputElement) event.target.setCustomValidity("");
+      }} className="mt-6 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end">
+        <Field className="min-w-0 flex-1" label="Archivo Excel" hint=".xlsx · máximo 3 MB · hasta 1.000 productos" htmlFor="inventory-excel-file">
+          <input className="block w-full min-w-0 rounded-xl border border-dashed border-white/20 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-apple-400 file:px-4 file:py-2 file:font-black file:text-zinc-950 hover:border-apple-400/40" id="inventory-excel-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+        </Field>
+        <SubmitButton label="Importar productos" pendingLabel="Importando…" />
+      </form>
+      <ActionFeedback state={state} />
+      {state.status === "error" && state.issues?.length ? (
+        <ol className="mt-4 max-h-64 list-decimal space-y-2 overflow-y-auto rounded-2xl border border-red-300/20 bg-red-400/[0.06] px-9 py-5 text-sm text-red-100">
+          {state.issues.map((issue) => <li key={issue}>{issue}</li>)}
+        </ol>
+      ) : null}
+    </Card>
   );
 }
 
@@ -189,7 +226,7 @@ function ProductFields({ formAction, state, product, version, requestKey, includ
       <input type="hidden" name="version" value={version ?? ""} />
       {requestKey ? <RequestKey initialKey={requestKey} state={state} /> : null}
       <Field label="Nombre" htmlFor={`${baseId}-name`} className="sm:col-span-2"><TextInput id={`${baseId}-name`} name="name" defaultValue={value("name")} required /></Field>
-      <Field label="SKU" hint="único" htmlFor={`${baseId}-sku`}><TextInput id={`${baseId}-sku`} mono name="sku" defaultValue={value("sku")} required /></Field>
+      <Field label="SKU" hint={product ? "único" : "opcional · se genera si lo dejás vacío"} htmlFor={`${baseId}-sku`}><TextInput id={`${baseId}-sku`} mono name="sku" defaultValue={value("sku")} required={Boolean(product)} placeholder={product ? undefined : "Automático"} /></Field>
       <Field label="Código de barras" hint="opcional" htmlFor={`${baseId}-barcode`}><TextInput id={`${baseId}-barcode`} name="barcode" defaultValue={value("barcode")} inputMode="numeric" /></Field>
       <Field label="Categoría" htmlFor={`${baseId}-category`}><TextInput id={`${baseId}-category`} name="category" defaultValue={value("category")} required /></Field>
       <Field label="Marca" hint="opcional" htmlFor={`${baseId}-brand`}><TextInput id={`${baseId}-brand`} name="brand" defaultValue={value("brand")} /></Field>
@@ -214,7 +251,7 @@ function MovementForm({ product, requestKey }: { product: InventoryDetailProduct
 function MovementFields({ formAction, product, requestKey, state, values }: { formAction: (payload: FormData) => void; product: InventoryDetailProduct; requestKey: string; state: ShopActionState; values?: Record<string, string> }) { return <form action={formAction} className="mt-6 grid min-w-0 gap-4 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full [&_textarea]:min-w-0 [&_textarea]:w-full"><input type="hidden" name="productId" value={product.id} /><input type="hidden" name="version" value={product.version} /><RequestKey initialKey={requestKey} state={state} /><Field label="Tipo" htmlFor="movement-kind"><Select id="movement-kind" name="kind" defaultValue={values?.kind ?? "RECEIPT"}><option value="RECEIPT">Entrada de mercadería</option><option value="REPAIR">Consumo en reparación</option><option value="ADJUSTMENT">Ajuste por conteo</option></Select></Field><Field label="Cantidad" hint="en ajuste es el nuevo físico" htmlFor="movement-quantity"><TextInput id="movement-quantity" name="quantity" defaultValue={values?.quantity ?? ""} inputMode="numeric" required /></Field><Field label="Motivo" htmlFor="movement-reason"><Textarea id="movement-reason" name="reason" defaultValue={values?.reason ?? ""} placeholder="Ej. Ingreso de proveedor, orden 142" required /></Field><Field label="Referencia" hint="opcional" htmlFor="movement-reference"><TextInput id="movement-reference" name="reference" defaultValue={values?.reference ?? ""} placeholder="Factura, orden o remito" /></Field><SubmitButton label="Registrar movimiento" /></form>; }
 
 function RequestKey({ initialKey, state }: { initialKey: string; state: ShopActionState }) { return <input type="hidden" name="requestKey" value={state.status === "error" ? state.values?.requestKey ?? initialKey : initialKey} />; }
-function SubmitButton({ label }: { label: string }) { const { pending } = useFormStatus(); return <Button className="mt-2 justify-self-start" disabled={pending} type="submit">{pending ? "Guardando…" : label}</Button>; }
+function SubmitButton({ label, pendingLabel = "Guardando…" }: { label: string; pendingLabel?: string }) { const { pending } = useFormStatus(); return <Button className="mt-2 justify-self-start" disabled={pending} type="submit">{pending ? pendingLabel : label}</Button>; }
 function ActionFeedback({ state, successHref, successLabel }: { state: ShopActionState; successHref?: string; successLabel?: string }) { if (state.status === "idle") return null; return <Alert className="mt-5" tone={state.status === "success" ? "success" : "danger"}>{state.message}{successHref && successLabel ? <Link className="ml-2 font-bold underline" href={successHref}>{successLabel}</Link> : null}</Alert>; }
 function Metric({ label, value, note, alert = false }: { label: string; value: number; note: string; alert?: boolean }) { return <Card className={alert ? "border-apple-400/40" : ""}><p className="text-sm text-zinc-400">{label}</p><p className={alert ? "mt-3 text-4xl font-black text-apple-300" : "mt-3 text-4xl font-black text-white"}>{number(value)}</p><p className="mt-2 text-xs text-zinc-500">{note}</p></Card>; }
 function InventoryRow({ product }: { product: InventoryListProduct }) { const available = product.stock - product.reservedStock; const low = available <= product.minimumStock; return <Link className="grid min-w-0 gap-3 px-6 py-5 transition hover:bg-white/[0.035] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center" href={`/internal/shop/inventory/${product.id}`}><div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.location ? ` · ${product.location}` : ""}</p><p className="mt-2 text-sm font-semibold text-zinc-300">{formatArs(product.priceCents)}</p></div><div className="text-left sm:text-right"><p className={low ? "font-black text-apple-300" : "font-black text-white"}>{number(available)} disp.</p><p className="mt-1 text-xs text-zinc-500">Físico {number(product.stock)} · Reservado {number(product.reservedStock)}</p></div><StatusChip active={product.isActive} low={low} /></Link>; }

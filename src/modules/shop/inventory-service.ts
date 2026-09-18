@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient, type ShopProduct } from "@prisma/client";
 import {
   createInventoryProductSchema,
@@ -59,6 +59,78 @@ export async function createInventoryProduct(prisma: PrismaClient, input: unknow
     });
   } catch (error) {
     return resolveIdempotencyConflict(prisma, parsed.requestKey, fingerprint, error, "Ya existe un producto con ese SKU o código de barras.");
+  }
+}
+
+export async function importInventoryProducts(
+  prisma: PrismaClient,
+  inputs: unknown[],
+  actorId: string,
+): Promise<{ count: number; initialUnits: number }> {
+  if (!inputs.length || inputs.length > 1_000) throw new InventoryError("El archivo debe contener entre 1 y 1.000 productos.");
+  const parsed = inputs.map((input) => createInventoryProductSchema.parse(input));
+  const duplicateSku = duplicateValue(parsed.map((product) => product.sku));
+  if (duplicateSku) throw new InventoryError(`El SKU ${duplicateSku} está repetido dentro del Excel.`);
+  const duplicateBarcode = duplicateValue(parsed.flatMap((product) => product.barcode ? [product.barcode] : []));
+  if (duplicateBarcode) throw new InventoryError(`El código de barras ${duplicateBarcode} está repetido dentro del Excel.`);
+
+  try {
+    return await withInventoryTransaction(prisma, async (tx) => {
+      const existing = await tx.shopProduct.findMany({
+        where: {
+          OR: [
+            { sku: { in: parsed.map((product) => product.sku) } },
+            { barcode: { in: parsed.flatMap((product) => product.barcode ? [product.barcode] : []) } },
+          ],
+        },
+        select: { sku: true, barcode: true },
+      });
+      if (existing.length) {
+        const conflict = existing[0];
+        throw new InventoryError(`Ya existe un producto con el SKU ${conflict.sku}${conflict.barcode ? ` o el código ${conflict.barcode}` : ""}. No se importó ningún producto.`);
+      }
+
+      const products = parsed.map((product) => ({ product, id: randomUUID() }));
+      await tx.shopProduct.createMany({
+        data: products.map(({ product, id }) => ({
+          id,
+          sku: product.sku,
+          barcode: product.barcode,
+          name: product.name,
+          description: product.description,
+          category: product.category,
+          brand: product.brand,
+          compatibility: product.compatibility,
+          location: product.location,
+          priceCents: product.priceArs,
+          stock: product.initialStock,
+          minimumStock: product.minimumStock,
+          isActive: product.isActive,
+        })),
+      });
+      await tx.inventoryMovement.createMany({
+        data: products.map(({ product, id }) => ({
+          productId: id,
+          kind: "INITIAL",
+          quantityDelta: product.initialStock,
+          stockBefore: 0,
+          stockAfter: product.initialStock,
+          reason: "Importación desde Excel",
+          reference: "Carga masiva",
+          actorId,
+          requestKey: product.requestKey,
+          requestFingerprint: fingerprintFor("create", actorId, product),
+        })),
+      });
+      return {
+        count: parsed.length,
+        initialUnits: parsed.reduce((total, product) => total + product.initialStock, 0),
+      };
+    });
+  } catch (error) {
+    if (error instanceof InventoryError) throw error;
+    if (isUniqueConstraintError(error)) throw new InventoryError("Otro cambio creó un SKU o código incluido en el Excel. No se importó ningún producto.");
+    throw error;
   }
 }
 
@@ -223,4 +295,13 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 function isSerializationError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError ? error.code === "P2034" : (error as { code?: string } | null)?.code === "P2034";
+}
+
+function duplicateValue(values: string[]): string | null {
+  const seen = new Set<string>();
+  for (const value of values) {
+    if (seen.has(value)) return value;
+    seen.add(value);
+  }
+  return null;
 }
