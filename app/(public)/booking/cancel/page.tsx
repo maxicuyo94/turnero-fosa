@@ -1,5 +1,13 @@
 import { cancelAppointmentAction } from "@/app/(public)/booking/actions";
-import { Alert, Button, Card, PageHeading, PageShell } from "@/src/components/ui";
+import { Alert, Button, Card, PageHeading, PageShell, type AlertTone } from "@/src/components/ui";
+
+const cancellationOutcomes: Record<string, { tone: AlertTone; message: string } | undefined> = {
+  cancelled: { tone: "success", message: "Tu turno fue cancelado." },
+  unavailable: {
+    tone: "danger",
+    message: "Este turno no se puede cancelar online. Puede que ya haya pasado, que ya esté cancelado o que el enlace no sea válido. Comunicate con el taller.",
+  },
+};
 
 type CancellationPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -9,7 +17,7 @@ export default async function CancellationPage({ searchParams }: CancellationPag
   const params = (await searchParams) ?? {};
   const appointmentId = stringParam(params.appointmentId) ?? "";
   const token = stringParam(params.token) ?? "";
-  const message = stringParam(params.message);
+  const outcome = cancellationOutcomes[stringParam(params.result) ?? ""];
 
   return (
     <PageShell centered width="md">
@@ -18,9 +26,9 @@ export default async function CancellationPage({ searchParams }: CancellationPag
         eyebrow="Taller Express"
         title="Cancelar turno"
       />
-      {message ? (
-        <Alert className="mt-6" tone="success">
-          {message}
+      {outcome ? (
+        <Alert className="mt-6" tone={outcome.tone}>
+          {outcome.message}
         </Alert>
       ) : null}
       {appointmentId && token ? (
