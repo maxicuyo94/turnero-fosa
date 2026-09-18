@@ -12,6 +12,7 @@ import {
   recordInventoryMovement,
   updateInventoryProduct,
 } from "@/src/modules/shop/inventory-service";
+import { linkInventoryBarcode } from "@/src/modules/shop/inventory-code-service";
 import { InventoryExcelError, parseInventoryExcel } from "@/src/modules/shop/inventory-excel";
 import type { ShopActionState } from "@/src/modules/shop/inventory-action-state";
 
@@ -122,6 +123,20 @@ export async function recordInventoryMovementAction(
   } catch (error) {
     return actionFailure(error, values);
   }
+}
+
+export async function linkInventoryBarcodeAction(formData: FormData) {
+  await requireShopAccess();
+  const values = formValues(formData);
+  let productId: string;
+  try {
+    productId = (await linkInventoryBarcode(db, values)).id;
+  } catch (error) {
+    const message = actionFailure(error, values).message ?? "No se pudo vincular el código.";
+    redirect(`/internal/shop/inventory/code?${new URLSearchParams({ value: values.barcode ?? "", error: message })}`);
+  }
+  revalidatePath("/internal/shop/inventory");
+  redirect(`/internal/shop/inventory/${productId}?linked=1`);
 }
 
 async function requireShopAccess(): Promise<string> {

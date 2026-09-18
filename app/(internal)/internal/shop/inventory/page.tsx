@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
+import { normalizeScannedCode } from "@/src/modules/shop/inventory-code";
 import { InventoryScreen, type InventoryListProduct } from "@/src/modules/shop/inventory-screen";
 
 const productSelect = {
@@ -20,7 +21,7 @@ const productSelect = {
   isActive: true,
 } as const;
 
-type Search = { q?: string; status?: string; category?: string; location?: string };
+type Search = { q?: string; status?: string; category?: string; location?: string; barcode?: string };
 
 export default async function InventoryPage({ searchParams }: { searchParams?: Promise<Search> }) {
   const session = await auth();
@@ -54,7 +55,7 @@ export default async function InventoryPage({ searchParams }: { searchParams?: P
   const products = filters.status === "low"
     ? rows.filter((product) => product.stock - product.reservedStock <= product.minimumStock)
     : rows;
-  return <InventoryScreen categories={categoryRows.map((row) => row.category)} createRequestKey={randomUUID()} filters={filters} locations={locationRows.flatMap((row) => row.location ? [row.location] : [])} products={products as InventoryListProduct[]} signedInUserName={getInternalSessionDisplayName(session)} />;
+  return <InventoryScreen categories={categoryRows.map((row) => row.category)} createRequestKey={randomUUID()} filters={filters} initialBarcode={normalizeScannedCode(raw?.barcode) ?? undefined} locations={locationRows.flatMap((row) => row.location ? [row.location] : [])} products={products as InventoryListProduct[]} signedInUserName={getInternalSessionDisplayName(session)} />;
 }
 
 function clean(value: string | undefined, maximum: number) { return typeof value === "string" ? value.trim().slice(0, maximum) : ""; }

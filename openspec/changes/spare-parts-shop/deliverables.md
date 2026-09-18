@@ -33,6 +33,8 @@ Escaneo con alternativa manual, etiquetas internas imprimibles, conteos completo
 
 **Aceptación:** completar un conteo desde celular y registrar sólo diferencias aprobadas, probar cámara permitida/denegada y concurrencia.
 
+**Avance (18 de septiembre de 2026):** escaneo terminado en `preview`. Búsqueda por código en inventario con cámara, texto o lector USB; código desconocido ofrece alta precargada o vinculación a un repuesto sin código; coincidencias múltiples se muestran sin elegir. El área interna es instalable como PWA. Pendientes: etiquetas imprimibles y sesiones de conteo.
+
 ## E3 — Cuenta de cliente y turnos propios
 
 **Resultado:** registro/acceso y portal con próximos turnos/historial, datos y motos; autorización explícita separada del personal.

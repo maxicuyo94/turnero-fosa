@@ -1,5 +1,28 @@
 # Verificación de E1 — Inventario interno
 
+## E2 · Escaneo de códigos — 18 de septiembre de 2026
+
+- Lector con `barcode-detector`: usa `BarcodeDetector` nativo cuando existe y, si no
+  (iPhone, Chromium de escritorio), ZXing en WASM servido desde `/vendor/`. El binario
+  se copia desde `node_modules` en `postinstall`; no se usa el CDN por defecto.
+- Cámara a demanda, sin guardar imágenes; se apaga tras la primera lectura y se
+  rearma con "Escanear otro". Leer nunca modifica stock.
+- Resolución exacta por código de barras o SKU, con equivalencia UPC-A/EAN-13.
+  Coincidencias múltiples se listan sin elegir una. Vincular un código no reemplaza
+  uno existente, valida versión y resiste dos vinculaciones simultáneas.
+- Pruebas: 21 nuevas de lectura, servicio con PostgreSQL y componente (permiso
+  denegado, sin cámara, cancelar, lectura única y rearmado). Suite: **27 archivos,
+  221 pruebas aprobadas** en cinco corridas seguidas; una corrida previa tuvo un fallo
+  aislado que no se pudo reproducir ni atribuir.
+- Navegador: **38 pruebas aprobadas** en Chromium de escritorio y emulación Pixel 5.
+  El recorrido de cámara usa un video Y4M con un EAN-13 como cámara falsa y verifica
+  la carga del WASM propio, la lectura y que el stock no cambia. Capturas revisadas
+  sin desborde horizontal.
+- PWA interna: manifiesto sólo en `/internal`, verificado en navegador; `/booking`
+  no lo publica.
+- Límite: sin prueba en teléfono físico Android ni iPhone; la emulación no usa la
+  cámara real ni el lector nativo.
+
 ## Publicación en producción — 18 de septiembre de 2026
 
 - A pedido explícito del usuario, `main` avanzó a `bd42853` (inventario) y luego
