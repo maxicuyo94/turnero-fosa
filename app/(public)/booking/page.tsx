@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createAppointmentAction, retryDepositAction } from "@/app/(public)/booking/actions";
-import { auth, getInternalSessionDisplayName } from "@/src/lib/auth";
+import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 import { workshopDate } from "@/src/lib/workshop-date";
 import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
@@ -23,7 +23,8 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
   const selectedServiceId = stringParam(params.serviceId) ?? services[0]?.id ?? "";
   const selectedService = services.find((service) => service.id === selectedServiceId);
   const selectedDate = stringParam(params.date) ?? defaultBookingDate();
-  const requestedDurationMinutes = numberParam(params.durationMinutes);
+  const canEditDuration = isInternalSession(session);
+  const requestedDurationMinutes = canEditDuration ? numberParam(params.durationMinutes) : undefined;
   const availability = selectedServiceId
     ? await getPublicAvailability(repository, {
         serviceId: selectedServiceId,
@@ -54,6 +55,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     selectedDate={selectedDate}
     selectedDurationMinutes={selectedDurationMinutes}
     durationStepMinutes={durationStepMinutes}
+    canEditDuration={canEditDuration}
     depositPolicy={depositPolicy}
     selectedServiceId={selectedServiceId}
     signedInUserName={getInternalSessionDisplayName(session)}
