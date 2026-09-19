@@ -57,6 +57,39 @@ test("malformed date links fall back to a usable page instead of failing", async
   }
 });
 
+test("agenda navigation moves by day and by week and keeps the chosen view", async ({ page }) => {
+  await ensureE2EAdminUser();
+  await page.goto("/internal/login");
+  await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
+  await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+
+  await page.goto(`/internal?date=${internalE2EDate}`);
+  await page.getByRole("link", { name: "Día siguiente" }).click();
+  await expect(page).toHaveURL(/date=2026-07-22/);
+  await page.getByRole("link", { name: "Día anterior" }).click();
+  await expect(page).toHaveURL(/date=2026-07-21/);
+
+  // The week view travels in the URL, so a step back lands on the same weekday a week earlier.
+  await page.getByRole("button", { name: "Semana" }).click();
+  await expect(page).toHaveURL(/view=week/);
+  await page.getByRole("link", { name: "Semana anterior" }).click();
+  await expect(page).toHaveURL(/date=2026-07-14.*view=week/);
+  await expect(page.getByRole("heading", { name: /Semana del 13 al 19 de julio/ })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Semana" })).toHaveAttribute("aria-pressed", "true");
+
+  // A day inside the week opens that day on its own.
+  await page.getByRole("link", { name: /Ver el día .*16 de julio/ }).click();
+  await expect(page).toHaveURL(/date=2026-07-16/);
+  await expect(page.getByRole("heading", { name: /16 de julio/ })).toBeVisible();
+
+  await page.getByRole("link", { name: "Hoy" }).click();
+  await expect(page.getByRole("link", { name: "Hoy" })).toHaveAttribute("aria-current", "date");
+});
+
 test("capacity changes keep appointments and show a persistent conflict warning", async ({ page }) => {
   test.slow();
   const settings = await prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });

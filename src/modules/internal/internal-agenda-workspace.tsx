@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   previewAppointmentAvailabilityAction,
@@ -17,6 +18,12 @@ import {
 } from "@/src/components/ui";
 import { cn } from "@/src/components/ui/cn";
 import {
+  adjacentAgendaDate,
+  agendaHref,
+  datesForWeek,
+  type AgendaView,
+} from "@/src/modules/internal/agenda-navigation";
+import {
   internalStatusOptions,
   statusLabel,
   type InternalAgenda,
@@ -24,7 +31,6 @@ import {
 } from "@/src/modules/internal/operations";
 import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
-type AgendaMode = "day" | "week";
 type StatusFilter = "ALL" | InternalAppointmentRecord["status"];
 
 export function InternalAgendaWorkspace({
@@ -33,14 +39,31 @@ export function InternalAgendaWorkspace({
   capacity,
   exceptions = [],
   slotStepMinutes = 1,
+  today = agenda.date,
+  view = "day",
 }: {
   agenda: InternalAgenda;
   weekAgendas: InternalAgenda[];
   capacity?: number;
   exceptions?: ScheduleDateException[];
   slotStepMinutes?: number;
+  today?: string;
+  view?: AgendaView;
 }) {
-  const [mode, setMode] = useState<AgendaMode>("day");
+  const [mode, setModeState] = useState<AgendaView>(view);
+  const [navigatedView, setNavigatedView] = useState<AgendaView>(view);
+  // The panel stays mounted while navigating, so a link that carries another view wins over the
+  // view last chosen here.
+  if (navigatedView !== view) {
+    setNavigatedView(view);
+    setModeState(view);
+  }
+  // Switching views needs no new data (the week is always loaded), so only the URL is updated,
+  // keeping reloads, shared links and post-action redirects on the chosen view.
+  const setMode = (next: AgendaView) => {
+    setModeState(next);
+    window.history.replaceState(null, "", agendaHref({ date: agenda.date, view: next }));
+  };
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<StatusFilter>("ALL");
   const [service, setService] = useState("ALL");
@@ -93,7 +116,9 @@ export function InternalAgendaWorkspace({
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.18em] text-apple-300">Operación diaria</p>
-              <h2 className="mt-2 text-2xl font-black text-white">{formatDisplayDate(agenda.date)}</h2>
+              <h2 className="mt-2 text-2xl font-black text-white">
+                {mode === "week" ? formatWeekRange(agenda.date) : formatDisplayDate(agenda.date)}
+              </h2>
               {selectedDateException ? <DateExceptionNotice exception={selectedDateException} /> : null}
               <p className="mt-1 text-sm text-zinc-500">
                 {visibleAppointments.length === agenda.appointments.length
@@ -102,7 +127,8 @@ export function InternalAgendaWorkspace({
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+              <AgendaDateNavigation date={agenda.date} today={today} view={mode} />
               <div aria-label="Vista de agenda" className="flex rounded-xl border border-white/10 bg-black/20 p-1">
                 <ViewButton active={mode === "day"} onClick={() => setMode("day")}>Día</ViewButton>
                 <ViewButton active={mode === "week"} onClick={() => setMode("week")}>Semana</ViewButton>
@@ -111,6 +137,7 @@ export function InternalAgendaWorkspace({
                 <Field label="Ir a la fecha">
                   <TextInput defaultValue={agenda.date} density="sm" name="date" type="date" />
                 </Field>
+                {mode === "week" ? <input name="view" type="hidden" value="week" /> : null}
                 <Button type="submit">Ver</Button>
               </form>
             </div>
@@ -176,6 +203,7 @@ export function InternalAgendaWorkspace({
       {selectedAppointment ? (
         <AppointmentDrawer
           agendaDate={agenda.date}
+          agendaView={mode}
           appointment={selectedAppointment}
           onClose={() => setSelectedAppointment(null)}
           slotStepMinutes={slotStepMinutes}
@@ -209,6 +237,29 @@ function MetricCard({
         {detail ? <span className="pb-1 text-xs text-zinc-600">{detail}</span> : null}
       </div>
     </div>
+  );
+}
+
+function AgendaDateNavigation({ date, today, view }: { date: string; today: string; view: AgendaView }) {
+  const unit = view === "week" ? "Semana" : "Día";
+  const showsToday = view === "week" ? datesForWeek(date).includes(today) : date === today;
+  const linkClass = "rounded-lg px-3 py-2 text-sm font-black text-zinc-400 transition hover:bg-white/[0.06] hover:text-white";
+  return (
+    <nav aria-label="Navegar fechas" className="flex rounded-xl border border-white/10 bg-black/20 p-1">
+      <Link aria-label={`${unit} anterior`} className={linkClass} href={agendaHref({ date: adjacentAgendaDate(date, view, -1), view })}>
+        ‹ Anterior
+      </Link>
+      <Link
+        aria-current={showsToday ? "date" : undefined}
+        className={cn(linkClass, showsToday && "text-apple-300")}
+        href={agendaHref({ date: today, view })}
+      >
+        Hoy
+      </Link>
+      <Link aria-label={`${unit} siguiente`} className={linkClass} href={agendaHref({ date: adjacentAgendaDate(date, view, 1), view })}>
+        Siguiente ›
+      </Link>
+    </nav>
   );
 }
 
@@ -303,7 +354,13 @@ function WeekAgenda({
           >
             <div className="border-b border-white/5 pb-3 text-center">
               <p className="text-xs font-black uppercase tracking-wider text-zinc-600">{formatWeekday(day.date)}</p>
-              <p className={cn("mt-1 text-xl font-black", day.date === selectedDate ? "text-apple-300" : "text-white")}>{day.date.slice(8, 10)}</p>
+              <Link
+                aria-label={`Ver el día ${formatDisplayDate(day.date)}`}
+                className={cn("mt-1 inline-block rounded-lg px-2 text-xl font-black transition hover:bg-white/[0.06]", day.date === selectedDate ? "text-apple-300" : "text-white")}
+                href={agendaHref({ date: day.date, view: "day" })}
+              >
+                {day.date.slice(8, 10)}
+              </Link>
               {dateException ? <DateExceptionNotice className="mt-2" compact exception={dateException} /> : null}
             </div>
             <div className="mt-3 grid gap-2">
@@ -358,11 +415,13 @@ function DateExceptionNotice({
 
 function AppointmentDrawer({
   agendaDate,
+  agendaView,
   appointment,
   onClose,
   slotStepMinutes,
 }: {
   agendaDate: string;
+  agendaView: AgendaView;
   appointment: InternalAppointmentRecord;
   onClose: () => void;
   slotStepMinutes: number;
@@ -454,6 +513,7 @@ function AppointmentDrawer({
         <form action={updateAppointmentStatusAction} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
           <input name="appointmentId" type="hidden" value={appointment.id} />
           <input name="date" type="hidden" value={appointmentDate || agendaDate} />
+          <input name="view" type="hidden" value={agendaView} />
           <Field label="Cambiar estado">
             <Select defaultValue={appointment.status} density="sm" name="nextStatus">
               {statusOptionsFor(appointment.status).map((option) => (
@@ -467,6 +527,7 @@ function AppointmentDrawer({
         <form action={rescheduleAppointmentAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
           <input name="appointmentId" type="hidden" value={appointment.id} />
           <input name="agendaDate" type="hidden" value={agendaDate} />
+          <input name="view" type="hidden" value={agendaView} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nueva fecha">
               <TextInput
@@ -552,6 +613,17 @@ function formatDisplayDate(date: string): string {
   const value = new Date(`${date}T12:00:00-03:00`);
   const formatted = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(value);
   return capitalize(formatted);
+}
+
+function formatWeekRange(date: string): string {
+  const week = datesForWeek(date);
+  const format = (value: string, options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("es-AR", { ...options, timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(`${value}T12:00:00-03:00`));
+  const first = week[0]!;
+  const last = week[6]!;
+  const sameMonth = first.slice(0, 7) === last.slice(0, 7);
+  const start = sameMonth ? format(first, { day: "numeric" }) : format(first, { day: "numeric", month: "long" });
+  return `Semana del ${start} al ${format(last, { day: "numeric", month: "long" })}`;
 }
 
 function formatWeekday(date: string): string {

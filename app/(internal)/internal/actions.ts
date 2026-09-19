@@ -24,6 +24,7 @@ import {
 } from "@/src/modules/internal/maintenance";
 import type { InternalFeedbackCode } from "@/src/modules/internal/internal-agenda-screen";
 import { ArgentinaDatosHolidayProvider } from "@/src/modules/internal/argentinadatos-adapter";
+import { parseAgendaView, type AgendaView } from "@/src/modules/internal/agenda-navigation";
 import { importArgentineHolidays } from "@/src/modules/internal/holiday-import";
 import { dayOfWeekSchema, type DayOfWeek } from "@/src/modules/settings/schemas";
 import { PrismaNotificationLogRepository } from "@/src/modules/notifications/prisma-repository";
@@ -34,7 +35,8 @@ export async function updateAppointmentStatusAction(formData: FormData) {
   const date = stringValue(formData, "date");
   const nextStatus = appointmentStatusSchema.safeParse(stringValue(formData, "nextStatus"));
   const appointmentId = stringValue(formData, "appointmentId").trim();
-  if (!nextStatus.success || !appointmentId) redirect(agendaUrl(date, "status-invalid"));
+  const view = parseAgendaView(stringValue(formData, "view"));
+  if (!nextStatus.success || !appointmentId) redirect(agendaUrl(date, "status-invalid", view));
 
   const notificationEnv = await getWorkshopNotificationEnv(db);
   const result = await updateInternalAppointmentStatus(new PrismaInternalRepository(db), {
@@ -50,6 +52,7 @@ export async function updateAppointmentStatusAction(formData: FormData) {
   redirect(agendaUrl(
     date,
     result.accepted ? "status-updated" : result.reason === "APPOINTMENT_NOT_FOUND" ? "appointment-not-found" : "status-invalid",
+    view,
   ));
 }
 
@@ -78,7 +81,7 @@ export async function rescheduleAppointmentAction(formData: FormData) {
     if (!(error instanceof ZodError)) throw error;
     feedback = "reschedule-invalid-input";
   }
-  redirect(agendaUrl(stringValue(formData, accepted ? "targetDate" : "agendaDate"), feedback));
+  redirect(agendaUrl(stringValue(formData, accepted ? "targetDate" : "agendaDate"), feedback, parseAgendaView(stringValue(formData, "view"))));
 }
 
 const rescheduleFeedback: Record<
@@ -96,8 +99,10 @@ const rescheduleFeedback: Record<
 };
 
 /** Agenda outcomes travel as codes, like the settings feedback, so no URL text is ever rendered. */
-function agendaUrl(date: string, feedback: InternalFeedbackCode): string {
-  return `/internal?${new URLSearchParams(date ? { date, feedback } : { feedback }).toString()}`;
+function agendaUrl(date: string, feedback: InternalFeedbackCode, view: AgendaView = "day"): string {
+  const params = new URLSearchParams(date ? { date, feedback } : { feedback });
+  if (view === "week") params.set("view", "week");
+  return `/internal?${params.toString()}`;
 }
 
 export async function previewAppointmentAvailabilityAction(input: {

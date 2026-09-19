@@ -50,7 +50,8 @@ señas. No se corrigieron estos puntos durante la actualización documental.
 
 Objetivo: reducir pasos para atender y administrar turnos.
 
-- Navegación anterior/hoy/siguiente para día y semana.
+- ~~Navegación anterior/hoy/siguiente para día y semana.~~ Hecho el 2026-09-19: la
+  vista elegida viaja en la URL (`?view=week`) y sobrevive a recargas y redirects.
 - Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.
 - Edición validada de contacto, moto y notas, con trazabilidad.
 - Mostrar historial de estados junto al historial de intervalos ya disponible.
