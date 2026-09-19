@@ -11,6 +11,7 @@ import {
   type InternalFeedbackCode,
   type InternalSection,
 } from "@/src/modules/internal/internal-agenda-screen";
+import { datesForWeek, parseAgendaView } from "@/src/modules/internal/agenda-navigation";
 import { getInternalAgenda } from "@/src/modules/internal/operations";
 import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
 
@@ -21,6 +22,7 @@ export default async function InternalPage({
     date?: string;
     feedback?: string;
     section?: string;
+    view?: string;
   }>;
 }) {
   const session = await auth();
@@ -28,7 +30,8 @@ export default async function InternalPage({
 
   const params = await searchParams;
   // A hand-edited or stale link falls back to today instead of failing the whole panel.
-  const date = calendarDateSchema.safeParse(params?.date).data ?? workshopDate(new Date());
+  const today = workshopDate(new Date());
+  const date = calendarDateSchema.safeParse(params?.date).data ?? today;
   // The agenda must not show reservations whose deposit deadline already passed as still pending.
   await settleOverdueDeposits(db);
   const repository = new PrismaInternalRepository(db);
@@ -55,6 +58,8 @@ export default async function InternalPage({
       services={services}
       settings={settings}
       signedInUserName={getInternalSessionDisplayName(session)}
+      today={today}
+      view={parseAgendaView(params?.view)}
       weekAgendas={weekAgendas}
     />
   );
@@ -74,16 +79,3 @@ function parseSection(value: string | undefined): InternalSection {
   return value === "settings" ? "settings" : "agenda";
 }
 
-function datesForWeek(date: string): string[] {
-  const selected = new Date(`${date}T12:00:00-03:00`);
-  const day = selected.getUTCDay();
-  const daysSinceMonday = (day + 6) % 7;
-  const monday = new Date(selected);
-  monday.setUTCDate(selected.getUTCDate() - daysSinceMonday);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const current = new Date(monday);
-    current.setUTCDate(monday.getUTCDate() + index);
-    return current.toISOString().slice(0, 10);
-  });
-}

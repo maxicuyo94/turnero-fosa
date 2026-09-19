@@ -33,6 +33,7 @@ import type {
   InternalWeeklyScheduleRecord,
   InternalWorkshopSettingsRecord,
 } from "@/src/modules/internal/maintenance";
+import { agendaHref, type AgendaView } from "@/src/modules/internal/agenda-navigation";
 import { InternalAgendaWorkspace } from "@/src/modules/internal/internal-agenda-workspace";
 import { intervalRejectionMessage, type InternalAgenda } from "@/src/modules/internal/operations";
 import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
@@ -128,6 +129,8 @@ export function InternalAgendaScreen({
   exceptions = [],
   feedback,
   signedInUserName,
+  today = agenda.date,
+  view = "day",
 }: {
   agenda: InternalAgenda;
   weekAgendas?: InternalAgenda[];
@@ -140,6 +143,8 @@ export function InternalAgendaScreen({
   exceptions?: ScheduleDateException[];
   feedback?: InternalFeedbackCode | null;
   signedInUserName?: string | null;
+  today?: string;
+  view?: AgendaView;
 }) {
   const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
 
@@ -154,7 +159,7 @@ export function InternalAgendaScreen({
         />
 
         <nav aria-label="Secciones del panel" className="mt-7 flex gap-2 overflow-x-auto border-b border-white/10">
-          <InternalNavLink active={section === "agenda"} href={`/internal?date=${agenda.date}`}>
+          <InternalNavLink active={section === "agenda"} href={agendaHref({ date: agenda.date, view })}>
             Agenda
           </InternalNavLink>
           <InternalNavLink active={section === "settings"} href={`/internal?section=settings&date=${agenda.date}`}>
@@ -183,6 +188,8 @@ export function InternalAgendaScreen({
             capacity={settings?.capacity}
             exceptions={exceptions}
             slotStepMinutes={settings?.slotStepMinutes}
+            today={today}
+            view={view}
             weekAgendas={weekAgendas}
           />
         ) : (
