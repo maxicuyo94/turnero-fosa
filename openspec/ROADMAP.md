@@ -1,6 +1,6 @@
 # Roadmap — Turnero Taller Express
 
-Actualizado: **2026-09-11**. Base revisada: `e15ebe8` en `main`.
+Actualizado: **2026-09-21**. Base revisada: `a702f30` en `main`.
 
 Este documento ordena el trabajo futuro. El detalle de errores, riesgos y pruebas
 pendientes está en [BACKLOG.md](BACKLOG.md). Las prioridades son propuestas; no
@@ -22,6 +22,8 @@ certificar el estado remoto ni constituye una auditoría exhaustiva.
 | Base de señas con Mercado Pago y webhook firmado | Código publicado; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); falta compra sandbox completa y configuración productiva |
 | Correcciones de reintentos vencidos, pagos fallidos, enlaces manipulados y zona horaria | Publicadas en `e15ebe8` | `tests/payments-prisma.test.ts`, `tests/availability.test.ts`, `e2e/foundation.spec.ts` |
 | Email de creación, cambio de estado y reprogramación | Implementado; operación por verificar | Confirmar remitente/dominio productivo y entrega real; aún sin cola durable ni recordatorios |
+| Inventario interno y escaneo de códigos | Publicado en producción el 2026-09-18 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); faltan etiquetas y sesiones de conteo (E2) |
+| Unidad genérica con historial, reutilización y fusión | En revisión, sin publicar | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md) y PR #18; falta verificar en Preview y la unicidad de patente |
 
 Publicar el código de pagos no habilita Mercado Pago automáticamente. En la
 verificación del 2026-09-09 no había credenciales de Mercado Pago en producción y
@@ -52,9 +54,15 @@ Objetivo: reducir pasos para atender y administrar turnos.
 
 - ~~Navegación anterior/hoy/siguiente para día y semana.~~ Hecho el 2026-09-19: la
   vista elegida viaja en la URL (`?view=week`) y sobrevive a recargas y redirects.
+- ~~Historial por unidad.~~ Entregado en el cambio `generic-vehicle-history`, todavía
+  sin publicar: la reserva reutiliza cliente y unidad en lugar de crearlos de nuevo,
+  y el panel muestra la ficha con sus turnos, cambios de dueño y fusiones. Antes de
+  producción falta verificar una fusión real en Preview y, con los duplicados ya
+  fusionados, la migración de unicidad parcial de la patente.
 - Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.
 - Edición validada de contacto, moto y notas, con trazabilidad.
-- Mostrar historial de estados junto al historial de intervalos ya disponible.
+- Mostrar historial de estados junto al historial de intervalos ya disponible, y
+  sumarlo también a la ficha de la unidad, que hoy lista turnos pero no sus cambios de estado.
 - Vista móvil compacta de agenda: evaluar lista o tres días.
 - Mantener la visualización de feriados y agregar una alerta para turnos antiguos
   que hayan quedado dentro de un cierre o fuera de la capacidad actual.

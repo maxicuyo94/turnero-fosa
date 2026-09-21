@@ -44,5 +44,7 @@ la fusión, que el diseño pedía registrar.
 ## Pendientes fuera de estas revisiones
 
 - [ ] 3.1 Verificar la ficha y una fusión en Vercel Preview antes de publicar en producción.
-- [ ] 3.2 Migración de unicidad parcial de `plateNormalized`, recién con los duplicados ya fusionados.
-- [ ] 3.3 Actualizar README, ROADMAP y BACKLOG con el alcance entregado y lo que queda abierto.
+- [ ] 3.2 Migración de unicidad parcial de `plateNormalized`, recién con los duplicados ya fusionados (VEH-001).
+- [x] 3.3 Actualizar README, ROADMAP y BACKLOG con el alcance entregado y lo que queda abierto
+      (2026-09-21). Los riesgos asumidos quedaron como VEH-001 (patente sin unicidad) y
+      VEH-002 (la migración necesita configuración del taller).
