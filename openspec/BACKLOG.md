@@ -1,6 +1,7 @@
 # Backlog de errores y riesgos
 
-Revisión: **2026-09-11**, código `e15ebe8`. Todos los ítems siguientes están abiertos.
+Revisión: **2026-09-21**, código `a702f30` más el cambio `generic-vehicle-history` en revisión.
+Todos los ítems siguientes están abiertos.
 Orden de trabajo: [ROADMAP.md](ROADMAP.md).
 
 P1: priorizar antes de ampliar uso o activar el flujo afectado. P2: siguiente
@@ -117,6 +118,40 @@ cancelar se consulta a Mercado Pago por la referencia. Pendiente: programar el c
 - **Cierre:** trabajo periódico idempotente o una política de lectura consistente,
   con frecuencia acordada, monitoreo y prueba sin tráfico público. Coordinar
   expiración con reintentos y pagos en curso.
+
+## VEH-001 — Patente sin unicidad mientras queden duplicados
+
+- **Prioridad:** P2. **Evidencia:** limitación conocida, asumida al entregar
+  `generic-vehicle-history`.
+- **Origen:** cada reserva anterior creaba su propia unidad, así que producción tiene
+  la misma patente en varias filas de `Vehicle`. Un índice único haría fallar
+  `prisma migrate deploy` durante el build, así que `plateNormalized` quedó con índice
+  común.
+- **Mitigación vigente:** el id de una unidad con patente se deriva de la patente
+  (`identityDerivedId`), así que dos reservas simultáneas chocan en la clave primaria y
+  la transacción reintenta con snapshot fresco en lugar de duplicar en silencio.
+  Reproducido con dos sesiones de PostgreSQL: sin esto, la segunda transacción no ve la
+  fila que la primera acaba de commitear, porque su snapshot serializable es anterior al
+  lock de capacidad.
+- **Cierre:** fusionar los duplicados desde Interno → Unidades y recién entonces agregar
+  la migración de unicidad parcial (`WHERE "plateNormalized" IS NOT NULL`). Verificar
+  antes que no queden grupos duplicados.
+
+## VEH-002 — La migración de vehículos falla sin configuración del taller
+
+- **Prioridad:** P3. **Evidencia:** reproducido localmente con PostgreSQL.
+- **Reproducción:** con filas en `Motorcycle` y `WorkshopSettings` vacía, la migración
+  `20260921120000_generic_vehicle` corta con
+  `column "vehicleTypeId" of relation "Vehicle" contains null values`: el tipo `Moto` se
+  siembra a partir de `WorkshopSettings`, así que sin esa tabla el backfill queda en null
+  y el `SET NOT NULL` no pasa.
+- **Por qué no se corrigió:** la aplicación no puede producir ese estado, porque un turno
+  necesita un servicio y los servicios cuelgan de `WorkshopSettings`. La única forma de
+  blindarlo sería volver `vehicleTypeId` nullable, debilitando el modelo contra un caso
+  que no ocurre.
+- **Cierre:** si alguna vez aparece una base en ese estado, sembrar la configuración del
+  taller antes de migrar. Revisar de nuevo si se habilitan varios talleres, que es cuando
+  el estado deja de ser imposible.
 
 ## OPS-001 — Entrega de email y recuperación de fallos
 
