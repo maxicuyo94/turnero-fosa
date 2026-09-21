@@ -170,6 +170,9 @@ export function InternalAgendaScreen({
           <InternalNavLink active={section === "settings"} href={`/internal?section=settings&date=${agenda.date}`}>
             Configuración
           </InternalNavLink>
+          <InternalNavLink active={false} href="/internal/vehicles">
+            Unidades
+          </InternalNavLink>
           <InternalNavLink active={false} href="/internal/shop">
             Repuestos
           </InternalNavLink>

@@ -506,7 +506,15 @@ function AppointmentDrawer({
           <Detail className="sm:col-span-2" label="Código público" value={appointment.publicCode} />
           <Detail label="Teléfono" value={appointment.customerPhone} />
           <Detail label="Email" value={appointment.customerEmail ?? "No informado"} />
-          <Detail className="sm:col-span-2" label="Vehiculo / patente" value={appointment.vehicleLabel} />
+          <div className="sm:col-span-2">
+            <Detail label="Vehiculo / patente" value={appointment.vehicleLabel} />
+            <Link
+              className="mt-1 inline-block text-sm text-lime-300 underline"
+              href={`/internal/vehicles/${appointment.vehicleId}`}
+            >
+              Ver historial de la unidad
+            </Link>
+          </div>
           <Detail className="sm:col-span-2" label="Notas" value={appointment.notes || "Sin notas"} />
         </dl>
 
