@@ -71,3 +71,27 @@ NOT hardcode the available types in product code.
 - GIVEN vehicles created before this change
 - WHEN the migration runs
 - THEN every one of them MUST reference the seeded motorcycle type.
+
+## ADDED Requirement: Internal Vehicle Identification Fields
+
+The system MUST keep chassis number, engine number, colour and vehicle notes as internal data,
+captured only from the vehicle record behind internal authentication.
+
+#### Scenario: Public booking does not ask for them
+
+- GIVEN a public booking form
+- WHEN it is rendered
+- THEN it MUST NOT request chassis number, engine number, colour or vehicle notes
+- AND the only vehicle field it adds MUST be the vehicle type.
+
+#### Scenario: Staff completes them from the vehicle record
+
+- GIVEN an authenticated internal session
+- WHEN the vehicle record is edited
+- THEN chassis number, engine number, colour and notes MUST be persisted on that vehicle.
+
+#### Scenario: License plate is not edited from the record
+
+- GIVEN a vehicle record
+- WHEN it is edited
+- THEN the license plate MUST NOT be editable there, since it identifies the unit.

@@ -22,6 +22,12 @@ La unidad sobrevive al cambio de dueño, así que `Vehicle.customer` pasa de `Ca
 `customerId` es el dueño actual, no una pertenencia. Hoy nada borra clientes, por lo que el cambio
 no altera ningún camino existente.
 
+`vin`, `engineNumber`, `color` y `notes` son datos internos: la reserva pública no los pide ni los
+muestra, y se cargan únicamente desde el detalle de la unidad, bajo sesión interna. El formulario
+público suma un solo campo, el tipo de vehículo, que es lo que el taller necesita saber de antemano.
+Pedirle el número de motor a quien reserva alargaría el formulario con un dato que el taller
+verifica con la unidad delante.
+
 ## Identidad y reutilización
 
 La patente se normaliza a mayúsculas sin caracteres no alfanuméricos: `ab 123 cd`, `AB-123-CD` y
@@ -45,6 +51,12 @@ creen dos unidades, igual que hace hoy `createAttempt` en pagos.
 patente normalizada como posibles duplicados. `/internal/vehicles/[id]` muestra la ficha y una línea
 de tiempo descendente con los turnos de la unidad —fecha, servicio, estado final, notas— y los
 cambios de dueño. El detalle del turno en la agenda enlaza a la ficha de su unidad.
+
+Desde la ficha se editan tipo, marca, modelo, año, VIN, número de motor, color y notas. La patente
+no: es la clave de identidad, así que cambiarla puede partir o unir unidades sin que se vea. Se
+corrige fusionando, o con el ítem de edición validada con trazabilidad que el roadmap ya tiene
+abierto. El dueño tampoco se edita a mano en esta entrega; cambia cuando otro cliente reserva con
+esa patente.
 
 La fusión es una acción autenticada y explícita: reasigna los turnos de la unidad de origen a la de
 destino, completa los campos vacíos del destino, registra el evento y elimina el origen, todo en una
