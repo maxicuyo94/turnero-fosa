@@ -98,7 +98,7 @@ function bookingInput(overrides: { idempotencyKey: string; startTime: string; du
     startTime: overrides.startTime,
     durationMinutes: overrides.durationMinutes,
     customer: { fullName: `Integration Rider ${randomUUID()}`, phone: `+54911${Math.floor(Math.random() * 1_000_000_000)}`, email: `${overrides.idempotencyKey}@example.com` },
-    motorcycle: { brand: "Honda", model: "XR150", licensePlate: overrides.idempotencyKey.toUpperCase() },
+    vehicle: { brand: "Honda", model: "XR150", licensePlate: overrides.idempotencyKey.toUpperCase() },
     idempotencyKey: overrides.idempotencyKey,
     now,
   } satisfies Parameters<typeof createPublicBooking>[1];
@@ -126,8 +126,8 @@ async function applyExpressBookingPolicy(
 async function deleteTestAppointments() {
   const appointments = await prisma.appointment.findMany({
     where: { idempotencyKey: { startsWith: "it-public-" } },
-    select: { id: true, motorcycleId: true },
+    select: { id: true, vehicleId: true },
   });
   await prisma.appointment.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.id) } } });
-  await prisma.motorcycle.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.motorcycleId) } } });
+  await prisma.vehicle.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.vehicleId) } } });
 }

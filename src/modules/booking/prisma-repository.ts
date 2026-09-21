@@ -5,6 +5,7 @@ import type { BookingRepository, PublicAppointmentRecord, PublicServiceRecord } 
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { mapScheduleDateException } from "@/src/modules/settings/date-exceptions";
 import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
+import { identityDerivedId, normalizeLicensePlate, normalizePhone } from "@/src/modules/customers/identity";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -65,6 +66,14 @@ export class PrismaBookingRepository implements BookingRepository {
     return service ? mapService(service) : null;
   }
 
+  async listActiveVehicleTypes() {
+    const vehicleTypes = await this.client.vehicleType.findMany({
+      where: { isActive: true },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+    });
+    return vehicleTypes.map((vehicleType) => ({ id: vehicleType.id, name: vehicleType.name }));
+  }
+
   async findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]> {
     if (!this.tx) await settleOverdueDeposits(this.prisma);
     const startOfDay = new Date(`${date}T00:00:00-03:00`);
@@ -111,25 +120,15 @@ export class PrismaBookingRepository implements BookingRepository {
   }
 
   async createAppointment(input: Parameters<BookingRepository["createAppointment"]>[0]): Promise<PublicAppointmentRecord> {
-    const customer = await this.client.customer.create({
-      data: { fullName: input.customer.fullName, phone: input.customer.phone, email: input.customer.email },
-    });
-    const motorcycle = await this.client.motorcycle.create({
-      data: {
-        customerId: customer.id,
-        brand: input.motorcycle.brand,
-        model: input.motorcycle.model,
-        licensePlate: input.motorcycle.licensePlate,
-        year: input.motorcycle.year,
-      },
-    });
+    const customer = await this.resolveCustomer(input.customer);
+    const vehicle = await this.resolveVehicle(input.vehicle, customer.id);
 
     const appointment = await this.client.appointment.create({
       data: {
         publicCode: input.publicCode,
         serviceId: input.service.id,
         customerId: customer.id,
-        motorcycleId: motorcycle.id,
+        vehicleId: vehicle.id,
         startAt: input.startAt,
         endAt: input.endAt,
         status: input.status,
@@ -142,6 +141,103 @@ export class PrismaBookingRepository implements BookingRepository {
     });
 
     return { ...mapAppointment(appointment), cancellationToken: input.cancellationToken };
+  }
+
+  /**
+   * Matches a returning customer by their normalized phone. Runs inside the booking transaction,
+   * which already holds the capacity advisory lock, so two simultaneous bookings cannot each decide
+   * to create the same person.
+   */
+  private async resolveCustomer(input: Parameters<BookingRepository["createAppointment"]>[0]["customer"]) {
+    const phoneKey = normalizePhone(input.phone);
+    const existing = phoneKey
+      ? await this.client.customer.findFirst({ where: { phoneNormalized: phoneKey }, orderBy: { createdAt: "asc" } })
+      : null;
+
+    if (!existing) {
+      return this.client.customer.create({
+        data: {
+          ...(phoneKey ? { id: identityDerivedId("cus", phoneKey) } : {}),
+          fullName: input.fullName,
+          phone: input.phone,
+          phoneNormalized: phoneKey,
+          email: input.email,
+        },
+      });
+    }
+
+    // A booking is not a correction of the record: only what is missing gets filled in.
+    const fills = {
+      ...(existing.email ? {} : input.email ? { email: input.email } : {}),
+    };
+    return Object.keys(fills).length > 0
+      ? this.client.customer.update({ where: { id: existing.id }, data: fills })
+      : existing;
+  }
+
+  /**
+   * Matches the unit by its normalized plate, so the same motorcycle written three different ways
+   * accumulates one history. Without a plate there is nothing to match on, and joining an arbitrary
+   * unit would be worse than a duplicate, so a new one is created and staff link it by hand.
+   */
+  private async resolveVehicle(
+    input: Parameters<BookingRepository["createAppointment"]>[0]["vehicle"],
+    customerId: string,
+  ) {
+    const plateKey = normalizeLicensePlate(input.licensePlate);
+    const existing = plateKey
+      ? await this.client.vehicle.findFirst({ where: { plateNormalized: plateKey }, orderBy: { createdAt: "asc" } })
+      : null;
+
+    if (!existing) {
+      return this.client.vehicle.create({
+        data: {
+          ...(plateKey ? { id: identityDerivedId("veh", plateKey) } : {}),
+          customerId,
+          vehicleTypeId: await this.resolveVehicleTypeId(input.vehicleTypeId),
+          brand: input.brand,
+          model: input.model,
+          licensePlate: input.licensePlate,
+          plateNormalized: plateKey,
+          year: input.year,
+        },
+      });
+    }
+
+    if (existing.customerId !== customerId) {
+      await this.client.vehicleOwnerHistory.create({
+        data: {
+          vehicleId: existing.id,
+          previousCustomerId: existing.customerId,
+          newCustomerId: customerId,
+          reason: "Public booking by a different customer.",
+        },
+      });
+    }
+
+    const fills = {
+      ...(existing.customerId === customerId ? {} : { customerId }),
+      ...(existing.year === null && input.year !== undefined ? { year: input.year } : {}),
+      ...(existing.licensePlate ? {} : input.licensePlate ? { licensePlate: input.licensePlate } : {}),
+    };
+    return Object.keys(fills).length > 0
+      ? this.client.vehicle.update({ where: { id: existing.id }, data: fills })
+      : existing;
+  }
+
+  /** Falls back to the first active type, so a submission without a selector still books. */
+  private async resolveVehicleTypeId(vehicleTypeId: string | undefined): Promise<string> {
+    if (vehicleTypeId) {
+      const chosen = await this.client.vehicleType.findFirst({ where: { id: vehicleTypeId, isActive: true } });
+      if (chosen) return chosen.id;
+    }
+
+    const fallback = await this.client.vehicleType.findFirst({
+      where: { isActive: true },
+      orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+    });
+    if (!fallback) throw new Error("No active vehicle type is configured.");
+    return fallback.id;
   }
 
   async findCancellableAppointment(appointmentId: string, token: string): Promise<PublicAppointmentRecord | null> {

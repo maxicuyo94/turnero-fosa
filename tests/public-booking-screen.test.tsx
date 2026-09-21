@@ -25,7 +25,7 @@ describe("PublicBookingScreen", () => {
     expect(screen.getByRole("spinbutton", { name: /Duracion total/i })).toHaveValue(90);
     expect(screen.getByRole("radio", { name: /09:00/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre y apellido")).toBeInTheDocument();
-    expect(screen.getByLabelText("Marca de la moto")).toBeInTheDocument();
+    expect(screen.getByLabelText("Marca")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Solicitar turno" })).toBeInTheDocument();
   });
 

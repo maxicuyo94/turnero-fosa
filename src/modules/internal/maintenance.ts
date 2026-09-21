@@ -206,3 +206,64 @@ export async function updateInternalServiceDuration(
   if (!parsed.success) return rejection("La duración debe ser de 1 a 1440 minutos.");
   return { accepted: true as const, service: await repository.updateServiceDuration(input.serviceId, parsed.data) };
 }
+
+export type InternalVehicleTypeRecord = {
+  id: string;
+  name: string;
+  isActive: boolean;
+  displayOrder: number;
+};
+
+export type InternalVehicleTypeRepository = {
+  listVehicleTypes(): Promise<InternalVehicleTypeRecord[]>;
+  createVehicleType(input: { name: string; displayOrder: number }): Promise<InternalVehicleTypeRecord>;
+  updateVehicleTypeVisibility(vehicleTypeId: string, isActive: boolean): Promise<InternalVehicleTypeRecord>;
+};
+
+const vehicleTypeNameSchema = z.string().trim().min(1).max(40);
+
+/** Compared without case or inner spacing, so "Cuatriciclo" and "cuatri ciclo" are not both added. */
+function vehicleTypeKey(name: string): string {
+  return name.trim().toLocaleLowerCase("es-AR").replace(/\s+/gu, "");
+}
+
+export async function createInternalVehicleType(
+  repository: InternalVehicleTypeRepository,
+  input: { name: unknown },
+) {
+  const parsed = vehicleTypeNameSchema.safeParse(input.name);
+  if (!parsed.success) return rejection("El nombre del tipo es obligatorio y admite hasta 40 caracteres.");
+
+  const existing = await repository.listVehicleTypes();
+  if (existing.some((vehicleType) => vehicleTypeKey(vehicleType.name) === vehicleTypeKey(parsed.data))) {
+    return rejection("Ya existe un tipo de vehiculo con ese nombre.");
+  }
+
+  const displayOrder = existing.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1;
+  return { accepted: true as const, vehicleType: await repository.createVehicleType({ name: parsed.data, displayOrder }) };
+}
+
+/**
+ * Visibility, never deletion: a type is referenced by the vehicles created under it, and removing it
+ * would take their history with it. Deactivating keeps those units readable and only hides the type
+ * from new bookings.
+ */
+export async function updateInternalVehicleTypeVisibility(
+  repository: InternalVehicleTypeRepository,
+  input: { vehicleTypeId: string; isActive: boolean },
+) {
+  const existing = await repository.listVehicleTypes();
+  const target = existing.find((vehicleType) => vehicleType.id === input.vehicleTypeId);
+  if (!target) return rejection("El tipo de vehiculo no existe.");
+
+  // Public booking needs at least one type to offer, so the last active one cannot be hidden.
+  const remainingActive = existing.filter((vehicleType) => vehicleType.isActive && vehicleType.id !== target.id);
+  if (!input.isActive && remainingActive.length === 0) {
+    return rejection("Debe quedar al menos un tipo de vehiculo activo.");
+  }
+
+  return {
+    accepted: true as const,
+    vehicleType: await repository.updateVehicleTypeVisibility(input.vehicleTypeId, input.isActive),
+  };
+}

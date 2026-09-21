@@ -6,6 +6,7 @@ export const workshopSeedConfig: {
   schedules: WeeklySchedule[];
   breaks: ScheduleBreak[];
   services: ServiceInput[];
+  vehicleTypes: { name: string; isActive: boolean; displayOrder: number }[];
 } = {
   settings: {
     workshopName: "Taller de motos Express",
@@ -44,4 +45,7 @@ export const workshopSeedConfig: {
     { name: "Enderezado de chasis", durationMinutes: 120, isActive: true, displayOrder: 5 },
     { name: "Enderezado de barrales", durationMinutes: 120, isActive: true, displayOrder: 6 },
   ],
+  // Only what the workshop actually has today. Anything else is added from Configuracion, so the
+  // seed never invents a catalog the shop did not ask for.
+  vehicleTypes: [{ name: "Moto", isActive: true, displayOrder: 1 }],
 };

@@ -8,6 +8,7 @@ import {
   Field,
   PageHeading,
   PageShell,
+  Select,
   SiteHeader,
   SlotOption,
   Textarea,
@@ -15,10 +16,11 @@ import {
 } from "@/src/components/ui";
 import type { AvailableSlot } from "@/src/modules/availability";
 import { BookingSearchForm } from "@/src/modules/booking/booking-search-form";
-import type { PublicServiceRecord } from "@/src/modules/booking/service";
+import type { PublicServiceRecord, PublicVehicleTypeRecord } from "@/src/modules/booking/service";
 
 type PublicBookingScreenProps = {
   services: PublicServiceRecord[];
+  vehicleTypes?: PublicVehicleTypeRecord[];
   selectedServiceId: string;
   selectedDate: string;
   selectedDurationMinutes: number;
@@ -45,6 +47,7 @@ type PublicBookingScreenProps = {
 
 export function PublicBookingScreen({
   services,
+  vehicleTypes = [],
   selectedServiceId,
   selectedDate,
   selectedDurationMinutes,
@@ -182,7 +185,7 @@ export function PublicBookingScreen({
 
           <Card>
             <h2 className="text-2xl font-black text-white">Datos para el turno</h2>
-            <p className="mt-2 text-sm text-zinc-500">Completa tus datos y los de la moto.</p>
+            <p className="mt-2 text-sm text-zinc-500">Completa tus datos y los del vehiculo.</p>
             {depositPolicy?.required ? (
               <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/5 p-4 text-sm text-amber-100">
                 Para confirmar el turno se solicita una seña de <strong>{formatArs(depositPolicy.amountCents)}</strong>.
@@ -199,7 +202,20 @@ export function PublicBookingScreen({
               <Field label="Email">
                 <TextInput name="email" type="email" />
               </Field>
-              <Field label="Marca de la moto">
+              {vehicleTypes.length > 1 ? (
+                <Field label="Tipo de vehiculo">
+                  <Select name="vehicleTypeId" required>
+                    {vehicleTypes.map((vehicleType) => (
+                      <option key={vehicleType.id} value={vehicleType.id}>
+                        {vehicleType.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null}
+              {/* Con un unico tipo configurado el selector solo agregaria ruido, pero el dato se envia igual. */}
+              {vehicleTypes.length === 1 ? <input name="vehicleTypeId" type="hidden" value={vehicleTypes[0].id} /> : null}
+              <Field label="Marca">
                 <TextInput name="brand" required />
               </Field>
               <Field label="Modelo">

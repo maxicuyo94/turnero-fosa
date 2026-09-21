@@ -1,13 +1,14 @@
 import type { PrismaClient } from "@prisma/client";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { seedAdminUser, seedWorkshopConfiguration } from "@/src/modules/settings/seed";
+import { normalizeLicensePlate, normalizePhone } from "@/src/modules/customers/identity";
 
 export type TestDataSummary = {
   profile: "development";
   workshopSettingsId: string;
   adminConfigured: boolean;
   customers: number;
-  motorcycles: number;
+  vehicles: number;
   appointments: number;
 };
 
@@ -20,28 +21,28 @@ const sampleCustomers = [
     fullName: "Ada Lovelace",
     phone: "+5491111110001",
     email: "ada@example.test",
-    motorcycle: { id: `${testDataPrefix}motorcycle-ada`, brand: "Honda", model: "XR150", licensePlate: "TDA001", year: 2022 },
+    vehicle: { id: `${testDataPrefix}vehicle-ada`, brand: "Honda", model: "XR150", licensePlate: "TDA001", year: 2022 },
   },
   {
     id: `${testDataPrefix}customer-grace`,
     fullName: "Grace Hopper",
     phone: "+5491111110002",
     email: "grace@example.test",
-    motorcycle: { id: `${testDataPrefix}motorcycle-grace`, brand: "Yamaha", model: "FZ25", licensePlate: "TDA002", year: 2023 },
+    vehicle: { id: `${testDataPrefix}vehicle-grace`, brand: "Yamaha", model: "FZ25", licensePlate: "TDA002", year: 2023 },
   },
   {
     id: `${testDataPrefix}customer-alan`,
     fullName: "Alan Turing",
     phone: "+5491111110003",
     email: null,
-    motorcycle: { id: `${testDataPrefix}motorcycle-alan`, brand: "Bajaj", model: "Rouser 200", licensePlate: "TDA003", year: 2021 },
+    vehicle: { id: `${testDataPrefix}vehicle-alan`, brand: "Bajaj", model: "Rouser 200", licensePlate: "TDA003", year: 2021 },
   },
 ] as const;
 
 const sampleAppointments: {
   idempotencyKey: string;
   customerId: string;
-  motorcycleId: string;
+  vehicleId: string;
   serviceDisplayOrder: number;
   startTime: string;
   status: AppointmentStatus;
@@ -50,7 +51,7 @@ const sampleAppointments: {
   {
     idempotencyKey: `${testDataPrefix}appointment-pending`,
     customerId: sampleCustomers[0].id,
-    motorcycleId: sampleCustomers[0].motorcycle.id,
+    vehicleId: sampleCustomers[0].vehicle.id,
     serviceDisplayOrder: 1,
     startTime: "09:00",
     status: "PENDING_CONFIRMATION",
@@ -59,7 +60,7 @@ const sampleAppointments: {
   {
     idempotencyKey: `${testDataPrefix}appointment-confirmed`,
     customerId: sampleCustomers[1].id,
-    motorcycleId: sampleCustomers[1].motorcycle.id,
+    vehicleId: sampleCustomers[1].vehicle.id,
     serviceDisplayOrder: 3,
     startTime: "10:00",
     status: "CONFIRMED",
@@ -68,7 +69,7 @@ const sampleAppointments: {
   {
     idempotencyKey: `${testDataPrefix}appointment-completed`,
     customerId: sampleCustomers[2].id,
-    motorcycleId: sampleCustomers[2].motorcycle.id,
+    vehicleId: sampleCustomers[2].vehicle.id,
     serviceDisplayOrder: 2,
     startTime: "15:00",
     status: "COMPLETED",
@@ -84,25 +85,38 @@ export async function loadDevelopmentTestData(
   const adminId = await seedAdminUser(prisma, options.env);
   const agendaDate = nextMonday(options.now ?? new Date());
 
+  // Required since vehicles carry a type; the seed guarantees at least one active row.
+  const vehicleType = await prisma.vehicleType.findFirstOrThrow({
+    where: { workshopSettingsId, isActive: true },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+  });
+
   for (const customer of sampleCustomers) {
-    const customerData = { fullName: customer.fullName, phone: customer.phone, email: customer.email };
+    const customerData = {
+      fullName: customer.fullName,
+      phone: customer.phone,
+      phoneNormalized: normalizePhone(customer.phone),
+      email: customer.email,
+    };
     await prisma.customer.upsert({
       where: { id: customer.id },
       update: customerData,
       create: { id: customer.id, ...customerData },
     });
 
-    const motorcycleData = {
+    const vehicleData = {
       customerId: customer.id,
-      brand: customer.motorcycle.brand,
-      model: customer.motorcycle.model,
-      licensePlate: customer.motorcycle.licensePlate,
-      year: customer.motorcycle.year,
+      vehicleTypeId: vehicleType.id,
+      brand: customer.vehicle.brand,
+      model: customer.vehicle.model,
+      licensePlate: customer.vehicle.licensePlate,
+      plateNormalized: normalizeLicensePlate(customer.vehicle.licensePlate),
+      year: customer.vehicle.year,
     };
-    await prisma.motorcycle.upsert({
-      where: { id: customer.motorcycle.id },
-      update: motorcycleData,
-      create: { id: customer.motorcycle.id, ...motorcycleData },
+    await prisma.vehicle.upsert({
+      where: { id: customer.vehicle.id },
+      update: vehicleData,
+      create: { id: customer.vehicle.id, ...vehicleData },
     });
   }
 
@@ -115,7 +129,7 @@ export async function loadDevelopmentTestData(
     const data = {
       serviceId: service.id,
       customerId: appointment.customerId,
-      motorcycleId: appointment.motorcycleId,
+      vehicleId: appointment.vehicleId,
       startAt,
       endAt,
       status: appointment.status,
@@ -138,7 +152,7 @@ export async function loadDevelopmentTestData(
     workshopSettingsId,
     adminConfigured: adminId !== null,
     customers: sampleCustomers.length,
-    motorcycles: sampleCustomers.length,
+    vehicles: sampleCustomers.length,
     appointments: sampleAppointments.length,
   };
 }

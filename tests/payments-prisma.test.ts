@@ -21,7 +21,7 @@ const prefix = "it-payments-";
 const now = new Date(Date.now() + 86_400_000);
 let serviceId: string;
 let customerId: string;
-let motorcycleId: string;
+let vehicleId: string;
 
 describe("Prisma deposit reservations", () => {
   beforeAll(async () => {
@@ -31,11 +31,11 @@ describe("Prisma deposit reservations", () => {
     });
     serviceId = service.id;
     const customer = await prisma.customer.create({
-      data: { fullName: "Payment regression rider", phone: prefix, motorcycles: { create: { brand: "Honda", model: "XR" } } },
-      include: { motorcycles: true },
+      data: { fullName: "Payment regression rider", phone: prefix, vehicles: { create: { vehicleTypeId: await activeVehicleTypeId(), brand: "Honda", model: "XR" } } },
+      include: { vehicles: true },
     });
     customerId = customer.id;
-    motorcycleId = customer.motorcycles[0].id;
+    vehicleId = customer.vehicles[0].id;
   });
 
   beforeEach(async () => {
@@ -45,6 +45,8 @@ describe("Prisma deposit reservations", () => {
   afterAll(async () => {
     if (customerId) {
       await prisma.appointment.deleteMany({ where: { customerId } });
+      // Vehicles outlive their owner's record now, so they are removed before the customer.
+      await prisma.vehicle.deleteMany({ where: { customerId } });
       await prisma.customer.delete({ where: { id: customerId } });
     }
     if (serviceId) {
@@ -267,7 +269,7 @@ describe("Prisma deposit reservations", () => {
 
 function createAppointment(startAt = new Date("2026-09-10T12:00:00Z"), status: AppointmentStatus = "PENDING_CONFIRMATION") {
   return prisma.appointment.create({ data: {
-    serviceId, customerId, motorcycleId, status,
+    serviceId, customerId, vehicleId, status,
     idempotencyKey: `${prefix}${randomUUID()}`,
     startAt,
     endAt: new Date(startAt.getTime() + 60 * 60_000),
@@ -298,4 +300,12 @@ async function appointmentStatus(id: string) {
 
 function paymentUpdate(attemptId: string, status: DepositPaymentStatus) {
   return { attemptId, status, providerPaymentId: `provider-${attemptId}`, statusDetail: null, liveMode: false, approvedAt: status === "APPROVED" ? now : null };
+}
+
+async function activeVehicleTypeId() {
+  const vehicleType = await prisma.vehicleType.findFirstOrThrow({
+    where: { isActive: true },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+  });
+  return vehicleType.id;
 }

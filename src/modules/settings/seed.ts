@@ -26,6 +26,16 @@ export async function seedWorkshopConfiguration(prisma: PrismaClient): Promise<s
     });
   });
 
+  // A database created from scratch runs the migration before any settings row exists, so the
+  // catalog it seeds would be empty and no booking could name a type. The seed closes that gap.
+  for (const vehicleType of workshopSeedConfig.vehicleTypes) {
+    await prisma.vehicleType.upsert({
+      where: { workshopSettingsId_name: { workshopSettingsId: settings.id, name: vehicleType.name } },
+      update: {},
+      create: { ...vehicleType, workshopSettingsId: settings.id },
+    });
+  }
+
   for (const service of workshopSeedConfig.services) {
     const existing = await prisma.service.findFirst({
       where: { workshopSettingsId: settings.id, displayOrder: service.displayOrder },

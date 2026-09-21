@@ -17,6 +17,8 @@ import {
   deleteInternalDateException,
   saveInternalDateException,
   updateInternalServiceVisibility,
+  createInternalVehicleType,
+  updateInternalVehicleTypeVisibility,
   updateInternalServiceDuration,
   updateInternalWeeklySchedule,
   updateInternalWorkshopSettings,
@@ -156,6 +158,25 @@ export async function updateServiceVisibilityAction(formData: FormData) {
     isActive: stringValue(formData, "isActive") === "true",
   });
   redirect("/internal?section=settings");
+}
+
+export async function createVehicleTypeAction(formData: FormData) {
+  await requireInternalAccess();
+  const result = await createInternalVehicleType(new PrismaInternalRepository(db), {
+    name: stringValue(formData, "name"),
+  });
+  if (result.accepted) revalidatePath("/", "layout");
+  redirect(`/internal?section=settings&feedback=${result.accepted ? "vehicle-type-created" : "vehicle-type-invalid"}`);
+}
+
+export async function updateVehicleTypeVisibilityAction(formData: FormData) {
+  await requireInternalAccess();
+  const result = await updateInternalVehicleTypeVisibility(new PrismaInternalRepository(db), {
+    vehicleTypeId: stringValue(formData, "vehicleTypeId"),
+    isActive: stringValue(formData, "isActive") === "true",
+  });
+  if (result.accepted) revalidatePath("/", "layout");
+  redirect(`/internal?section=settings&feedback=${result.accepted ? "vehicle-type-updated" : "vehicle-type-invalid"}`);
 }
 
 export async function updateWeeklyScheduleAction(formData: FormData) {

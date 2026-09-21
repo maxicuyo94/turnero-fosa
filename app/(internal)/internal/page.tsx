@@ -36,10 +36,11 @@ export default async function InternalPage({
   await settleOverdueDeposits(db);
   const repository = new PrismaInternalRepository(db);
   const weekDates = datesForWeek(date);
-  const [weekAgendas, settings, services, schedule, exceptions, paidUnconfirmedDeposits] = await Promise.all([
+  const [weekAgendas, settings, services, vehicleTypes, schedule, exceptions, paidUnconfirmedDeposits] = await Promise.all([
     Promise.all(weekDates.map((weekDate) => getInternalAgenda(repository, { date: weekDate }))),
     repository.getWorkshopSettings(),
     repository.listServices(),
+    repository.listVehicleTypes(),
     repository.getWeeklySchedule(),
     repository.listDateExceptions(exceptionRange(date)),
     listPaidUnconfirmedDeposits(db),
@@ -56,6 +57,7 @@ export default async function InternalPage({
       schedule={schedule}
       section={parseSection(params?.section)}
       services={services}
+      vehicleTypes={vehicleTypes}
       settings={settings}
       signedInUserName={getInternalSessionDisplayName(session)}
       today={today}

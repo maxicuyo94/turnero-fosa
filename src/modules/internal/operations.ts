@@ -27,7 +27,8 @@ export type InternalAppointmentRecord = {
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
-  motorcycleLabel: string;
+  vehicleId: string;
+  vehicleLabel: string;
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;

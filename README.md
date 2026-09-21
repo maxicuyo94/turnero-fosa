@@ -173,9 +173,41 @@ Default local credentials from `.env.example`:
 
 Implemented now: scaffold, shared dark/apple-green UI, typed env validation, test tooling, Prisma schema, safe seed defaults, availability calculation, public service/slot lookup, public booking creation, policy-based cancellation link handling, Resend email notifications with non-blocking failure logs, Auth.js internal login, session-aware navbar, protected internal agenda with date filter, appointment status updates with status history, settings maintenance, service visibility controls, and E2E coverage for the core public/internal workflows.
 
+Units are now generic vehicles with a configurable type catalog, and a booking reuses the customer
+and the unit already on record instead of creating a new pair every time. See
+[Vehicles and unit history](#vehicles-and-unit-history).
+
 Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. Live payment activation and end-to-end sandbox purchase acceptance remain pending in the roadmap.
 
 Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, and public online rescheduling. Internal inventory is now in local DEV as described above.
+
+## Vehicles and unit history
+
+Appointments reference a `Vehicle`, not a motorcycle. Its type comes from a catalog managed in
+**Interno → Configuración → Tipos de vehículo**; the seed creates only `Moto`, and anything else is
+added from the panel without a deployment. A type referenced by a vehicle is deactivated, never
+deleted, and at least one type stays active because public booking needs one to offer.
+
+A unit is recognised by its normalized license plate — uppercase alphanumerics — so `ab 123 cd`,
+`AB-123-CD` and `AB123CD` are the same vehicle and accumulate one history. A customer is recognised
+by the digits of their phone. Both are resolved inside the booking transaction, and the record of a
+reused customer or vehicle is never overwritten by the booking: only empty fields are filled. When
+someone books with a plate registered to another customer, the unit moves to them and the change is
+stored in `VehicleOwnerHistory`.
+
+Chassis number, engine number, colour and vehicle notes are internal: public booking never asks for
+them. The only field it adds is the vehicle type, and the selector stays hidden while a single type
+is configured.
+
+The plate has no unique index yet. Every booking made before this change created its own customer
+and vehicle, so production still holds duplicates and a unique constraint would fail the migration.
+Until they are merged, a vehicle created for a plate takes an id derived from that plate, which turns
+two simultaneous bookings into a primary key collision the booking transaction retries, instead of a
+silent duplicate. Merging duplicates and the unit history screen are the next delivery.
+
+Apply the `20260921120000_generic_vehicle` migration to existing databases; it renames the table and
+backfills, so no appointment loses its unit. Reverting needs the inverse migration: the previous code
+queries `Motorcycle` and would fail against the renamed table.
 
 ## Taller Express Defaults
 

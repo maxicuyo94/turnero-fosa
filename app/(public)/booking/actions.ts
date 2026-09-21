@@ -28,7 +28,8 @@ export async function createAppointmentAction(formData: FormData) {
       phone: stringValue(formData, "phone"),
       email: optionalStringValue(formData, "email"),
     },
-    motorcycle: {
+    vehicle: {
+      vehicleTypeId: optionalStringValue(formData, "vehicleTypeId"),
       brand: stringValue(formData, "brand"),
       model: stringValue(formData, "model"),
       licensePlate: optionalStringValue(formData, "licensePlate"),

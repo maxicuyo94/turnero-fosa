@@ -78,6 +78,7 @@ model WorkshopSettings {
   scheduleBreaks           ScheduleBreak[]
   dateExceptions           ScheduleDateException[]
   services                 Service[]
+  vehicleTypes             VehicleType[]
 }
 
 model WeeklySchedule {
@@ -141,30 +142,73 @@ model Customer {
   id           String        @id @default(cuid())
   fullName     String
   phone        String
+  /// Identity key: digits of phone. Indexed so a returning customer is matched by lookup, not by
+  /// scanning the table.
+  phoneNormalized String?
   email        String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  motorcycles  Motorcycle[]
+  vehicles     Vehicle[]
   appointments Appointment[]
 
   @@index([phone])
+  @@index([phoneNormalized])
   @@index([email])
 }
 
-model Motorcycle {
-  id           String        @id @default(cuid())
-  customerId   String
-  brand        String
-  model        String
-  licensePlate String?
-  year         Int?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  appointments Appointment[]
+model VehicleType {
+  id                 String           @id @default(cuid())
+  workshopSettingsId String
+  name               String
+  isActive           Boolean          @default(true)
+  displayOrder       Int
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  workshopSettings   WorkshopSettings @relation(fields: [workshopSettingsId], references: [id], onDelete: Cascade)
+  vehicles           Vehicle[]
+
+  @@unique([workshopSettingsId, name])
+  @@index([workshopSettingsId, isActive, displayOrder])
+}
+
+model Vehicle {
+  id              String        @id @default(cuid())
+  customerId      String
+  vehicleTypeId   String
+  brand           String
+  model           String
+  licensePlate    String?
+  /// Identity key: uppercase alphanumerics of licensePlate. Not unique yet; production still holds
+  /// one row per booking, so the partial unique index waits until those duplicates are merged.
+  plateNormalized String?
+  year            Int?
+  /// Internal-only fields. Public booking never asks for these.
+  vin             String?
+  engineNumber    String?
+  color           String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  customer        Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  vehicleType     VehicleType   @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
+  appointments    Appointment[]
+  ownerHistory    VehicleOwnerHistory[]
 
   @@index([customerId])
   @@index([licensePlate])
+  @@index([plateNormalized])
+}
+
+model VehicleOwnerHistory {
+  id                 String    @id @default(cuid())
+  vehicleId          String
+  previousCustomerId String?
+  newCustomerId      String
+  reason             String
+  changedAt          DateTime  @default(now())
+  vehicle            Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId, changedAt])
 }
 
 model Appointment {
@@ -172,7 +216,7 @@ model Appointment {
   publicCode            String                     @unique @default(dbgenerated("generate_appointment_public_code()"))
   serviceId             String
   customerId            String
-  motorcycleId          String
+  vehicleId             String
   startAt               DateTime
   endAt                 DateTime
   status                AppointmentStatus          @default(PENDING_CONFIRMATION)
@@ -183,7 +227,7 @@ model Appointment {
   updatedAt             DateTime                   @updatedAt
   service               Service                    @relation(fields: [serviceId], references: [id])
   customer              Customer                   @relation(fields: [customerId], references: [id])
-  motorcycle            Motorcycle                 @relation(fields: [motorcycleId], references: [id])
+  vehicle               Vehicle                    @relation(fields: [vehicleId], references: [id])
   statusHistory         AppointmentStatusHistory[]
   intervalHistory       AppointmentIntervalHistory[]
   emailLogs             EmailLog[]
@@ -191,7 +235,7 @@ model Appointment {
 
   @@index([startAt, endAt, status])
   @@index([customerId])
-  @@index([motorcycleId])
+  @@index([vehicleId])
 }
 
 model DepositPaymentAttempt {
