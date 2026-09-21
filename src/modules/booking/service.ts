@@ -1,11 +1,16 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
-import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
+import { customerSchema, vehicleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
 import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
 import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
+
+export type PublicVehicleTypeRecord = {
+  id: string;
+  name: string;
+};
 
 export type PublicServiceRecord = {
   id: string;
@@ -38,6 +43,7 @@ export type BookingRepository = {
   }>;
   listActiveServices(): Promise<PublicServiceRecord[]>;
   findActiveService(serviceId: string): Promise<PublicServiceRecord | null>;
+  listActiveVehicleTypes(): Promise<PublicVehicleTypeRecord[]>;
   findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]>;
   withBookingTransaction<T>(operation: () => Promise<T>): Promise<T>;
   findByIdempotencyKey(idempotencyKey: string): Promise<PublicAppointmentRecord | null>;
@@ -51,7 +57,7 @@ export type BookingRepository = {
     cancellationToken: string | null;
     status: AppointmentStatus;
     customer: z.infer<typeof customerSchema>;
-    motorcycle: z.infer<typeof motorcycleSchema>;
+    vehicle: z.infer<typeof vehicleSchema>;
     notes?: string;
   }): Promise<PublicAppointmentRecord>;
   findCancellableAppointment(appointmentId: string, token: string): Promise<PublicAppointmentRecord | null>;
@@ -68,7 +74,7 @@ const bookingInputSchema = z.object({
   startTime: z.string().regex(/^\d{2}:\d{2}$/u),
   durationMinutes: z.number().int().positive().optional(),
   customer: customerSchema,
-  motorcycle: motorcycleSchema,
+  vehicle: vehicleSchema,
   idempotencyKey: z.string().trim().min(8),
   notes: z.string().trim().max(1_000).optional(),
   now: z.date(),
@@ -205,7 +211,7 @@ export async function createPublicBooking(
     return {
       accepted: false,
       reason: "VALIDATION_FAILED",
-      message: "Revisa los datos del cliente y de la moto.",
+      message: "Revisa los datos del cliente y del vehiculo.",
       fieldErrors: z.flattenError(parsed.error).fieldErrors,
     };
   }
@@ -278,7 +284,7 @@ export async function createPublicBooking(
       cancellationToken,
       status,
       customer: parsed.data.customer,
-      motorcycle: parsed.data.motorcycle,
+      vehicle: parsed.data.vehicle,
       notes: parsed.data.notes,
     });
 

@@ -184,16 +184,16 @@ async function createInternalTestAppointment(idempotencyKey: string): Promise<st
       fullName: `Internal Integration Rider ${randomUUID()}`,
       phone: `+54911${Math.floor(Math.random() * 1_000_000_000)}`,
       email: `${idempotencyKey}@example.com`,
-      motorcycles: { create: { brand: "Honda", model: "XR150", licensePlate: idempotencyKey.toUpperCase() } },
+      vehicles: { create: { vehicleTypeId: await activeVehicleTypeId(), brand: "Honda", model: "XR150", licensePlate: idempotencyKey.toUpperCase() } },
     },
-    include: { motorcycles: true },
+    include: { vehicles: true },
   });
 
   const appointment = await prisma.appointment.create({
     data: {
       serviceId: service.id,
       customerId: customer.id,
-      motorcycleId: customer.motorcycles[0].id,
+      vehicleId: customer.vehicles[0].id,
       startAt: new Date(`2026-07-21T09:00:00-03:00`),
       endAt: new Date(`2026-07-21T09:30:00-03:00`),
       idempotencyKey,
@@ -207,10 +207,18 @@ async function createInternalTestAppointment(idempotencyKey: string): Promise<st
 async function deleteInternalTestData() {
   const appointments = await prisma.appointment.findMany({
     where: { idempotencyKey: { startsWith: "it-internal-" } },
-    select: { id: true, motorcycleId: true, customerId: true },
+    select: { id: true, vehicleId: true, customerId: true },
   });
   await prisma.appointment.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.id) } } });
-  await prisma.motorcycle.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.motorcycleId) } } });
+  await prisma.vehicle.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.vehicleId) } } });
   await prisma.customer.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.customerId) } } });
   await prisma.user.deleteMany({ where: { email: { startsWith: "internal-" } } });
+}
+
+async function activeVehicleTypeId() {
+  const vehicleType = await prisma.vehicleType.findFirstOrThrow({
+    where: { isActive: true },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+  });
+  return vehicleType.id;
 }

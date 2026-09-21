@@ -3,6 +3,8 @@ import {
   importHolidaysAction,
   saveDateExceptionAction,
   signOutAction,
+  createVehicleTypeAction,
+  updateVehicleTypeVisibilityAction,
   updateServiceVisibilityAction,
   updateServiceDurationAction,
   updateWeeklyScheduleAction,
@@ -30,6 +32,7 @@ import {
 } from "@/src/components/ui";
 import type {
   InternalServiceRecord,
+  InternalVehicleTypeRecord,
   InternalWeeklyScheduleRecord,
   InternalWorkshopSettingsRecord,
 } from "@/src/modules/internal/maintenance";
@@ -125,6 +128,7 @@ export function InternalAgendaScreen({
   capacityConflicts = [],
   paidUnconfirmedDeposits = [],
   services = [],
+  vehicleTypes = [],
   schedule,
   exceptions = [],
   feedback,
@@ -139,6 +143,7 @@ export function InternalAgendaScreen({
   capacityConflicts?: CapacityConflict[];
   paidUnconfirmedDeposits?: PaidUnconfirmedDeposit[];
   services?: InternalServiceRecord[];
+  vehicleTypes?: InternalVehicleTypeRecord[];
   schedule?: InternalWeeklyScheduleRecord;
   exceptions?: ScheduleDateException[];
   feedback?: InternalFeedbackCode | null;
@@ -255,6 +260,39 @@ export function InternalAgendaScreen({
                 <Button className="mt-1 w-fit" size="md" type="submit">
                   Guardar cambios
                 </Button>
+              </form>
+            </Card>
+          ) : null}
+
+          {vehicleTypes.length > 0 ? (
+            <Card>
+              <h2 className="text-2xl font-black text-white">Tipos de vehiculo</h2>
+              <p className="mt-2 text-sm text-zinc-500">
+                Lo que el taller atiende. El toggle controla si se ofrece al reservar; un tipo no se borra, para no
+                perder el historial de las unidades cargadas con el.
+              </p>
+              <div className="mt-5 grid gap-3">
+                {vehicleTypes.map((vehicleType) => (
+                  <form
+                    action={updateVehicleTypeVisibilityAction}
+                    className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
+                    key={vehicleType.id}
+                  >
+                    <input name="vehicleTypeId" type="hidden" value={vehicleType.id} />
+                    <input name="isActive" type="hidden" value={vehicleType.isActive ? "false" : "true"} />
+                    <span className="font-medium text-white">{vehicleType.name}</span>
+                    <Toggle
+                      aria-label={vehicleType.isActive ? `Ocultar ${vehicleType.name}` : `Ofrecer ${vehicleType.name}`}
+                      checked={vehicleType.isActive}
+                    />
+                  </form>
+                ))}
+              </div>
+              <form action={createVehicleTypeAction} className="mt-5 flex flex-wrap items-end gap-3 border-t border-white/5 pt-5">
+                <Field label="Agregar tipo">
+                  <TextInput name="name" maxLength={40} placeholder="Cuatriciclo" required />
+                </Field>
+                <Button size="sm" type="submit" variant="ghost">Agregar</Button>
               </form>
             </Card>
           ) : null}

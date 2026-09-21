@@ -79,7 +79,7 @@ export function InternalAgendaWorkspace({
       appointment.customerName,
       appointment.customerPhone,
       appointment.customerEmail ?? "",
-      appointment.motorcycleLabel,
+      appointment.vehicleLabel,
       appointment.serviceName,
     ].join(" ").toLocaleLowerCase("es-AR");
 
@@ -312,7 +312,7 @@ function DayAgenda({
           <div className="min-w-0">
             <p className="truncate font-black text-white">{appointment.customerName}</p>
             <p className="mt-1 truncate text-sm text-zinc-400">{appointment.serviceName}</p>
-            <p className="mt-1 truncate text-xs text-zinc-600">{appointment.motorcycleLabel} · {appointment.customerPhone}</p>
+            <p className="mt-1 truncate text-xs text-zinc-600">{appointment.vehicleLabel} · {appointment.customerPhone}</p>
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <StatusBadge status={appointment.status} />
@@ -506,7 +506,7 @@ function AppointmentDrawer({
           <Detail className="sm:col-span-2" label="Código público" value={appointment.publicCode} />
           <Detail label="Teléfono" value={appointment.customerPhone} />
           <Detail label="Email" value={appointment.customerEmail ?? "No informado"} />
-          <Detail className="sm:col-span-2" label="Moto / patente" value={appointment.motorcycleLabel} />
+          <Detail className="sm:col-span-2" label="Vehiculo / patente" value={appointment.vehicleLabel} />
           <Detail className="sm:col-span-2" label="Notas" value={appointment.notes || "Sin notas"} />
         </dl>
 

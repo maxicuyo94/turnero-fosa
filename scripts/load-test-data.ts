@@ -26,7 +26,7 @@ async function main() {
 
     console.log(
       `[test-data] Perfil "${result.summary.profile}" cargado en ${result.host}/${result.database}: ` +
-        `${result.summary.customers} clientes, ${result.summary.motorcycles} motos, ${result.summary.appointments} turnos.`,
+        `${result.summary.customers} clientes, ${result.summary.vehicles} vehiculos, ${result.summary.appointments} turnos.`,
     );
     if (!result.summary.adminConfigured) {
       console.log("[test-data] Sin usuario interno: defini ADMIN_USERNAME, ADMIN_EMAIL y ADMIN_PASSWORD en el entorno.");

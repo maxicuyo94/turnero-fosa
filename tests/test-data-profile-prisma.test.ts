@@ -25,7 +25,7 @@ describe("development test-data profile", () => {
     const second = await loadTestDataProfile({ prisma, profile: "development", env: localEnv, now });
 
     const customers = await prisma.customer.findMany({ where: { id: { startsWith: testDataPrefix } } });
-    const motorcycles = await prisma.motorcycle.findMany({ where: { id: { startsWith: testDataPrefix } } });
+    const motorcycles = await prisma.vehicle.findMany({ where: { id: { startsWith: testDataPrefix } } });
     const appointments = await prisma.appointment.findMany({
       where: { idempotencyKey: { startsWith: testDataPrefix } },
       orderBy: { startAt: "asc" },
@@ -68,6 +68,6 @@ describe("development test-data profile", () => {
 
 async function deleteTestData() {
   await prisma.appointment.deleteMany({ where: { idempotencyKey: { startsWith: testDataPrefix } } });
-  await prisma.motorcycle.deleteMany({ where: { id: { startsWith: testDataPrefix } } });
+  await prisma.vehicle.deleteMany({ where: { id: { startsWith: testDataPrefix } } });
   await prisma.customer.deleteMany({ where: { id: { startsWith: testDataPrefix } } });
 }

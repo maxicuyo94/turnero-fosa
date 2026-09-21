@@ -23,7 +23,8 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
   const params = (await searchParams) ?? {};
   const session = await auth();
   const repository = new PrismaBookingRepository(db);
-  const [services, depositPolicy] = await Promise.all([
+  const [vehicleTypes, services, depositPolicy] = await Promise.all([
+    repository.listActiveVehicleTypes(),
     listPublicServices(repository),
     getPublicDepositPolicy(repository),
   ]);
@@ -57,6 +58,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     : null;
 
   return <PublicBookingScreen
+    vehicleTypes={vehicleTypes}
     action={createAppointmentAction}
     paymentAction={retryDepositAction}
     idempotencyKey={randomUUID()}

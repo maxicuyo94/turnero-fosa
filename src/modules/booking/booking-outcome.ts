@@ -23,7 +23,7 @@ const failureMessages: Partial<Record<BookingResultCode, string>> = {
   "not-found": "No encontramos el turno para reintentar el pago.",
   "slot-unavailable": "Elegi otro horario disponible.",
   "service-unavailable": "Elegi un servicio activo.",
-  invalid: "Revisa los datos del cliente y de la moto.",
+  invalid: "Revisa los datos del cliente y del vehiculo.",
   "invalid-duration": "Elegi una duracion valida para el servicio.",
 };
 

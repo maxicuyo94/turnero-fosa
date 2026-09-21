@@ -10,7 +10,7 @@ import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import { scheduleDateExceptionSchema } from "@/src/modules/settings/schemas";
 import { appointmentSchema } from "@/src/modules/appointments/schemas";
 import { serviceSchema } from "@/src/modules/catalog/schemas";
-import { customerSchema, motorcycleSchema } from "@/src/modules/customers/schemas";
+import { customerSchema, vehicleSchema } from "@/src/modules/customers/schemas";
 
 const monday = "2026-07-06";
 const now = new Date("2026-07-01T09:00:00-03:00");
@@ -32,7 +32,7 @@ describe("domain schemas", () => {
     ).toEqual({ fullName: "Ada Lovelace", phone: "+5491112345678", email: "ada@example.com" });
 
     expect(
-      motorcycleSchema.parse({ brand: "Honda", model: "XR", licensePlate: "ABC123" }),
+      vehicleSchema.parse({ brand: "Honda", model: "XR", licensePlate: "ABC123" }),
     ).toEqual({ brand: "Honda", model: "XR", licensePlate: "ABC123" });
 
     expect(
@@ -47,7 +47,7 @@ describe("domain schemas", () => {
   it("rejects invalid domain input before persistence", () => {
     expect(() => serviceSchema.parse({ name: "", durationMinutes: 0, isActive: true, displayOrder: 1 })).toThrow();
     expect(() => customerSchema.parse({ fullName: "", phone: "" })).toThrow();
-    expect(() => motorcycleSchema.parse({ brand: "", model: "" })).toThrow();
+    expect(() => vehicleSchema.parse({ brand: "", model: "" })).toThrow();
   });
 });
 

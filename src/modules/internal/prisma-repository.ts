@@ -82,6 +82,26 @@ export class PrismaInternalRepository
     }));
   }
 
+  async listVehicleTypes() {
+    const vehicleTypes = await this.prisma.vehicleType.findMany({
+      where: { workshopSettingsId: await this.resolveWorkshopSettingsId() },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+    });
+    return vehicleTypes.map(mapVehicleType);
+  }
+
+  async createVehicleType(input: { name: string; displayOrder: number }) {
+    return mapVehicleType(
+      await this.prisma.vehicleType.create({
+        data: { ...input, workshopSettingsId: await this.resolveWorkshopSettingsId() },
+      }),
+    );
+  }
+
+  async updateVehicleTypeVisibility(vehicleTypeId: string, isActive: boolean) {
+    return mapVehicleType(await this.prisma.vehicleType.update({ where: { id: vehicleTypeId }, data: { isActive } }));
+  }
+
   async listAppointmentsForDate(date: string): Promise<InternalAppointmentRecord[]> {
     const startOfDay = new Date(`${date}T00:00:00-03:00`);
     const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
@@ -329,12 +349,21 @@ export class PrismaInternalRepository
   }
 }
 
+function mapVehicleType(vehicleType: { id: string; name: string; isActive: boolean; displayOrder: number }) {
+  return {
+    id: vehicleType.id,
+    name: vehicleType.name,
+    isActive: vehicleType.isActive,
+    displayOrder: vehicleType.displayOrder,
+  };
+}
+
 function mapInternalAppointment(appointment: {
   id: string;
   publicCode: string;
   service: { name: string; durationMinutes: number };
   customer: { fullName: string; phone: string; email: string | null };
-  motorcycle: { brand: string; model: string; licensePlate: string | null };
+  vehicle: { id: string; brand: string; model: string; licensePlate: string | null };
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;
@@ -358,7 +387,8 @@ function mapInternalAppointment(appointment: {
     customerName: appointment.customer.fullName,
     customerPhone: appointment.customer.phone,
     customerEmail: appointment.customer.email,
-    motorcycleLabel: [appointment.motorcycle.brand, appointment.motorcycle.model, appointment.motorcycle.licensePlate].filter(Boolean).join(" "),
+    vehicleId: appointment.vehicle.id,
+    vehicleLabel: [appointment.vehicle.brand, appointment.vehicle.model, appointment.vehicle.licensePlate].filter(Boolean).join(" "),
     startAt: appointment.startAt,
     endAt: appointment.endAt,
     status: appointment.status,
@@ -379,7 +409,7 @@ function mapInternalAppointment(appointment: {
 const appointmentInclude = {
   service: true,
   customer: true,
-  motorcycle: true,
+  vehicle: true,
   intervalHistory: { include: { changedBy: true }, orderBy: { changedAt: "desc" as const } },
 } as const;
 

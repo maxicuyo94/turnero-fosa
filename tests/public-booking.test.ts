@@ -106,7 +106,7 @@ describe("createPublicBooking", () => {
       date: monday,
       startTime: "09:00",
       customer: { fullName: "", phone: "" },
-      motorcycle: { brand: "Honda", model: "XR" },
+      vehicle: { brand: "Honda", model: "XR" },
       idempotencyKey: "invalid-contact",
       now,
     });
@@ -362,7 +362,7 @@ function validBooking(overrides: Partial<Parameters<typeof createPublicBooking>[
     date: monday,
     startTime: "09:00",
     customer: { fullName: "Ada Lovelace", phone: "+5491112345678", email: "ada@example.com" },
-    motorcycle: { brand: "Honda", model: "XR", licensePlate: "ABC123" },
+    vehicle: { brand: "Honda", model: "XR", licensePlate: "ABC123" },
     idempotencyKey: "booking-key",
     now,
     ...overrides,
@@ -435,6 +435,10 @@ class InMemoryBookingRepository implements BookingRepository {
 
   async findAppointmentsForDate() {
     return this.appointments;
+  }
+
+  async listActiveVehicleTypes() {
+    return [{ id: "type-moto", name: "Moto" }];
   }
 
   async withBookingTransaction<T>(operation: () => Promise<T>) {

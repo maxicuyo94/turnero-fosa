@@ -176,7 +176,7 @@ test("public booking happy path creates a pending request", async ({ page }) => 
   await page.getByRole("radio").first().check();
   await page.getByLabel("Nombre y apellido").fill("E2E Rider");
   await page.getByLabel("Telefono").fill(`${e2ePhonePrefix}${runId}`);
-  await page.getByLabel("Marca de la moto").fill("Honda");
+  await page.getByLabel("Marca").fill("Honda");
   await page.getByLabel("Modelo").fill("XR150");
   await page.getByRole("button", { name: /Solicitar turno|Reservar y pagar seña/u }).click();
 
@@ -276,14 +276,14 @@ test("internal user safely reschedules an appointment", async ({ page }) => {
 async function cleanupPublicBookingE2EData() {
   const appointments = await prisma.appointment.findMany({
     where: { customer: { phone: { startsWith: e2ePhonePrefix } } },
-    select: { id: true, motorcycleId: true, customerId: true },
+    select: { id: true, vehicleId: true, customerId: true },
   });
   const appointmentIds = appointments.map((appointment) => appointment.id);
-  const motorcycleIds = appointments.map((appointment) => appointment.motorcycleId);
+  const vehicleIds = appointments.map((appointment) => appointment.vehicleId);
   const customerIds = appointments.map((appointment) => appointment.customerId);
 
   await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
-  await prisma.motorcycle.deleteMany({ where: { id: { in: motorcycleIds } } });
+  await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: customerIds } } });
 }
 
@@ -321,14 +321,15 @@ async function seedInternalE2EAppointment(): Promise<string> {
       phone: "+5491199999999",
     },
   });
-  const motorcycle = await prisma.motorcycle.create({
-    data: { customerId: customer.id, brand: "Yamaha", model: "FZ", licensePlate: "E2EINT" },
+  const vehicleType = await prisma.vehicleType.findFirstOrThrow({ where: { isActive: true }, orderBy: { displayOrder: "asc" } });
+  const vehicle = await prisma.vehicle.create({
+    data: { customerId: customer.id, vehicleTypeId: vehicleType.id, brand: "Yamaha", model: "FZ", licensePlate: "E2EINT" },
   });
   const appointment = await prisma.appointment.create({
     data: {
       serviceId: service.id,
       customerId: customer.id,
-      motorcycleId: motorcycle.id,
+      vehicleId: vehicle.id,
       startAt: new Date(`${internalE2EDate}T09:00:00-03:00`),
       endAt: new Date(`${internalE2EDate}T09:30:00-03:00`),
       status: "CONFIRMED",
@@ -343,14 +344,14 @@ async function seedInternalE2EAppointment(): Promise<string> {
 async function cleanupInternalE2EData() {
   const appointments = await prisma.appointment.findMany({
     where: { idempotencyKey: { startsWith: "e2e-internal-" } },
-    select: { id: true, motorcycleId: true, customerId: true },
+    select: { id: true, vehicleId: true, customerId: true },
   });
   const appointmentIds = appointments.map((appointment) => appointment.id);
-  const motorcycleIds = appointments.map((appointment) => appointment.motorcycleId);
+  const vehicleIds = appointments.map((appointment) => appointment.vehicleId);
   const customerIds = appointments.map((appointment) => appointment.customerId);
 
   await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
-  await prisma.motorcycle.deleteMany({ where: { id: { in: motorcycleIds } } });
+  await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: customerIds } } });
 }
 
