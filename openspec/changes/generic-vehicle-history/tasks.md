@@ -25,15 +25,21 @@ partir en renombre y comportamiento si la revisión lo pide.
 
 ## V2 — Ficha de unidad, historial y fusión
 
-- [ ] 2.1 Pruebas RED de historial por unidad, búsqueda, detección de duplicados, edición de campos
+Revisión: 1410 líneas, también por encima de las 800 (unas 660 son pruebas y pantallas nuevas). Agrega la tabla `VehicleMerge` para auditar
+la fusión, que el diseño pedía registrar.
+
+- [x] 2.1 Pruebas RED de historial por unidad, búsqueda, detección de duplicados, edición de campos
       internos, fusión y fusión repetida.
-- [ ] 2.2 `/internal/vehicles` con búsqueda y posibles duplicados por patente normalizada.
-- [ ] 2.3 `/internal/vehicles/[id]` con ficha, línea de tiempo de turnos y cambios de dueño.
-- [ ] 2.3b Edición en la ficha de tipo, marca, modelo, año, VIN, número de motor, color y notas;
+- [x] 2.2 `/internal/vehicles` con búsqueda y posibles duplicados por patente normalizada.
+- [x] 2.3 `/internal/vehicles/[id]` con ficha, línea de tiempo de turnos y cambios de dueño.
+- [x] 2.3b Edición en la ficha de tipo, marca, modelo, año, VIN, número de motor, color y notas;
       la patente no se edita ahí.
-- [ ] 2.4 Enlace desde el detalle del turno en la agenda interna.
-- [ ] 2.5 Acción de fusión autenticada, transaccional e idempotente, con confirmación explícita.
-- [ ] 2.6 Verificar tipos, lint, pruebas, E2E y build.
+- [x] 2.4 Enlace desde el detalle del turno en la agenda interna.
+- [x] 2.5 Acción de fusión autenticada, transaccional e idempotente, con confirmación explícita.
+- [x] 2.6 Verificar tipos, lint, pruebas, E2E y build (2026-09-21, PostgreSQL 16 local).
+      `typecheck`, `lint` y `build` en verde; 308 pruebas pasan. E2E: 21 pruebas en chromium, incluidas las
+      tres nuevas de unidades. Los specs de `inventory-code` y el proyecto `mobile-chromium` siguen sin
+      poder ejecutarse acá por la versión de Chromium del contenedor.
 
 ## Pendientes fuera de estas revisiones
 

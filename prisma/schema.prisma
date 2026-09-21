@@ -193,10 +193,28 @@ model Vehicle {
   vehicleType     VehicleType   @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
   appointments    Appointment[]
   ownerHistory    VehicleOwnerHistory[]
+  mergesReceived  VehicleMerge[]
 
   @@index([customerId])
   @@index([licensePlate])
   @@index([plateNormalized])
+}
+
+/// Audit of a confirmed duplicate merge. The source row is gone afterwards, so its id and label are
+/// stored as plain values; requestKey makes a resubmitted form a no-op.
+model VehicleMerge {
+  id                String   @id @default(cuid())
+  requestKey        String   @unique
+  sourceVehicleId   String
+  sourceLabel       String
+  targetVehicleId   String
+  movedAppointments Int
+  mergedById        String?
+  mergedAt          DateTime @default(now())
+  target            Vehicle  @relation(fields: [targetVehicleId], references: [id], onDelete: Cascade)
+  mergedBy          User?    @relation(fields: [mergedById], references: [id], onDelete: SetNull)
+
+  @@index([targetVehicleId, mergedAt])
 }
 
 model VehicleOwnerHistory {
@@ -307,6 +325,7 @@ model User {
   statusChanges AppointmentStatusHistory[]
   intervalChanges AppointmentIntervalHistory[]
   inventoryMovements InventoryMovement[]
+  vehicleMerges VehicleMerge[]
 }
 
 enum InventoryMovementKind {

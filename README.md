@@ -203,9 +203,19 @@ The plate has no unique index yet. Every booking made before this change created
 and vehicle, so production still holds duplicates and a unique constraint would fail the migration.
 Until they are merged, a vehicle created for a plate takes an id derived from that plate, which turns
 two simultaneous bookings into a primary key collision the booking transaction retries, instead of a
-silent duplicate. Merging duplicates and the unit history screen are the next delivery.
+silent duplicate. Duplicates are merged by hand from the panel, never automatically.
 
-Apply the `20260921120000_generic_vehicle` migration to existing databases; it renames the table and
+**Interno → Unidades** searches by plate, brand, model or customer, and reports every plate loaded on
+more than one unit. A unit's record shows its appointments newest first, its ownership changes and the
+merges it absorbed, and the appointment detail in the agenda links to it. The record edits type, brand,
+model, year, chassis and engine number, colour and notes; the plate is shown disabled.
+
+A merge moves every appointment of the duplicate onto the surviving unit, fills only the fields the
+survivor is missing, records the operation in `VehicleMerge` and deletes the source — one transaction,
+and a resubmitted form is a no-op because the request key is unique. It cannot be undone from the
+panel, so it always takes an explicit confirmation.
+
+Apply the `20260921120000_generic_vehicle` and `20260921160000_vehicle_merge` migrations to existing databases; it renames the table and
 backfills, so no appointment loses its unit. Reverting needs the inverse migration: the previous code
 queries `Motorcycle` and would fail against the renamed table.
 
