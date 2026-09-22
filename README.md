@@ -261,12 +261,13 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
 - The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
 - Every build runs `prisma migrate deploy` before `next build`, so each Vercel environment applies pending database migrations using its own `DATABASE_URL`.
 - Preview builds also synchronize the branch-specific admin credentials after migrations; keep the local copy in the Git-ignored `.env.preview.local` file.
-- `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` must be set for **every** Preview branch, not
-  filtered to one. `sync-preview-admin.ts` throws when any of them is missing, and it runs inside
-  `prebuild`, so the whole deployment fails before `next build` — with `DATABASE_URL` resolving fine
-  and the migrations already applied, which makes it read like a build problem. A Vercel variable
-  scoped to a single Git branch is delivered only to that branch, so every new branch breaks until
-  its own copy is added. Leave these unfiltered, as `DATABASE_URL` and `AUTH_SECRET` already are.
+- `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` are scoped in Vercel to the `preview` Git
+  branch, so **preview verification happens by pushing to `preview`**, not from a feature branch. A
+  Vercel variable filtered to one branch is delivered only to that branch, and
+  `sync-preview-admin.ts` throws when any of the three is missing. It runs inside `prebuild`, so the
+  deployment dies before `next build` — while `DATABASE_URL`, which carries no filter, resolves fine
+  and the migrations apply, which makes the failure read like a build problem when it is not. A
+  feature branch gets a working preview only if its own copies are added, or the filter is dropped.
 - Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent. Production email delivery remains pending until the workshop has a verified domain configured in Resend.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
