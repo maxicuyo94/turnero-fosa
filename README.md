@@ -154,6 +154,65 @@ affect new reservations and preserve existing appointment intervals.
 - **Refunds** are issued manually in the Mercado Pago panel. The refund webhook clears the
   "Señas cobradas en turnos cancelados" warning in the internal panel.
 
+#### Testing deposits
+
+**Credentials decide the flow.** `MERCADO_PAGO_ENVIRONMENT=test` has two variants:
+
+| Access token | Checkout | Expected `live_mode` |
+| --- | --- | --- |
+| `TEST-…` (application sandbox credentials) | `sandbox_init_point` | `false` |
+| `APP_USR-…` of a **test seller** (Mercado Pago's current approach, used in preview) | `init_point` | `true` |
+| `APP_USR-…` of the real account (`production`) | `init_point` | `true` |
+
+Payments between test users arrive with `live_mode: true`. The webhook, return page and
+sweep all compare it through `expectedPaymentLiveMode()`. A mismatch marks the attempt
+`ERROR` and leaves the appointment unconfirmed.
+
+**Test users.** Both accounts must be test users from the same country (Argentina, `MLA`),
+and the buyer must differ from the seller. `GET /users/me` with the token tells whose it is
+(the `id` is also the token's last segment). To create another buyer, run
+`POST /users/test_user` with `{"site_id":"MLA"}` and the seller's token. Passwords, and the
+verification code (the last 6 digits of the user id), live in `PREVIEW.local.md`, never in Git.
+
+| Role | Nickname | Id |
+| --- | --- | --- |
+| Seller (owns the preview token) | `TESTUSER7552394290258579910` | `3218633687` |
+| Buyer | `TESTUSER5269001949493745698` | `3712586690` |
+
+**Cards.** These are [Mercado Pago's public test cards](https://www.mercadopago.com.ar/developers/es/docs/checkout-pro/integration-test/test-purchases),
+with CVV `123` (Amex `1234`), expiry `11/30`, and DNI `12345678`. The cardholder name picks
+the result:
+
+| Card | Number |
+| --- | --- |
+| Mastercard credit | `5031 7557 3453 0604` |
+| Visa credit | `4509 9535 6623 3704` |
+| Visa debit | `4002 7686 9439 5619` |
+
+| Cardholder | Result |
+| --- | --- |
+| `APRO` | Approved |
+| `OTHE` | Rejected (general error) |
+| `CONT` | Pending (not reachable here, because `binary_mode` makes it a rejection) |
+| `FUND` / `SECU` / `EXPI` / `CALL` | Rejected: insufficient funds / bad CVV / bad expiry / needs authorization |
+
+**Run.**
+1. Book on the deployment. Preview has Vercel Deployment Protection, so scripts send the
+   `x-vercel-protection-bypass` header instead of logging in.
+2. In an incognito window, log in to Mercado Pago as the **buyer**, open the checkout link
+   and pay.
+3. Check the results:
+   - `/booking/payment?reference=…` shows the outcome.
+   - The `DepositPaymentAttempt` is `APPROVED`, with `providerPaymentId` and `lastNotificationAt` set.
+   - The appointment is confirmed, and `AppointmentStatusHistory` records the change.
+   - `EmailLog` has the confirmation email.
+   - `vercel logs` shows `POST /api/mercado-pago/webhook` returning 200.
+4. Edge cases:
+   - `OTHE` keeps the hold until it expires.
+   - An unpaid hold is released after `depositExpirationMinutes` (30 by default). The release
+     needs the sweep, which requires `CRON_SECRET`.
+   - A refund made from the seller's panel clears the paid-cancellation warning.
+
 Lowering capacity preserves existing appointments. Both internal sections display
 a persistent warning with links to every future interval above capacity, including
 dates outside the selected week. The warning is recalculated from the database on
