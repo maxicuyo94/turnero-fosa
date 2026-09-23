@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/src/lib/db";
 import { getMercadoPagoEnv } from "@/src/lib/env";
-import { MercadoPagoAdapter, validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pago-adapter";
+import { MercadoPagoAdapter, expectedPaymentLiveMode, validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pago-adapter";
 import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
 import { processMercadoPagoPayment } from "@/src/modules/payments/service";
 
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   await processMercadoPagoPayment(
     new PrismaDepositPaymentRepository(db),
     new MercadoPagoAdapter(env),
-    { paymentId: dataId, expectedLiveMode: env.MERCADO_PAGO_ENVIRONMENT === "production" },
+    { paymentId: dataId, expectedLiveMode: expectedPaymentLiveMode(env) },
   );
   return NextResponse.json({ received: true });
 }

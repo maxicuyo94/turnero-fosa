@@ -221,7 +221,7 @@ async function applyMercadoPagoPayment(
     payment.currency !== attempt.currency ||
     (expectedLiveMode !== undefined && payment.liveMode !== expectedLiveMode)
   ) {
-    await repository.markAttemptError(attempt.id, "Provider amount or currency did not match the deposit attempt.");
+    await repository.markAttemptError(attempt.id, "Provider amount, currency, or live mode did not match the deposit attempt.");
     return { accepted: false, reason: "PAYMENT_MISMATCH" };
   }
 

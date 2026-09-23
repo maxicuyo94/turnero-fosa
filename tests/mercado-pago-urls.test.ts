@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getMercadoPagoEnv } from "@/src/lib/env";
-import { MercadoPagoAdapter } from "@/src/modules/payments/mercado-pago-adapter";
+import { MercadoPagoAdapter, expectedPaymentLiveMode } from "@/src/modules/payments/mercado-pago-adapter";
 
 const credentials = {
   MERCADO_PAGO_ACCESS_TOKEN: "TEST-token",
@@ -96,5 +96,14 @@ describe("Mercado Pago return and notification URLs", () => {
     // A test seller's own credentials: the sandbox would see a test party next to a real one.
     expect(await checkoutUrl({ MERCADO_PAGO_ENVIRONMENT: "test", MERCADO_PAGO_ACCESS_TOKEN: "APP_USR-test-seller" })).toBe("https://mp/checkout");
     expect(await checkoutUrl({ MERCADO_PAGO_ENVIRONMENT: "production", MERCADO_PAGO_ACCESS_TOKEN: "APP_USR-real" })).toBe("https://mp/checkout");
+  });
+
+  it("expects sandbox payments only from TEST- credentials", () => {
+    const liveMode = (overrides: Record<string, string>) => expectedPaymentLiveMode(getMercadoPagoEnv({ ...credentials, ...overrides })!);
+
+    expect(liveMode({ MERCADO_PAGO_ENVIRONMENT: "test" })).toBe(false);
+    // Test users paying a test seller through the regular checkout arrive with live_mode: true.
+    expect(liveMode({ MERCADO_PAGO_ENVIRONMENT: "test", MERCADO_PAGO_ACCESS_TOKEN: "APP_USR-test-seller" })).toBe(true);
+    expect(liveMode({ MERCADO_PAGO_ENVIRONMENT: "production", MERCADO_PAGO_ACCESS_TOKEN: "APP_USR-real" })).toBe(true);
   });
 });
