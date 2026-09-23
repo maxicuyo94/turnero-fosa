@@ -26,11 +26,11 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
         }],
         payer: input.payerEmail ? { email: input.payerEmail } : undefined,
         external_reference: input.externalReference,
-        notification_url: `${this.env.NEXT_PUBLIC_APP_URL}/api/mercado-pago/webhook?source_news=webhooks`,
+        notification_url: this.notificationUrl(),
         back_urls: {
-          success: `${this.env.NEXT_PUBLIC_APP_URL}/booking/payment?reference=${encodeURIComponent(input.externalReference)}`,
-          pending: `${this.env.NEXT_PUBLIC_APP_URL}/booking/payment?reference=${encodeURIComponent(input.externalReference)}`,
-          failure: `${this.env.NEXT_PUBLIC_APP_URL}/booking/payment?reference=${encodeURIComponent(input.externalReference)}`,
+          success: this.returnUrl(input.externalReference),
+          pending: this.returnUrl(input.externalReference),
+          failure: this.returnUrl(input.externalReference),
         },
         auto_return: "approved",
         expires: true,
@@ -60,6 +60,24 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
     });
     const response = await this.request<{ results?: ProviderPayment[] }>(`/v1/payments/search?${query.toString()}`);
     return (response.results ?? []).map(mapPayment);
+  }
+
+  /**
+   * Each preference names its own webhook, so every deployment receives the notifications of the
+   * checkouts it created; the URL in the Mercado Pago panel is only a fallback. A protected preview
+   * would answer Mercado Pago with Vercel's login page, so the automation bypass rides along.
+   */
+  private notificationUrl(): string {
+    const url = new URL("/api/mercado-pago/webhook", this.env.NEXT_PUBLIC_APP_URL);
+    url.searchParams.set("source_news", "webhooks");
+    if (this.env.VERCEL_PROTECTION_BYPASS) url.searchParams.set("x-vercel-protection-bypass", this.env.VERCEL_PROTECTION_BYPASS);
+    return url.toString();
+  }
+
+  private returnUrl(externalReference: string): string {
+    const url = new URL("/booking/payment", this.env.NEXT_PUBLIC_APP_URL);
+    url.searchParams.set("reference", externalReference);
+    return url.toString();
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
