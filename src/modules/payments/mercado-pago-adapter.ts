@@ -54,7 +54,7 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
    * sandbox rejects as mixing a test party with a real one, so those open the regular checkout.
    */
   private usesSandboxCheckout(): boolean {
-    return this.env.MERCADO_PAGO_ENVIRONMENT === "test" && this.env.MERCADO_PAGO_ACCESS_TOKEN.startsWith("TEST-");
+    return usesSandboxCredentials(this.env);
   }
 
   async getPayment(paymentId: string) {
@@ -134,6 +134,20 @@ function mapPayment(payment: ProviderPayment) {
     liveMode: payment.live_mode,
     approvedAt: payment.date_approved ? new Date(payment.date_approved) : null,
   };
+}
+
+/** Only an application's `TEST-` credentials run in the sandbox. */
+function usesSandboxCredentials(env: MercadoPagoEnv): boolean {
+  return env.MERCADO_PAGO_ENVIRONMENT === "test" && env.MERCADO_PAGO_ACCESS_TOKEN.startsWith("TEST-");
+}
+
+/**
+ * The `live_mode` a genuine payment for these credentials carries. Payments between test users made
+ * with a test seller's `APP_USR-` credentials go through the regular checkout and arrive as live,
+ * so only the sandbox expects `false`.
+ */
+export function expectedPaymentLiveMode(env: MercadoPagoEnv): boolean {
+  return !usesSandboxCredentials(env);
 }
 
 /** Timestamps above this are milliseconds; below, seconds (both appear in Mercado Pago's docs). */

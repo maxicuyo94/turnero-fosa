@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import type { MercadoPagoEnv } from "@/src/lib/env";
-import { MercadoPagoAdapter } from "@/src/modules/payments/mercado-pago-adapter";
+import { MercadoPagoAdapter, expectedPaymentLiveMode } from "@/src/modules/payments/mercado-pago-adapter";
 import { PrismaDepositPaymentRepository, expireOverdueDepositReservations } from "@/src/modules/payments/prisma-repository";
 import {
   processMercadoPagoPayment,
@@ -9,16 +9,11 @@ import {
 } from "@/src/modules/payments/service";
 import { getWorkshopPaymentEnv } from "@/src/modules/settings/runtime-settings";
 
-/** Checkout Pro runs against the account the credentials belong to; only production expects live payments. */
-function expectedLiveMode(env: MercadoPagoEnv): boolean {
-  return env.MERCADO_PAGO_ENVIRONMENT === "production";
-}
-
 export function createDepositReconciler(prisma: PrismaClient, env: MercadoPagoEnv): DepositReconciler {
   const repository = new PrismaDepositPaymentRepository(prisma);
   const port = new MercadoPagoAdapter(env);
   return async (externalReference) => {
-    await reconcileDepositAttempt(repository, port, { externalReference, expectedLiveMode: expectedLiveMode(env) });
+    await reconcileDepositAttempt(repository, port, { externalReference, expectedLiveMode: expectedPaymentLiveMode(env) });
   };
 }
 
@@ -53,6 +48,6 @@ export async function reconcileReturnedPayment(prisma: PrismaClient, paymentId: 
   if (!env) return;
   await processMercadoPagoPayment(new PrismaDepositPaymentRepository(prisma), new MercadoPagoAdapter(env), {
     paymentId,
-    expectedLiveMode: expectedLiveMode(env),
+    expectedLiveMode: expectedPaymentLiveMode(env),
   });
 }
