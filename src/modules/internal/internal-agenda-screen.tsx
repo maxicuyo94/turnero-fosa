@@ -270,10 +270,10 @@ export function InternalAgendaScreen({
 
           {vehicleTypes.length > 0 ? (
             <Card>
-              <h2 className="text-2xl font-black text-white">Tipos de vehiculo</h2>
+              <h2 className="text-2xl font-black text-white">Tipos de vehículo</h2>
               <p className="mt-2 text-sm text-zinc-500">
                 Lo que el taller atiende. El toggle controla si se ofrece al reservar; un tipo no se borra, para no
-                perder el historial de las unidades cargadas con el.
+                perder el historial de las unidades cargadas con él.
               </p>
               <div className="mt-5 grid gap-3">
                 {vehicleTypes.map((vehicleType) => (
