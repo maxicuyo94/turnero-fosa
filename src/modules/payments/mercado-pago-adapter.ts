@@ -24,7 +24,7 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
           currency_id: "ARS",
           unit_price: input.amountCents / 100,
         }],
-        payer: input.payerEmail ? { email: input.payerEmail } : undefined,
+        payer: this.payer(input.payerEmail),
         external_reference: input.externalReference,
         notification_url: this.notificationUrl(),
         back_urls: {
@@ -72,6 +72,15 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
     url.searchParams.set("source_news", "webhooks");
     if (this.env.VERCEL_PROTECTION_BYPASS) url.searchParams.set("x-vercel-protection-bypass", this.env.VERCEL_PROTECTION_BYPASS);
     return url.toString();
+  }
+
+  /**
+   * With test credentials the seller is a test account, and Mercado Pago refuses a checkout that
+   * mixes it with a real party ("una de las partes … es de prueba"). The customer's email is real,
+   * so in test mode it stays out and the logged-in test buyer pays.
+   */
+  private payer(email: string | null): { email: string } | undefined {
+    return email && this.env.MERCADO_PAGO_ENVIRONMENT === "production" ? { email } : undefined;
   }
 
   private returnUrl(externalReference: string): string {
