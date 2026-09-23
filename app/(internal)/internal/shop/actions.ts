@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
-import { auth, getInternalSessionUserId, isInternalSession } from "@/src/lib/auth";
+import { formValues } from "@/src/lib/form-data";
+import { requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import {
   InventoryError,
@@ -20,7 +21,7 @@ export async function createInventoryProductAction(
   _previous: ShopActionState,
   formData: FormData,
 ): Promise<ShopActionState> {
-  const actorId = await requireShopAccess();
+  const { userId: actorId } = await requireStaff();
   const values = formValues(formData);
   try {
     const product = await createInventoryProduct(db, {
@@ -50,7 +51,7 @@ export async function importInventoryExcelAction(
   _previous: ShopActionState,
   formData: FormData,
 ): Promise<ShopActionState> {
-  const actorId = await requireShopAccess();
+  const { userId: actorId } = await requireStaff();
   try {
     const file = formData.get("file");
     if (!(file instanceof File)) return { status: "error", message: "Seleccioná un archivo Excel para importar." };
@@ -73,7 +74,7 @@ export async function updateInventoryProductAction(
   _previous: ShopActionState,
   formData: FormData,
 ): Promise<ShopActionState> {
-  await requireShopAccess();
+  await requireStaff();
   const values = formValues(formData);
   try {
     const product = await updateInventoryProduct(db, {
@@ -104,7 +105,7 @@ export async function recordInventoryMovementAction(
   _previous: ShopActionState,
   formData: FormData,
 ): Promise<ShopActionState> {
-  const actorId = await requireShopAccess();
+  const { userId: actorId } = await requireStaff();
   const values = formValues(formData);
   try {
     const product = await recordInventoryMovement(db, {
@@ -126,7 +127,7 @@ export async function recordInventoryMovementAction(
 }
 
 export async function linkInventoryBarcodeAction(formData: FormData) {
-  await requireShopAccess();
+  await requireStaff();
   const values = formValues(formData);
   let productId: string;
   try {
@@ -137,17 +138,6 @@ export async function linkInventoryBarcodeAction(formData: FormData) {
   }
   revalidatePath("/internal/shop/inventory");
   redirect(`/internal/shop/inventory/${productId}?linked=1`);
-}
-
-async function requireShopAccess(): Promise<string> {
-  const session = await auth();
-  const actorId = getInternalSessionUserId(session);
-  if (!isInternalSession(session) || !actorId) redirect("/internal/login");
-  return actorId;
-}
-
-function formValues(formData: FormData): Record<string, string> {
-  return Object.fromEntries(Array.from(formData.entries()).map(([key, value]) => [key, typeof value === "string" ? value : ""]));
 }
 
 function actionFailure(error: unknown, values: Record<string, string>): ShopActionState {

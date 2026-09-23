@@ -4,8 +4,8 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
-import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
-import { rescheduleInternalAppointment, updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
+import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
+import { rescheduleInternalAppointment, updateInternalAppointmentStatus } from "@/src/modules/appointments/operations";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
 
@@ -22,7 +22,7 @@ describe("Prisma internal operations integration", () => {
   it("updates appointment status and stores nullable system attribution in PostgreSQL status history", async () => {
     const appointmentId = await createInternalTestAppointment("it-internal-system");
 
-    const result = await updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), {
+    const result = await updateInternalAppointmentStatus(new PrismaAppointmentRepository(prisma), {
       appointmentId,
       nextStatus: "CONFIRMED",
       changedById: null,
@@ -46,7 +46,7 @@ describe("Prisma internal operations integration", () => {
     const appointmentId = await createInternalTestAppointment("it-internal-user");
     const user = await prisma.user.create({ data: { email: `internal-${randomUUID()}@example.com`, name: "Internal Tester" } });
 
-    const result = await updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), {
+    const result = await updateInternalAppointmentStatus(new PrismaAppointmentRepository(prisma), {
       appointmentId,
       nextStatus: "CONFIRMED",
       changedById: user.id,
@@ -61,8 +61,8 @@ describe("Prisma internal operations integration", () => {
     const appointmentId = await createInternalTestAppointment("it-internal-status-race");
 
     const results = await Promise.all([
-      updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId, nextStatus: "CONFIRMED", changedById: null }),
-      updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId, nextStatus: "CANCELLED", changedById: null }),
+      updateInternalAppointmentStatus(new PrismaAppointmentRepository(prisma), { appointmentId, nextStatus: "CONFIRMED", changedById: null }),
+      updateInternalAppointmentStatus(new PrismaAppointmentRepository(prisma), { appointmentId, nextStatus: "CANCELLED", changedById: null }),
     ]);
 
     expect(results.filter((result) => result.accepted)).toHaveLength(1);
@@ -75,7 +75,7 @@ describe("Prisma internal operations integration", () => {
   it("atomically reschedules an appointment and records its interval history", async () => {
     const appointmentId = await createInternalTestAppointment("it-internal-reschedule");
 
-    const result = await rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+    const result = await rescheduleInternalAppointment(new PrismaAppointmentRepository(prisma), {
       appointmentId,
       date: "2026-07-22",
       startTime: "10:00",
@@ -118,7 +118,7 @@ describe("Prisma internal operations integration", () => {
       },
     });
 
-    const result = await rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+    const result = await rescheduleInternalAppointment(new PrismaAppointmentRepository(prisma), {
       appointmentId: candidateId,
       date: "2026-07-22",
       startTime: "10:00",
@@ -149,14 +149,14 @@ describe("Prisma internal operations integration", () => {
     });
 
     const [first, second] = await Promise.all([
-      rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+      rescheduleInternalAppointment(new PrismaAppointmentRepository(prisma), {
         appointmentId: firstId,
         date: "2026-07-22",
         startTime: "10:00",
         durationMinutes: 60,
         changedById: null,
       }),
-      rescheduleInternalAppointment(new PrismaInternalRepository(prisma), {
+      rescheduleInternalAppointment(new PrismaAppointmentRepository(prisma), {
         appointmentId: secondId,
         date: "2026-07-22",
         startTime: "10:00",

@@ -22,7 +22,7 @@ describe("PublicBookingScreen", () => {
 
     expect(screen.getByRole("heading", { name: "Reservar turno" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Service Esencial - 60 min" })).toBeInTheDocument();
-    expect(screen.getByRole("spinbutton", { name: /Duracion total/i })).toHaveValue(90);
+    expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toHaveValue(90);
     expect(screen.getByRole("radio", { name: /09:00/i })).toBeInTheDocument();
     expect(screen.getByLabelText("Nombre y apellido")).toBeInTheDocument();
     expect(screen.getByLabelText("Marca")).toBeInTheDocument();
@@ -40,7 +40,7 @@ describe("PublicBookingScreen", () => {
       />,
     );
 
-    expect(screen.queryByRole("spinbutton", { name: /Duracion total/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton", { name: /Duración total/i })).not.toBeInTheDocument();
     expect(container.querySelector('input[name="durationMinutes"]')).toBeNull();
   });
 
@@ -58,8 +58,8 @@ describe("PublicBookingScreen", () => {
 
     fireEvent.change(screen.getByLabelText("Servicio"), { target: { value: "full" } });
 
-    expect(screen.getByRole("spinbutton", { name: /Duracion total/i })).toHaveValue(120);
-    expect(screen.getByRole("spinbutton", { name: /Duracion total/i })).toHaveAttribute("min", "120");
+    expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toHaveValue(120);
+    expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toHaveAttribute("min", "120");
   });
 
   it("shows a choose-another-slot message when no slots are available", () => {
@@ -73,7 +73,7 @@ describe("PublicBookingScreen", () => {
       />,
     );
 
-    expect(screen.getByText("No hay horarios disponibles para este servicio y fecha. Proba con otro dia."))
+    expect(screen.getByText("No hay horarios disponibles para este servicio y fecha. Probá con otro día."))
       .toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });

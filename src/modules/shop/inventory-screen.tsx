@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, SiteHeader, TextInput, Textarea } from "@/src/components/ui";
+import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import { signOutAction } from "@/app/(internal)/internal/actions";
 import {
   createInventoryProductAction,
@@ -355,5 +356,5 @@ function StatusChip({ active, low }: { active: boolean; low?: boolean }) { retur
 function formatPrice(value?: number) { return value === undefined ? "" : (value / 100).toFixed(2).replace(".", ","); }
 function formatArs(value: number) { return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100); }
 function number(value: number) { return new Intl.NumberFormat("es-AR").format(value); }
-function formatDate(value: Date) { return new Intl.DateTimeFormat("es-AR", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Argentina/Buenos_Aires" }).format(new Date(value)); }
+function formatDate(value: Date) { return formatWorkshopDateTime(value, { dateStyle: "medium", timeStyle: "short" }); }
 function movementLabel(kind: InventoryHistoryItem["kind"]) { return ({ INITIAL: "Stock inicial", RECEIPT: "Entrada", ADJUSTMENT: "Ajuste", REPAIR: "Consumo en reparación" })[kind]; }

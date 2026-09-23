@@ -35,6 +35,11 @@ enum AppointmentStatus {
   NO_SHOW
 }
 
+enum StaffRole {
+  ADMIN
+  STAFF
+}
+
 enum EmailLogStatus {
   PENDING
   SENT
@@ -316,6 +321,8 @@ model User {
   username      String?                    @unique
   email         String                     @unique
   passwordHash  String?
+  /// Staff can run the agenda, vehicles and inventory; only admins change how the workshop operates.
+  role          StaffRole                  @default(STAFF)
   emailVerified DateTime?
   image         String?
   createdAt     DateTime                   @default(now())
@@ -421,17 +428,27 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+/// Email outbox: rows are written PENDING together with the change that owes the email, and a
+/// dispatcher delivers them afterwards with retries, so a slow or failing provider never blocks a request.
 model EmailLog {
   id            String         @id @default(cuid())
   appointmentId String?
   event         String
   recipient     String
+  /// Null only on rows logged before the outbox existed, which are already SENT or FAILED.
+  subject       String?
+  body          String?
   status        EmailLogStatus @default(PENDING)
+  attempts      Int            @default(0)
+  /// When a PENDING row is next due; while a dispatcher holds it, the end of its lease.
+  nextAttemptAt DateTime       @default(now())
   providerId    String?
   errorMessage  String?
+  sentAt        DateTime?
   createdAt     DateTime       @default(now())
   appointment   Appointment?   @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
   @@index([appointmentId])
   @@index([status, createdAt])
+  @@index([status, nextAttemptAt])
 }

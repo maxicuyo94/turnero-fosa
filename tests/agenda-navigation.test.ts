@@ -5,7 +5,7 @@ import {
   datesForWeek,
   parseAgendaView,
   shiftCalendarDate,
-} from "@/src/modules/internal/agenda-navigation";
+} from "@/src/modules/appointments/agenda-navigation";
 
 describe("agenda navigation", () => {
   it("moves one day in the day view and one week in the week view", () => {

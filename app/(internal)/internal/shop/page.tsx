@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
+import { requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { ShopDashboardScreen, type InventoryListProduct } from "@/src/modules/shop/inventory-screen";
 
@@ -20,8 +19,7 @@ const productSelect = {
 
 /** Internal inventory home. It intentionally contains no sales metrics until point-of-sale exists. */
 export default async function ShopPage() {
-  const session = await auth();
-  if (!isInternalSession(session)) redirect("/internal/login");
+  const staff = await requireStaff();
 
   const [totalProducts, activeProducts, stock, lowStockRows, recentProducts] = await Promise.all([
     db.shopProduct.count(),
@@ -32,5 +30,5 @@ export default async function ShopPage() {
   ]);
 
   const lowStockProducts = lowStockRows.filter((product) => product.stock - product.reservedStock <= product.minimumStock).length;
-  return <ShopDashboardScreen activeProducts={activeProducts} availableStockUnits={(stock._sum.stock ?? 0) - (stock._sum.reservedStock ?? 0)} lowStockProducts={lowStockProducts} recentProducts={recentProducts as InventoryListProduct[]} signedInUserName={getInternalSessionDisplayName(session)} stockUnits={stock._sum.stock ?? 0} totalProducts={totalProducts} />;
+  return <ShopDashboardScreen activeProducts={activeProducts} availableStockUnits={(stock._sum.stock ?? 0) - (stock._sum.reservedStock ?? 0)} lowStockProducts={lowStockProducts} recentProducts={recentProducts as InventoryListProduct[]} signedInUserName={staff.displayName} stockUnits={stock._sum.stock ?? 0} totalProducts={totalProducts} />;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { businessSettingsSchema, isDepositActive } from "@/src/modules/settings/business-settings";
-import { updateInternalServiceDuration, updateInternalWorkshopSettings } from "@/src/modules/internal/maintenance";
+import { updateInternalServiceDuration, updateInternalWorkshopSettings } from "@/src/modules/settings/maintenance";
 import { getWorkshopNotificationEnv, getWorkshopPaymentEnv } from "@/src/modules/settings/runtime-settings";
 import type { PrismaClient } from "@prisma/client";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";

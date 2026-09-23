@@ -1,5 +1,5 @@
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
-import { workshopDate } from "@/src/lib/workshop-date";
+import { workshopDate, workshopInstant } from "@/src/lib/workshop-date";
 import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
 /** Availability only needs the opening decision of an exception, not its provenance metadata. */
@@ -271,9 +271,7 @@ function dayOfWeekForDate(date: string) {
 }
 
 function dateAtMinutes(date: string, minutes: number): Date {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return new Date(`${date}T${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00-03:00`);
+  return workshopInstant(date, timeFromMinutes(minutes));
 }
 
 function addMinutes(date: Date, minutes: number): Date {

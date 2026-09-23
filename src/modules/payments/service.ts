@@ -168,7 +168,7 @@ export async function initiateAppointmentDeposit(
     return {
       accepted: false,
       reason: "PAYMENT_UNAVAILABLE",
-      message: "El turno fue recibido, pero Mercado Pago no esta disponible. Intenta el pago nuevamente mas tarde.",
+      message: "El turno fue recibido, pero Mercado Pago no está disponible. Intentá el pago nuevamente más tarde.",
     };
   }
 }

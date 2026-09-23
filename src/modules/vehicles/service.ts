@@ -84,7 +84,7 @@ const optionalText = (max: number) =>
     .transform((value) => (value && value.length > 0 ? value : null));
 
 const vehicleDetailsSchema = z.object({
-  vehicleTypeId: z.string().trim().min(1, "Elegi un tipo de vehiculo."),
+  vehicleTypeId: z.string().trim().min(1, "Elegí un tipo de vehículo."),
   brand: z.string().trim().min(1, "La marca es obligatoria.").max(60),
   model: z.string().trim().min(1, "El modelo es obligatorio.").max(60),
   year: z
@@ -110,7 +110,7 @@ export async function updateVehicleDetails(
   if (!parsed.success) {
     return rejection(z.flattenError(parsed.error).fieldErrors.year
       ? "El año debe estar entre 1900 y 2100."
-      : "Revisa los datos del vehiculo.");
+      : "Revisá los datos del vehículo.");
   }
 
   return { accepted: true as const, vehicle: await repository.updateVehicle(input.vehicleId, parsed.data) };
@@ -186,7 +186,7 @@ export async function mergeVehicles(
   input: { sourceVehicleId: string; targetVehicleId: string; requestKey: string; mergedById: string | null },
 ) {
   if (input.sourceVehicleId === input.targetVehicleId) {
-    return rejection("Elegi dos unidades distintas para fusionar.");
+    return rejection("Elegí dos unidades distintas para fusionar.");
   }
   if (!input.requestKey.trim()) {
     return rejection("Falta la clave de la operacion.");

@@ -2,6 +2,7 @@ import type { DepositPaymentStatus, PrismaClient } from "@prisma/client";
 import { activeAppointmentStatuses } from "@/src/modules/appointments/schemas";
 import { canAcceptAppointment } from "@/src/modules/availability";
 import { isDepositActive } from "@/src/modules/settings/business-settings";
+import { getWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
 import {
   resolveAttemptStatus,
   settledPaymentStatuses,
@@ -16,11 +17,26 @@ const unpaidStatuses: DepositPaymentStatus[] = ["CREATED", "PENDING", "ERROR", "
 /** History note that marks a cancellation caused by the deposit deadline, not by a person. */
 export const depositExpiredNote = "Deposit reservation expired before approval.";
 
+/**
+ * Appointments the next sweep would release: still pending, with an overdue unpaid checkout and no
+ * approved or still-open one. Mirrors `expireOverdueDepositReservations`, so read-only views can
+ * treat those holds as gone without writing anything.
+ */
+export function lapsedDepositHoldWhere(now: Date) {
+  return {
+    status: "PENDING_CONFIRMATION" as const,
+    paymentAttempts: {
+      some: { status: { in: unpaidStatuses }, expiresAt: { lte: now } },
+      none: { OR: [{ status: "APPROVED" as const }, { status: { in: unpaidStatuses }, expiresAt: { gt: now } }] },
+    },
+  };
+}
+
 export class PrismaDepositPaymentRepository implements DepositPaymentRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async getDepositPolicy() {
-    const settings = await this.prisma.workshopSettings.findFirstOrThrow({ orderBy: { createdAt: "asc" } });
+    const settings = await getWorkshopSettingsRow(this.prisma);
     return {
       required: isDepositActive(settings),
       amountCents: settings.depositAmountCents,

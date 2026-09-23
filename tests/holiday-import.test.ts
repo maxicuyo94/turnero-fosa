@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { importArgentineHolidays, type HolidayProvider } from "@/src/modules/internal/holiday-import";
+import { importArgentineHolidays, type HolidayProvider } from "@/src/modules/settings/holiday-import";
 import { InMemoryScheduleRepository } from "@/tests/helpers/in-memory-schedule-repository";
 
 const payload = [

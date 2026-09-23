@@ -72,6 +72,7 @@ If `pnpm` is not available but dependencies already exist in `node_modules`, use
 | `pnpm test` | Vitest unit/component smoke tests. |
 | `pnpm test:e2e` | Playwright coverage for baseline routes, public booking, and internal status changes. |
 | `pnpm db:generate` | Generate Prisma Client from `prisma/schema.prisma`. |
+| `pnpm db:migrate` | Apply pending migrations (`prisma migrate deploy`); `pnpm build` no longer does it. |
 | `pnpm db:seed` | Seed editable Taller Express defaults and optional env-sourced admin user. |
 | `pnpm test-data:load` | Load the idempotent `development` test-data profile into a local or allowlisted non-production database. |
 
@@ -146,7 +147,10 @@ affect new reservations and preserve existing appointment intervals.
   reconciles overdue checkouts, then releases unpaid reservations. If Mercado Pago cannot
   answer, the reservation is kept for the next run. Schedule it every 5–10 minutes
   (Vercel Cron on a Pro plan, or an external scheduler); Hobby plans only allow daily
-  crons. The booking page and the internal agenda also run the sweep on load.
+  crons. As a backstop, the booking page and the internal agenda start the sweep **after**
+  responding, so neither waits on Mercado Pago. Public availability already treats a lapsed
+  hold as free; a booking settles overdue holds before its transaction, so the capacity check
+  there sees their final state. Sweeps within one instance share a single run.
 - **Refunds** are issued manually in the Mercado Pago panel. The refund webhook clears the
   "Señas cobradas en turnos cancelados" warning in the internal panel.
 
@@ -161,6 +165,30 @@ do not enable deposits or invent contact details.
 
 The seed creates an internal admin when `ADMIN_USERNAME`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` are present. The email remains an internal Auth.js identifier; interactive login uses the username.
 
+### Access and roles
+
+`proxy.ts` refuses every `/internal` request without a session. Pages and server actions then call
+`requireStaff()` ([src/lib/staff-access.ts](src/lib/staff-access.ts)), which reads the account from
+the database on each request, so a deleted account or a changed role applies immediately.
+
+| Role | Can |
+|---|---|
+| `STAFF` | Agenda (status changes, rescheduling), vehicles, inventory, own account. |
+| `ADMIN` | Everything above, plus Configuración: settings, services, vehicle types, hours, special dates and holiday import. |
+
+New accounts start as `STAFF`. The migration `20260923120000_staff_role` made every existing account
+`ADMIN`, and the seed keeps the env-sourced admin as `ADMIN`.
+
+### Email outbox
+
+Customer emails are queued in `EmailLog` as `PENDING` by the same database write that creates,
+confirms or reschedules the appointment, so an email is never lost to a crash between the two. The
+request that queued it delivers it right after responding; `GET /api/cron/emails` (same
+`CRON_SECRET` bearer) retries what is left. Each email is tried up to 5 times with backoff, never
+sent more than 24 hours late, and carries its outbox id as the Resend `Idempotency-Key`. Concurrent
+dispatchers never claim the same row. Without Resend credentials, queued emails end as `FAILED`
+with the reason instead of going out days later.
+
 Default local credentials from `.env.example`:
 
 | Field | Value |
@@ -171,7 +199,7 @@ Default local credentials from `.env.example`:
 
 ## Current slice boundary
 
-Implemented now: scaffold, shared dark/apple-green UI, typed env validation, test tooling, Prisma schema, safe seed defaults, availability calculation, public service/slot lookup, public booking creation, policy-based cancellation link handling, Resend email notifications with non-blocking failure logs, Auth.js internal login, session-aware navbar, protected internal agenda with date filter, appointment status updates with status history, settings maintenance, service visibility controls, and E2E coverage for the core public/internal workflows.
+Implemented now: scaffold, shared dark/apple-green UI, typed env validation, test tooling, Prisma schema, safe seed defaults, availability calculation, public service/slot lookup, public booking creation, policy-based cancellation link handling, Resend email notifications through a retrying outbox, Auth.js internal login, session-aware navbar, protected internal agenda with date filter, appointment status updates with status history, settings maintenance, service visibility controls, and E2E coverage for the core public/internal workflows.
 
 Units are now generic vehicles with a configurable type catalog, and a booking reuses the customer
 and the unit already on record instead of creating a new pair every time. See
@@ -259,16 +287,17 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
 
 - Production uses the Vercel production variables and the Neon `main` branch.
 - The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
-- Every build runs `prisma migrate deploy` before `next build`, so each Vercel environment applies pending database migrations using its own `DATABASE_URL`.
+- Vercel deploys run `pnpm vercel-build` (set in [vercel.json](vercel.json)): `prisma migrate deploy`, the preview admin sync, then `next build`, so each Vercel environment applies pending migrations using its own `DATABASE_URL`. A plain `pnpm build` (local, CI) only builds; migrate explicitly with `pnpm db:migrate`. Keep migrations additive: a deploy whose build fails after migrating leaves the database one step ahead of the running code.
 - Preview builds also synchronize the branch-specific admin credentials after migrations; keep the local copy in the Git-ignored `.env.preview.local` file.
 - `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` are scoped in Vercel to the `preview` Git
   branch, so **preview verification happens by pushing to `preview`**, not from a feature branch. A
   Vercel variable filtered to one branch is delivered only to that branch, and
-  `sync-preview-admin.ts` throws when any of the three is missing. It runs inside `prebuild`, so the
+  `sync-preview-admin.ts` throws when any of the three is missing. It runs inside `vercel-build`, so the
   deployment dies before `next build` — while `DATABASE_URL`, which carries no filter, resolves fine
   and the migrations apply, which makes the failure read like a build problem when it is not. A
   feature branch gets a working preview only if its own copies are added, or the filter is dropped.
-- Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent. Production email delivery remains pending until the workshop has a verified domain configured in Resend.
+- Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent (queued emails then end as `FAILED`). Production email delivery remains pending until the workshop has a verified domain configured in Resend.
+- Every date and time is computed in the workshop's zone (`America/Argentina/Buenos_Aires`) through [src/lib/workshop-date.ts](src/lib/workshop-date.ts); nothing else hardcodes an offset or zone.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
 Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation/rescheduling disabled.

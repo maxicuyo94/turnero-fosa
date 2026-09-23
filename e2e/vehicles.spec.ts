@@ -55,11 +55,11 @@ test("el taller busca una unidad, ve su historial y fusiona el duplicado", async
   // La patente se muestra pero no se edita: identifica a la unidad.
   await expect(page.getByLabel("Patente")).toBeDisabled();
 
-  await page.getByLabel("Numero de motor").fill("MOTOR-E2E-001");
+  await page.getByLabel("Número de motor").fill("MOTOR-E2E-001");
   await page.getByLabel("Color").fill("Rojo");
   await page.getByRole("button", { name: "Guardar ficha" }).click();
   await expect(page.getByText("Ficha actualizada.")).toBeVisible();
-  await expect(page.getByLabel("Numero de motor")).toHaveValue("MOTOR-E2E-001");
+  await expect(page.getByLabel("Número de motor")).toHaveValue("MOTOR-E2E-001");
 
   await page.getByRole("button", { name: "Fusionar en esta" }).click();
   await expect(page.getByText("Unidades fusionadas.")).toBeVisible();

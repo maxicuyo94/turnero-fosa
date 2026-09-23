@@ -107,6 +107,12 @@ protegido con `CRON_SECRET`; la agenda interna también ejecuta el barrido. Ante
 cancelar se consulta a Mercado Pago por la referencia. Pendiente: programar el cron
 (Vercel Pro o programador externo) y monitorearlo.
 
+Avance 2026-09-23: las páginas ya no esperan el barrido; lo disparan después de
+responder (`after()`), y los barridos de una misma instancia comparten una sola
+ejecución. La disponibilidad pública trata como libre una retención vencida, y la
+reserva liquida las vencidas antes de su transacción. `/api/cron/emails` reintenta
+el outbox de emails con el mismo `CRON_SECRET`: programarlo junto al de señas.
+
 - **Prioridad:** P2, resolver antes de operar señas obligatorias.
 - **Evidencia:** limitación confirmada por inspección de los puntos de llamada.
 - **Origen:** `expireOverdueDepositReservations` solo se llama al listar turnos

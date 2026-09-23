@@ -65,7 +65,7 @@ export function BookingSearchForm({
       {canEditDuration ? (
         <Field
           hint={selectedService ? `(min. ${selectedService.durationMinutes})` : undefined}
-          label="Duracion total"
+          label="Duración total"
         >
           <TextInput
             density="sm"

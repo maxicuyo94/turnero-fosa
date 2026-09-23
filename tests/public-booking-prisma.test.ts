@@ -6,8 +6,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { cancelPublicAppointment, createPublicBooking, getPublicAppointmentStatus } from "@/src/modules/booking/service";
-import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
-import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
+import { updateInternalAppointmentStatus } from "@/src/modules/appointments/operations";
+import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
@@ -43,7 +43,7 @@ describe("Prisma public booking integration", () => {
     expect(first.accepted ? first.appointment.endAt.getTime() - first.appointment.startAt.getTime() : 0).toBe(120 * 60_000);
     expect(repeated).toMatchObject({
       accepted: true,
-      message: "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion.",
+      message: "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.",
       appointment: { idempotencyKey: "it-public-repeat-token" },
     });
     expect(repeated.accepted ? repeated.cancellationToken : "unexpected").toBeNull();
@@ -55,6 +55,18 @@ describe("Prisma public booking integration", () => {
       ? await getPublicAppointmentStatus(repository, { code: first.appointment.publicCode.toLowerCase() })
       : null;
     expect(lookup).toMatchObject({ accepted: true, appointment: { status: "CONFIRMED" } });
+
+    // The confirmation email is queued by the same write, once, and waits for the dispatcher.
+    const outbox = first.accepted ? await prisma.emailLog.findMany({ where: { appointmentId: first.appointment.id } }) : [];
+    expect(outbox).toEqual([
+      expect.objectContaining({
+        event: "PUBLIC_BOOKING_CREATED",
+        recipient: "it-public-repeat-token@example.com",
+        status: "PENDING",
+        subject: "Recibimos tu turno",
+        body: expect.stringContaining(first.accepted ? first.appointment.publicCode : "unexpected"),
+      }),
+    ]);
   });
 
   it("lets only one of a public cancellation and a concurrent internal confirmation apply", async () => {
@@ -66,7 +78,7 @@ describe("Prisma public booking integration", () => {
 
     const [cancellation, confirmation] = await Promise.all([
       cancelPublicAppointment(new PrismaBookingRepository(prisma), { appointmentId, token: booking.cancellationToken, now }),
-      updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId, nextStatus: "CONFIRMED", changedById: null }),
+      updateInternalAppointmentStatus(new PrismaAppointmentRepository(prisma), { appointmentId, nextStatus: "CONFIRMED", changedById: null }),
     ]);
 
     expect([cancellation.accepted, confirmation.accepted].filter(Boolean)).toHaveLength(1);
@@ -128,6 +140,7 @@ async function deleteTestAppointments() {
     where: { idempotencyKey: { startsWith: "it-public-" } },
     select: { id: true, vehicleId: true },
   });
+  await prisma.emailLog.deleteMany({ where: { appointmentId: { in: appointments.map((appointment) => appointment.id) } } });
   await prisma.appointment.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.id) } } });
   await prisma.vehicle.deleteMany({ where: { id: { in: appointments.map((appointment) => appointment.vehicleId) } } });
 }

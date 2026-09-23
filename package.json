@@ -9,8 +9,9 @@
   "types": "./ds-dist/index.d.ts",
   "scripts": {
     "dev": "next dev",
-    "prebuild": "prisma migrate deploy && tsx scripts/sync-preview-admin.ts",
     "build": "next build",
+    "db:migrate": "prisma migrate deploy",
+    "vercel-build": "prisma migrate deploy && tsx scripts/sync-preview-admin.ts && next build",
     "start": "next start",
     "postinstall": "prisma generate && node scripts/copy-zxing-wasm.mjs",
     "db:generate": "prisma generate",

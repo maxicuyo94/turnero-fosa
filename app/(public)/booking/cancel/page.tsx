@@ -22,7 +22,7 @@ export default async function CancellationPage({ searchParams }: CancellationPag
   return (
     <PageShell centered width="md">
       <PageHeading
-        description="Podes cancelar este turno online si la politica del taller lo permite. La reprogramacion online no esta disponible por ahora."
+        description="Podes cancelar este turno online si la politica del taller lo permite. La reprogramación online no está disponible por ahora."
         eyebrow="Taller Express"
         title="Cancelar turno"
       />
@@ -37,7 +37,7 @@ export default async function CancellationPage({ searchParams }: CancellationPag
             <input type="hidden" name="appointmentId" value={appointmentId} />
             <input type="hidden" name="token" value={token} />
             <Button size="lg" type="submit">
-              Confirmar cancelacion
+              Confirmar cancelación
             </Button>
           </form>
         </Card>

@@ -22,8 +22,8 @@ describe("PublicAppointmentStatusScreen", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Consultar turno" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Codigo del turno")).toHaveValue("ABCD234567");
-    expect(screen.getByLabelText("Codigo del turno")).toHaveAttribute("maxlength", "32");
+    expect(screen.getByLabelText("Código del turno")).toHaveValue("ABCD234567");
+    expect(screen.getByLabelText("Código del turno")).toHaveAttribute("maxlength", "32");
     expect(screen.getByText("Confirmado")).toBeInTheDocument();
     expect(screen.getByText("Service Esencial")).toBeInTheDocument();
     expect(screen.queryByText(/cliente|telefono|moto|notas/iu)).not.toBeInTheDocument();
@@ -53,10 +53,10 @@ describe("PublicAppointmentStatusScreen", () => {
     render(
       <PublicAppointmentStatusScreen
         code="UNKNOWN234"
-        result={{ accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese codigo." }}
+        result={{ accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese código." }}
       />,
     );
 
-    expect(screen.getByRole("alert")).toHaveTextContent("No encontramos un turno con ese codigo.");
+    expect(screen.getByRole("alert")).toHaveTextContent("No encontramos un turno con ese código.");
   });
 });

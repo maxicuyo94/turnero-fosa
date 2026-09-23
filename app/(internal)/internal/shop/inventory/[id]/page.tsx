@@ -1,14 +1,13 @@
 import { randomUUID } from "crypto";
-import { notFound, redirect } from "next/navigation";
-import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
+import { notFound } from "next/navigation";
+import { requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { InventoryProductScreen, type InventoryDetailProduct, type InventoryHistoryItem } from "@/src/modules/shop/inventory-screen";
 
 const historyLimit = 50;
 
 export default async function InventoryProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams?: Promise<{ linked?: string }> }) {
-  const session = await auth();
-  if (!isInternalSession(session)) redirect("/internal/login");
+  const staff = await requireStaff();
 
   const { id } = await params;
   const linked = (await searchParams)?.linked === "1";
@@ -31,5 +30,5 @@ export default async function InventoryProductPage({ params, searchParams }: { p
   });
   if (!product) notFound();
   const { movements, ...detail } = product;
-  return <InventoryProductScreen history={movements as InventoryHistoryItem[]} historyLimit={historyLimit} movementRequestKey={randomUUID()} notice={linked ? "Código vinculado. La próxima lectura abre esta ficha." : undefined} product={detail as InventoryDetailProduct} signedInUserName={getInternalSessionDisplayName(session)} />;
+  return <InventoryProductScreen history={movements as InventoryHistoryItem[]} historyLimit={historyLimit} movementRequestKey={randomUUID()} notice={linked ? "Código vinculado. La próxima lectura abre esta ficha." : undefined} product={detail as InventoryDetailProduct} signedInUserName={staff.displayName} />;
 }

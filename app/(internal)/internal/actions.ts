@@ -3,16 +3,16 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
-import { auth, getInternalSessionUserId, isInternalSession, signOut } from "@/src/lib/auth";
-import { db } from "@/src/lib/db";
-import { getWorkshopNotificationEnv } from "@/src/modules/settings/runtime-settings";
-import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
+import { signOut } from "@/src/lib/auth";
+import { appointmentRepository, deliverOutboxEmailsAfterResponse, workshopSettingsRepository } from "@/src/lib/composition";
+import { formString } from "@/src/lib/form-data";
+import { requireStaff } from "@/src/lib/staff-access";
 import { appointmentStatusSchema } from "@/src/modules/appointments/schemas";
 import {
   previewInternalAppointmentSlots,
   rescheduleInternalAppointment,
   updateInternalAppointmentStatus,
-} from "@/src/modules/internal/operations";
+} from "@/src/modules/appointments/operations";
 import {
   deleteInternalDateException,
   saveInternalDateException,
@@ -23,34 +23,27 @@ import {
   updateInternalWeeklySchedule,
   updateInternalWorkshopSettings,
   type WeeklyScheduleUpdateInput,
-} from "@/src/modules/internal/maintenance";
+} from "@/src/modules/settings/maintenance";
 import type { InternalFeedbackCode } from "@/src/modules/internal/internal-agenda-screen";
-import { ArgentinaDatosHolidayProvider } from "@/src/modules/internal/argentinadatos-adapter";
-import { parseAgendaView, type AgendaView } from "@/src/modules/internal/agenda-navigation";
-import { importArgentineHolidays } from "@/src/modules/internal/holiday-import";
+import { ArgentinaDatosHolidayProvider } from "@/src/modules/settings/argentinadatos-adapter";
+import { parseAgendaView, type AgendaView } from "@/src/modules/appointments/agenda-navigation";
+import { importArgentineHolidays } from "@/src/modules/settings/holiday-import";
 import { dayOfWeekSchema, type DayOfWeek } from "@/src/modules/settings/schemas";
-import { PrismaNotificationLogRepository } from "@/src/modules/notifications/prisma-repository";
-import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapter";
 
 export async function updateAppointmentStatusAction(formData: FormData) {
-  const changedById = await requireInternalAccess();
-  const date = stringValue(formData, "date");
-  const nextStatus = appointmentStatusSchema.safeParse(stringValue(formData, "nextStatus"));
-  const appointmentId = stringValue(formData, "appointmentId").trim();
-  const view = parseAgendaView(stringValue(formData, "view"));
+  const { userId: changedById } = await requireStaff();
+  const date = formString(formData, "date");
+  const nextStatus = appointmentStatusSchema.safeParse(formString(formData, "nextStatus"));
+  const appointmentId = formString(formData, "appointmentId").trim();
+  const view = parseAgendaView(formString(formData, "view"));
   if (!nextStatus.success || !appointmentId) redirect(agendaUrl(date, "status-invalid", view));
 
-  const notificationEnv = await getWorkshopNotificationEnv(db);
-  const result = await updateInternalAppointmentStatus(new PrismaInternalRepository(db), {
+  const result = await updateInternalAppointmentStatus(appointmentRepository(), {
     appointmentId,
     nextStatus: nextStatus.data,
     changedById,
-  }, notificationEnv
-    ? {
-        logRepository: new PrismaNotificationLogRepository(db),
-        port: new ResendNotificationPort(notificationEnv),
-      }
-    : undefined);
+  });
+  if (result.accepted) deliverOutboxEmailsAfterResponse();
   redirect(agendaUrl(
     date,
     result.accepted ? "status-updated" : result.reason === "APPOINTMENT_NOT_FOUND" ? "appointment-not-found" : "status-invalid",
@@ -59,31 +52,26 @@ export async function updateAppointmentStatusAction(formData: FormData) {
 }
 
 export async function rescheduleAppointmentAction(formData: FormData) {
-  const changedById = await requireInternalAccess();
-  const notificationEnv = await getWorkshopNotificationEnv(db);
+  const { userId: changedById } = await requireStaff();
   let feedback: InternalFeedbackCode;
   let accepted = false;
   try {
-    const result = await rescheduleInternalAppointment(new PrismaInternalRepository(db), {
-      appointmentId: stringValue(formData, "appointmentId"),
-      date: stringValue(formData, "targetDate"),
-      startTime: stringValue(formData, "startTime"),
-      durationMinutes: stringValue(formData, "durationMinutes"),
+    const result = await rescheduleInternalAppointment(appointmentRepository(), {
+      appointmentId: formString(formData, "appointmentId"),
+      date: formString(formData, "targetDate"),
+      startTime: formString(formData, "startTime"),
+      durationMinutes: formString(formData, "durationMinutes"),
       changedById,
-      reason: stringValue(formData, "reason") || undefined,
-    }, notificationEnv
-      ? {
-          logRepository: new PrismaNotificationLogRepository(db),
-          port: new ResendNotificationPort(notificationEnv),
-        }
-      : undefined);
+      reason: formString(formData, "reason") || undefined,
+    });
     accepted = result.accepted;
     feedback = result.accepted ? "appointment-rescheduled" : rescheduleFeedback[result.reason];
   } catch (error) {
     if (!(error instanceof ZodError)) throw error;
     feedback = "reschedule-invalid-input";
   }
-  redirect(agendaUrl(stringValue(formData, accepted ? "targetDate" : "agendaDate"), feedback, parseAgendaView(stringValue(formData, "view"))));
+  if (accepted) deliverOutboxEmailsAfterResponse();
+  redirect(agendaUrl(formString(formData, accepted ? "targetDate" : "agendaDate"), feedback, parseAgendaView(formString(formData, "view"))));
 }
 
 const rescheduleFeedback: Record<
@@ -112,133 +100,129 @@ export async function previewAppointmentAvailabilityAction(input: {
   date: string;
   durationMinutes: number;
 }) {
-  await requireInternalAccess();
-  return previewInternalAppointmentSlots(new PrismaInternalRepository(db), input);
+  await requireStaff();
+  return previewInternalAppointmentSlots(appointmentRepository(), input);
 }
 
+// Everything below changes how the workshop operates, so it is reserved to administrators.
+
 export async function updateWorkshopSettingsAction(formData: FormData) {
-  await requireInternalAccess();
+  await requireStaff({ role: "ADMIN" });
   try {
-    await updateInternalWorkshopSettings(new PrismaInternalRepository(db), {
-      publicPhone: stringValue(formData, "publicPhone"),
-      whatsappNumber: stringValue(formData, "whatsappNumber"),
-      publicAppUrl: stringValue(formData, "publicAppUrl"),
-      emailFrom: stringValue(formData, "emailFrom"),
-      depositRefundPolicy: stringValue(formData, "depositRefundPolicy"),
-      depositActivationDate: stringValue(formData, "depositActivationDate"),
-      capacity: stringValue(formData, "capacity"),
-      minimumNoticeMinutes: stringValue(formData, "minimumNoticeMinutes"),
-      maximumBookingWindowDays: stringValue(formData, "maximumBookingWindowDays"),
-      depositRequired: stringValue(formData, "depositRequired") === "true",
-      depositAmountArs: stringValue(formData, "depositAmountArs"),
-      depositExpirationMinutes: stringValue(formData, "depositExpirationMinutes"),
+    await updateInternalWorkshopSettings(workshopSettingsRepository(), {
+      publicPhone: formString(formData, "publicPhone"),
+      whatsappNumber: formString(formData, "whatsappNumber"),
+      publicAppUrl: formString(formData, "publicAppUrl"),
+      emailFrom: formString(formData, "emailFrom"),
+      depositRefundPolicy: formString(formData, "depositRefundPolicy"),
+      depositActivationDate: formString(formData, "depositActivationDate"),
+      capacity: formString(formData, "capacity"),
+      minimumNoticeMinutes: formString(formData, "minimumNoticeMinutes"),
+      maximumBookingWindowDays: formString(formData, "maximumBookingWindowDays"),
+      depositRequired: formString(formData, "depositRequired") === "true",
+      depositAmountArs: formString(formData, "depositAmountArs"),
+      depositExpirationMinutes: formString(formData, "depositExpirationMinutes"),
     });
   } catch (error) {
     if (!(error instanceof ZodError)) throw error;
-    redirect("/internal?section=settings&feedback=settings-invalid");
+    redirect(settingsUrl("settings-invalid"));
   }
   revalidatePath("/", "layout");
-  redirect("/internal?section=settings&feedback=settings-updated");
+  redirect(settingsUrl("settings-updated"));
 }
 
 export async function updateServiceDurationAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await updateInternalServiceDuration(new PrismaInternalRepository(db), {
-    serviceId: stringValue(formData, "serviceId"),
-    durationMinutes: stringValue(formData, "durationMinutes"),
+  await requireStaff({ role: "ADMIN" });
+  const result = await updateInternalServiceDuration(workshopSettingsRepository(), {
+    serviceId: formString(formData, "serviceId"),
+    durationMinutes: formString(formData, "durationMinutes"),
   });
   if (result.accepted) revalidatePath("/", "layout");
-  redirect(`/internal?section=settings&feedback=${result.accepted ? "service-updated" : "service-invalid"}`);
+  redirect(settingsUrl(result.accepted ? "service-updated" : "service-invalid"));
 }
 
 export async function updateServiceVisibilityAction(formData: FormData) {
-  await requireInternalAccess();
-  await updateInternalServiceVisibility(new PrismaInternalRepository(db), {
-    serviceId: stringValue(formData, "serviceId"),
-    isActive: stringValue(formData, "isActive") === "true",
+  await requireStaff({ role: "ADMIN" });
+  await updateInternalServiceVisibility(workshopSettingsRepository(), {
+    serviceId: formString(formData, "serviceId"),
+    isActive: formString(formData, "isActive") === "true",
   });
-  redirect("/internal?section=settings");
+  redirect(settingsUrl());
 }
 
 export async function createVehicleTypeAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await createInternalVehicleType(new PrismaInternalRepository(db), {
-    name: stringValue(formData, "name"),
+  await requireStaff({ role: "ADMIN" });
+  const result = await createInternalVehicleType(workshopSettingsRepository(), {
+    name: formString(formData, "name"),
   });
   if (result.accepted) revalidatePath("/", "layout");
-  redirect(`/internal?section=settings&feedback=${result.accepted ? "vehicle-type-created" : "vehicle-type-invalid"}`);
+  redirect(settingsUrl(result.accepted ? "vehicle-type-created" : "vehicle-type-invalid"));
 }
 
 export async function updateVehicleTypeVisibilityAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await updateInternalVehicleTypeVisibility(new PrismaInternalRepository(db), {
-    vehicleTypeId: stringValue(formData, "vehicleTypeId"),
-    isActive: stringValue(formData, "isActive") === "true",
+  await requireStaff({ role: "ADMIN" });
+  const result = await updateInternalVehicleTypeVisibility(workshopSettingsRepository(), {
+    vehicleTypeId: formString(formData, "vehicleTypeId"),
+    isActive: formString(formData, "isActive") === "true",
   });
   if (result.accepted) revalidatePath("/", "layout");
-  redirect(`/internal?section=settings&feedback=${result.accepted ? "vehicle-type-updated" : "vehicle-type-invalid"}`);
+  redirect(settingsUrl(result.accepted ? "vehicle-type-updated" : "vehicle-type-invalid"));
 }
 
 export async function updateWeeklyScheduleAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await updateInternalWeeklySchedule(new PrismaInternalRepository(db), parseWeeklySchedule(formData));
-  redirect(internalUrl(formData, result.accepted ? "schedule-updated" : "schedule-invalid"));
+  await requireStaff({ role: "ADMIN" });
+  const result = await updateInternalWeeklySchedule(workshopSettingsRepository(), parseWeeklySchedule(formData));
+  redirect(scheduleUrl(formData, result.accepted ? "schedule-updated" : "schedule-invalid"));
 }
 
 export async function saveDateExceptionAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await saveInternalDateException(new PrismaInternalRepository(db), {
-    date: stringValue(formData, "date"),
-    label: stringValue(formData, "label"),
-    isOpen: stringValue(formData, "isOpen") === "true",
-    opensAt: stringValue(formData, "opensAt"),
-    closesAt: stringValue(formData, "closesAt"),
+  await requireStaff({ role: "ADMIN" });
+  const result = await saveInternalDateException(workshopSettingsRepository(), {
+    date: formString(formData, "date"),
+    label: formString(formData, "label"),
+    isOpen: formString(formData, "isOpen") === "true",
+    opensAt: formString(formData, "opensAt"),
+    closesAt: formString(formData, "closesAt"),
   });
-  redirect(internalUrl(formData, result.accepted ? "exception-saved" : "exception-invalid"));
+  redirect(scheduleUrl(formData, result.accepted ? "exception-saved" : "exception-invalid"));
 }
 
 export async function deleteDateExceptionAction(formData: FormData) {
-  await requireInternalAccess();
-  const result = await deleteInternalDateException(new PrismaInternalRepository(db), {
-    date: stringValue(formData, "exceptionDate"),
+  await requireStaff({ role: "ADMIN" });
+  const result = await deleteInternalDateException(workshopSettingsRepository(), {
+    date: formString(formData, "exceptionDate"),
   });
-  redirect(internalUrl(formData, result.accepted ? "exception-deleted" : "exception-invalid"));
+  redirect(scheduleUrl(formData, result.accepted ? "exception-deleted" : "exception-invalid"));
 }
 
 export async function importHolidaysAction(formData: FormData) {
-  await requireInternalAccess();
+  await requireStaff({ role: "ADMIN" });
   const result = await importArgentineHolidays(
-    new PrismaInternalRepository(db),
+    workshopSettingsRepository(),
     new ArgentinaDatosHolidayProvider(),
-    { year: stringValue(formData, "year") },
+    { year: formString(formData, "year") },
   );
-  redirect(internalUrl(formData, result.accepted ? "holidays-imported" : holidayFailureFeedback(result.reason)));
+  redirect(scheduleUrl(formData, result.accepted ? "holidays-imported" : holidayFailureFeedback(result.reason)));
 }
 
 export async function signOutAction() {
-  "use server";
   await signOut({ redirectTo: "/internal/login" });
 }
 
-async function requireInternalAccess(): Promise<string | null> {
-  const session = await auth();
-  if (!isInternalSession(session)) redirect("/internal/login");
-  return getInternalSessionUserId(session);
-}
-
-function stringValue(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value : "";
-}
-
 /** Feedback travels as a code so the panel never renders text taken from the URL. */
-function internalUrl(formData: FormData, feedback: string): string {
-  const date = stringValue(formData, "agendaDate");
+function settingsUrl(feedback?: InternalFeedbackCode): string {
+  const params = new URLSearchParams(feedback ? { section: "settings", feedback } : { section: "settings" });
+  return `/internal?${params.toString()}`;
+}
+
+/** Like `settingsUrl`, keeping the agenda date the schedule forms were opened from. */
+function scheduleUrl(formData: FormData, feedback: InternalFeedbackCode): string {
+  const date = formString(formData, "agendaDate");
   const params = new URLSearchParams(date ? { section: "settings", date, feedback } : { section: "settings", feedback });
   return `/internal?${params.toString()}`;
 }
 
-function holidayFailureFeedback(reason: "VALIDATION_FAILED" | "PROVIDER_UNAVAILABLE" | "PROVIDER_RESPONSE_INVALID"): string {
+function holidayFailureFeedback(reason: "VALIDATION_FAILED" | "PROVIDER_UNAVAILABLE" | "PROVIDER_RESPONSE_INVALID"): InternalFeedbackCode {
   return reason === "PROVIDER_UNAVAILABLE" ? "holidays-unavailable" : "holidays-invalid";
 }
 
@@ -246,9 +230,9 @@ function parseWeeklySchedule(formData: FormData): WeeklyScheduleUpdateInput {
   return {
     schedules: dayOfWeekSchema.options.map((dayOfWeek) => ({
       dayOfWeek,
-      opensAt: stringValue(formData, `opensAt-${dayOfWeek}`),
-      closesAt: stringValue(formData, `closesAt-${dayOfWeek}`),
-      isOpen: stringValue(formData, `isOpen-${dayOfWeek}`) === "true",
+      opensAt: formString(formData, `opensAt-${dayOfWeek}`),
+      closesAt: formString(formData, `closesAt-${dayOfWeek}`),
+      isOpen: formString(formData, `isOpen-${dayOfWeek}`) === "true",
     })),
     breaks: parseBreaks(formData),
   };
@@ -265,8 +249,8 @@ function parseBreaks(formData: FormData): WeeklyScheduleUpdateInput["breaks"] {
     const match = /^break-([A-Z]+)-(\d+)-startsAt$/u.exec(key);
     if (!match) continue;
 
-    const startsAt = stringValue(formData, key);
-    const endsAt = stringValue(formData, `break-${match[1]}-${match[2]}-endsAt`);
+    const startsAt = formString(formData, key);
+    const endsAt = formString(formData, `break-${match[1]}-${match[2]}-endsAt`);
     if (!startsAt && !endsAt) continue;
 
     breaks.push({ dayOfWeek: match[1] as DayOfWeek, startsAt, endsAt });

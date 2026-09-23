@@ -142,7 +142,7 @@ export async function updateInternalWeeklySchedule(
 ): Promise<{ accepted: true; schedule: InternalWeeklyScheduleRecord } | MaintenanceRejection> {
   const parsed = weeklyScheduleUpdateSchema.safeParse(input);
   if (!parsed.success) {
-    return rejection("Revisa los horarios: cada dia debe abrir antes de cerrar y los descansos deben quedar dentro del horario.");
+    return rejection("Revisá los horarios: cada día debe abrir antes de cerrar y los descansos deben quedar dentro del horario.");
   }
 
   return { accepted: true, schedule: await repository.replaceWeeklySchedule(parsed.data) };
@@ -163,7 +163,7 @@ export async function saveInternalDateException(
   });
 
   if (!parsed.success) {
-    return rejection("Revisa la fecha: una apertura excepcional necesita horario de apertura y cierre validos.");
+    return rejection("Revisá la fecha: una apertura excepcional necesita horario de apertura y cierre válidos.");
   }
 
   const { date, label, isOpen, opensAt, closesAt } = parsed.data;
@@ -175,7 +175,7 @@ export async function deleteInternalDateException(
   input: { date: string },
 ): Promise<{ accepted: true } | MaintenanceRejection> {
   const parsed = scheduleDateExceptionSchema.shape.date.safeParse(input.date);
-  if (!parsed.success) return rejection("La fecha de la excepcion no es valida.");
+  if (!parsed.success) return rejection("La fecha de la excepción no es válida.");
 
   await repository.deleteDateException(parsed.data);
   return { accepted: true };
@@ -236,7 +236,7 @@ export async function createInternalVehicleType(
 
   const existing = await repository.listVehicleTypes();
   if (existing.some((vehicleType) => vehicleTypeKey(vehicleType.name) === vehicleTypeKey(parsed.data))) {
-    return rejection("Ya existe un tipo de vehiculo con ese nombre.");
+    return rejection("Ya existe un tipo de vehículo con ese nombre.");
   }
 
   const displayOrder = existing.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1;
@@ -254,12 +254,12 @@ export async function updateInternalVehicleTypeVisibility(
 ) {
   const existing = await repository.listVehicleTypes();
   const target = existing.find((vehicleType) => vehicleType.id === input.vehicleTypeId);
-  if (!target) return rejection("El tipo de vehiculo no existe.");
+  if (!target) return rejection("El tipo de vehículo no existe.");
 
   // Public booking needs at least one type to offer, so the last active one cannot be hidden.
   const remainingActive = existing.filter((vehicleType) => vehicleType.isActive && vehicleType.id !== target.id);
   if (!input.isActive && remainingActive.length === 0) {
-    return rejection("Debe quedar al menos un tipo de vehiculo activo.");
+    return rejection("Debe quedar al menos un tipo de vehículo activo.");
   }
 
   return {

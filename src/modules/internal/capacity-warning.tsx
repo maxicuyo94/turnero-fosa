@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Alert } from "@/src/components/ui";
-import { workshopDate } from "@/src/lib/workshop-date";
-import type { CapacityConflict } from "@/src/modules/internal/capacity-conflicts";
+import { WORKSHOP_LOCALE, WORKSHOP_TIME_ZONE, workshopDate } from "@/src/lib/workshop-date";
+import type { CapacityConflict } from "@/src/modules/appointments/capacity-conflicts";
 
-const formatDate = new Intl.DateTimeFormat("es-AR", {
-  timeZone: "America/Argentina/Buenos_Aires", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+const formatDate = new Intl.DateTimeFormat(WORKSHOP_LOCALE, {
+  timeZone: WORKSHOP_TIME_ZONE, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
 
 export function CapacityWarning({ capacity, conflicts }: { capacity: number; conflicts: CapacityConflict[] }) {

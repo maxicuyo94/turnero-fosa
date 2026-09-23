@@ -52,7 +52,7 @@ test.afterAll(async () => {
 test("el visitante no edita la duracion y el cambio de servicio la actualiza", async ({ page }) => {
   await page.goto("/booking");
   await expect(page.getByRole("heading", { name: "Reservar turno" })).toBeVisible();
-  await expect(page.getByRole("spinbutton", { name: /Duracion total/ })).toHaveCount(0);
+  await expect(page.getByRole("spinbutton", { name: /Duración total/ })).toHaveCount(0);
   await expect(page.getByText(summaryPattern(shortService))).toBeVisible();
 
   await page.getByLabel("Servicio").selectOption({ label: `${longService.name} - ${longService.durationMinutes} min` });
@@ -78,7 +78,7 @@ test("la sesion interna edita la duracion y la reajusta al cambiar de servicio",
   await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible({ timeout: 30_000 });
 
   await page.goto("/booking");
-  const duration = page.getByRole("spinbutton", { name: /Duracion total/ });
+  const duration = page.getByRole("spinbutton", { name: /Duración total/ });
   await expect(duration).toHaveValue(String(shortService.durationMinutes));
 
   // La regresion: el filtro reenviaba la duracion del servicio anterior.
@@ -90,7 +90,7 @@ test("la sesion interna edita la duracion y la reajusta al cambiar de servicio",
   await page.getByRole("button", { name: "Ver", exact: true }).click();
 
   await expect(page.getByText(summaryPattern(longService, stretched))).toBeVisible();
-  await expect(page.getByRole("spinbutton", { name: /Duracion total/ })).toHaveValue(String(stretched));
+  await expect(page.getByRole("spinbutton", { name: /Duración total/ })).toHaveValue(String(stretched));
 });
 
 function summaryPattern(service: { name: string; durationMinutes: number }, durationMinutes?: number): RegExp {

@@ -86,7 +86,7 @@ export function PublicBookingScreen({
             <p>{outcome.message}</p>
             {outcome.publicCode ? (
               <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-apple-300/30 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <CodeDisplay code={outcome.publicCode} label="Codigo del turno" />
+                <CodeDisplay code={outcome.publicCode} label="Código del turno" />
                 <a
                   className="font-black text-apple-200 underline underline-offset-4"
                   href={`/booking/status?code=${encodeURIComponent(outcome.publicCode)}`}
@@ -97,7 +97,7 @@ export function PublicBookingScreen({
             ) : null}
             {outcome.cancellationUrl ? (
               <a className="mt-3 inline-block font-semibold underline" href={outcome.cancellationUrl}>
-                Guardar enlace de cancelacion
+                Guardar enlace de cancelación
               </a>
             ) : null}
             {outcome.paymentUrl ? (
@@ -121,7 +121,7 @@ export function PublicBookingScreen({
             ) : null}
             {outcome.accepted ? (
               <p className="mt-3 text-sm text-apple-100/80">
-                La reprogramacion online no esta disponible por ahora.
+                La reprogramación online no está disponible por ahora.
               </p>
             ) : null}
           </Alert>
@@ -132,8 +132,8 @@ export function PublicBookingScreen({
             <div>
               <h2 className="text-2xl font-black text-white">Servicio y fecha</h2>
               <p className="mt-2 text-sm text-zinc-500">
-                {selectedService?.name ?? "Selecciona un servicio"} ·{" "}
-                {selectedService ? `${selectedDurationMinutes} min` : "Duracion a confirmar"} ·{" "}
+                {selectedService?.name ?? "Seleccioná un servicio"} ·{" "}
+                {selectedService ? `${selectedDurationMinutes} min` : "Duración a confirmar"} ·{" "}
                 {slots.length} horarios
               </p>
             </div>
@@ -161,7 +161,7 @@ export function PublicBookingScreen({
               <div>
                 <h2 className="text-2xl font-black text-white">Horarios disponibles</h2>
                 <p className="mt-2 text-sm text-zinc-500">
-                  Los cupos quedan sujetos a la politica actual del taller.
+                  Los cupos quedan sujetos a la política actual del taller.
                 </p>
               </div>
             </div>
@@ -178,7 +178,7 @@ export function PublicBookingScreen({
               </div>
             ) : (
               <EmptyState className="mt-5">
-                No hay horarios disponibles para este servicio y fecha. Proba con otro dia.
+                No hay horarios disponibles para este servicio y fecha. Probá con otro día.
               </EmptyState>
             )}
           </Card>
@@ -196,14 +196,14 @@ export function PublicBookingScreen({
               <Field label="Nombre y apellido">
                 <TextInput name="fullName" required />
               </Field>
-              <Field label="Telefono">
+              <Field label="Teléfono">
                 <TextInput name="phone" required />
               </Field>
               <Field label="Email">
                 <TextInput name="email" type="email" />
               </Field>
               {vehicleTypes.length > 1 ? (
-                <Field label="Tipo de vehiculo">
+                <Field label="Tipo de vehículo">
                   <Select name="vehicleTypeId" required>
                     {vehicleTypes.map((vehicleType) => (
                       <option key={vehicleType.id} value={vehicleType.id}>

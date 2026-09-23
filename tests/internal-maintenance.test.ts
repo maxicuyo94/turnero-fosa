@@ -8,7 +8,7 @@ import {
   type InternalMaintenanceRepository,
   type InternalServiceRecord,
   type InternalWorkshopSettingsRecord,
-} from "@/src/modules/internal/maintenance";
+} from "@/src/modules/settings/maintenance";
 import { InMemoryScheduleRepository } from "@/tests/helpers/in-memory-schedule-repository";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 

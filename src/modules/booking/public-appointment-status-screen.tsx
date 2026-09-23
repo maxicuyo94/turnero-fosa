@@ -12,6 +12,7 @@ import {
   StatusBadge,
   TextInput,
 } from "@/src/components/ui";
+import { formatWorkshopDateTime, workshopTime } from "@/src/lib/workshop-date";
 import type { PublicAppointmentStatusResult } from "@/src/modules/booking/service";
 
 type PublicAppointmentStatusScreenProps = {
@@ -28,7 +29,7 @@ export function PublicAppointmentStatusScreen({
       <SiteHeader active="booking" linkComponent={Link} />
       <PageShell width="lg">
         <PageHeading
-          description="Ingresa el codigo que recibiste al reservar para ver el estado actual."
+          description="Ingresá el código que recibiste al reservar para ver el estado actual."
           eyebrow="Seguimiento"
           title="Consultar turno"
         />
@@ -38,7 +39,7 @@ export function PublicAppointmentStatusScreen({
             action="/booking/status"
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
           >
-            <Field className="flex-1" label="Codigo del turno">
+            <Field className="flex-1" label="Código del turno">
               <TextInput
                 autoComplete="off"
                 defaultValue={code}
@@ -82,7 +83,7 @@ function AppointmentSummary({
       className="mt-6 overflow-hidden border-apple-400/30 bg-gradient-to-br from-apple-400/15 to-white/[0.03]"
     >
       <div className="flex flex-col gap-4 border-b border-white/10 pb-5 sm:flex-row sm:items-center sm:justify-between">
-        <CodeDisplay code={appointment.publicCode} label="Codigo" />
+        <CodeDisplay code={appointment.publicCode} label="Código" />
         <StatusBadge status={appointment.status} />
       </div>
       <DetailList
@@ -93,7 +94,7 @@ function AppointmentSummary({
             term: "Fecha y horario",
             description: formatAppointmentTime(appointment.startAt, appointment.endAt),
           },
-          { term: "Duracion total", description: durationDescription },
+          { term: "Duración total", description: durationDescription },
         ]}
       />
     </Card>
@@ -101,7 +102,6 @@ function AppointmentSummary({
 }
 
 function formatAppointmentTime(startAt: Date, endAt: Date): string {
-  const date = new Intl.DateTimeFormat("es-AR", { dateStyle: "long", timeZone: "America/Argentina/Salta" }).format(startAt);
-  const time = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Salta" });
-  return `${date}, ${time.format(startAt)} a ${time.format(endAt)}`;
+  const date = formatWorkshopDateTime(startAt, { dateStyle: "long" });
+  return `${date}, ${workshopTime(startAt)} a ${workshopTime(endAt)}`;
 }
