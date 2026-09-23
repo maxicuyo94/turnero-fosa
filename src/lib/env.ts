@@ -17,7 +17,10 @@ export type MercadoPagoEnv = {
   MERCADO_PAGO_ACCESS_TOKEN: string;
   MERCADO_PAGO_WEBHOOK_SECRET: string;
   MERCADO_PAGO_ENVIRONMENT: "test" | "production";
+  /** Origin that checkout return links and payment notifications point back to. */
   NEXT_PUBLIC_APP_URL: string;
+  /** Vercel "Protection Bypass for Automation" secret, set only on protected preview deployments. */
+  VERCEL_PROTECTION_BYPASS?: string;
 };
 
 export function getEnv(input: Record<string, string | undefined> = process.env): AppEnv {
@@ -59,8 +62,25 @@ export function getMercadoPagoEnv(input: Record<string, string | undefined> = pr
     MERCADO_PAGO_ACCESS_TOKEN: accessToken,
     MERCADO_PAGO_WEBHOOK_SECRET: webhookSecret,
     MERCADO_PAGO_ENVIRONMENT: envSchema.shape.MERCADO_PAGO_ENVIRONMENT.parse(input.MERCADO_PAGO_ENVIRONMENT) ?? "test",
-    NEXT_PUBLIC_APP_URL: envSchema.shape.NEXT_PUBLIC_APP_URL.parse(input.NEXT_PUBLIC_APP_URL),
+    NEXT_PUBLIC_APP_URL: envSchema.shape.NEXT_PUBLIC_APP_URL.parse(previewBranchOrigin(input) ?? input.NEXT_PUBLIC_APP_URL),
+    ...(isVercelPreview(input) && input.VERCEL_AUTOMATION_BYPASS_SECRET?.trim()
+      ? { VERCEL_PROTECTION_BYPASS: input.VERCEL_AUTOMATION_BYPASS_SECRET.trim() }
+      : {}),
   };
+}
+
+function isVercelPreview(input: Record<string, string | undefined>): boolean {
+  return input.VERCEL_ENV === "preview";
+}
+
+/**
+ * On a Vercel preview, the stable branch URL (`<project>-git-<branch>-….vercel.app`). A preview
+ * must send customers and Mercado Pago back to itself, never to the production domain that
+ * NEXT_PUBLIC_APP_URL or the workshop settings hold.
+ */
+function previewBranchOrigin(input: Record<string, string | undefined>): string | undefined {
+  const branchUrl = input.VERCEL_BRANCH_URL?.trim();
+  return isVercelPreview(input) && branchUrl ? `https://${branchUrl}` : undefined;
 }
 
 export const appEnvSchema = envSchema;
