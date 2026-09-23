@@ -79,4 +79,22 @@ describe("Mercado Pago return and notification URLs", () => {
     expect(sentPayer(0)).toBeUndefined();
     expect(sentPayer(1)).toEqual({ email: "cliente@example.com" });
   });
+
+  it("opens the sandbox checkout only with an application's TEST- credentials", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ id: "pref-1", init_point: "https://mp/checkout", sandbox_init_point: "https://mp/sandbox" }))));
+    const preference = {
+      externalReference: "ref-1",
+      title: "Seña",
+      amountCents: 500_000,
+      payerEmail: null,
+      expiresAt: new Date("2026-09-28T12:30:00Z"),
+    };
+    const checkoutUrl = async (overrides: Record<string, string>) =>
+      (await new MercadoPagoAdapter(getMercadoPagoEnv({ ...credentials, ...overrides })!).createPreference(preference)).checkoutUrl;
+
+    expect(await checkoutUrl({ MERCADO_PAGO_ENVIRONMENT: "test" })).toBe("https://mp/sandbox");
+    // A test seller's own credentials: the sandbox would see a test party next to a real one.
+    expect(await checkoutUrl({ MERCADO_PAGO_ENVIRONMENT: "test", MERCADO_PAGO_ACCESS_TOKEN: "APP_USR-test-seller" })).toBe("https://mp/checkout");
+    expect(await checkoutUrl({ MERCADO_PAGO_ENVIRONMENT: "production", MERCADO_PAGO_ACCESS_TOKEN: "APP_USR-real" })).toBe("https://mp/checkout");
+  });
 });

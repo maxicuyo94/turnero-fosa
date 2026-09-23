@@ -42,10 +42,19 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
       }),
     });
 
-    const checkoutUrl = this.env.MERCADO_PAGO_ENVIRONMENT === "test"
+    const checkoutUrl = this.usesSandboxCheckout()
       ? response.sandbox_init_point ?? response.init_point
       : response.init_point;
     return { preferenceId: response.id, checkoutUrl };
+  }
+
+  /**
+   * Only an application's `TEST-` credentials belong to the sandbox checkout. A test seller's own
+   * `APP_USR-` credentials — Mercado Pago's current way to test — create a preference that the
+   * sandbox rejects as mixing a test party with a real one, so those open the regular checkout.
+   */
+  private usesSandboxCheckout(): boolean {
+    return this.env.MERCADO_PAGO_ENVIRONMENT === "test" && this.env.MERCADO_PAGO_ACCESS_TOKEN.startsWith("TEST-");
   }
 
   async getPayment(paymentId: string) {
