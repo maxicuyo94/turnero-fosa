@@ -58,4 +58,25 @@ describe("Mercado Pago return and notification URLs", () => {
     );
     expect(body.back_urls.success).toBe("https://turnero-fosa-git-preview-team.vercel.app/booking/payment?reference=ref+1");
   });
+
+  it("names the customer as payer only with production credentials", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ id: "pref-1", init_point: "https://mp/checkout" })));
+    vi.stubGlobal("fetch", fetchMock);
+    const preference = {
+      externalReference: "ref-1",
+      title: "Seña",
+      amountCents: 500_000,
+      payerEmail: "cliente@example.com",
+      expiresAt: new Date("2026-09-28T12:30:00Z"),
+    };
+    const sentPayer = (call: number) =>
+      JSON.parse((fetchMock.mock.calls[call] as unknown as [string, RequestInit])[1].body as string).payer;
+
+    await new MercadoPagoAdapter(getMercadoPagoEnv({ ...credentials, MERCADO_PAGO_ENVIRONMENT: "test" })!).createPreference(preference);
+    await new MercadoPagoAdapter(getMercadoPagoEnv({ ...credentials, MERCADO_PAGO_ENVIRONMENT: "production" })!).createPreference(preference);
+
+    // A real email next to a test seller makes the sandbox refuse the checkout.
+    expect(sentPayer(0)).toBeUndefined();
+    expect(sentPayer(1)).toEqual({ email: "cliente@example.com" });
+  });
 });
