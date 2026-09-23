@@ -296,6 +296,8 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
   deployment dies before `next build` — while `DATABASE_URL`, which carries no filter, resolves fine
   and the migrations apply, which makes the failure read like a build problem when it is not. A
   feature branch gets a working preview only if its own copies are added, or the filter is dropped.
+- The `MERCADO_PAGO_*` variables exist only for Preview, scoped to the `preview` Git branch (sandbox credentials). Production has none, so live collection stays off until they are added there.
+- `CRON_SECRET` is not configured in any environment yet, so `/api/cron/deposits` and `/api/cron/emails` answer 503 until it is added and a scheduler calls them.
 - Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent (queued emails then end as `FAILED`). Production email delivery remains pending until the workshop has a verified domain configured in Resend.
 - Every date and time is computed in the workshop's zone (`America/Argentina/Buenos_Aires`) through [src/lib/workshop-date.ts](src/lib/workshop-date.ts); nothing else hardcodes an offset or zone.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
