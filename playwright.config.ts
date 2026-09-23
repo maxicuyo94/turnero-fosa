@@ -1,12 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
-
-const playwrightPort = process.env.PLAYWRIGHT_PORT ?? "3000";
-const playwrightBaseUrl = `http://127.0.0.1:${playwrightPort}`;
+import { playwrightBaseUrl, playwrightPort } from "./e2e/helpers/base-url";
 
 export default defineConfig({
   testDir: "./e2e",
   timeout: 30_000,
   workers: 1,
+  // Compila las rutas antes de la suite: en desarrollo la primera visita tarda segundos.
+  globalSetup: "./e2e/global-setup.ts",
   use: {
     baseURL: playwrightBaseUrl,
     trace: "on-first-retry",
