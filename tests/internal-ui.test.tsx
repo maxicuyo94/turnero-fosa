@@ -184,8 +184,8 @@ describe("InternalAgendaScreen", () => {
     expect(screen.getByText("Dia de la Independencia")).toBeInTheDocument();
     expect(screen.getByText("Cerrado")).toBeInTheDocument();
     expect(screen.getByText("Abre 10:00 a 13:00")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Eliminar la excepcion del 2026-07-09" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Guardar excepcion" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Eliminar la excepción del 2026-07-09" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar excepción" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Importar feriados" })).toBeInTheDocument();
   });
 

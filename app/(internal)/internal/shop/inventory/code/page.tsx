@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
+import { requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { findSimilarInventoryCodes, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
 import { InventoryCodeScreen } from "@/src/modules/shop/inventory-screen";
@@ -9,8 +9,7 @@ type Search = { value?: string | string[]; q?: string | string[]; error?: string
 const linkCandidateLimit = 20;
 
 export default async function InventoryCodePage({ searchParams }: { searchParams?: Promise<Search> }) {
-  const session = await auth();
-  if (!isInternalSession(session)) redirect("/internal/login");
+  const staff = await requireStaff();
 
   const raw = (await searchParams) ?? {};
   const resolution = await resolveInventoryCode(db, first(raw.value));
@@ -43,7 +42,7 @@ export default async function InventoryCodePage({ searchParams }: { searchParams
       linkQuery={linkQuery}
       matches={resolution.status === "ambiguous" ? resolution.products : []}
       similar={similar}
-      signedInUserName={getInternalSessionDisplayName(session)}
+      signedInUserName={staff.displayName}
     />
   );
 }

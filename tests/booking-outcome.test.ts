@@ -20,11 +20,11 @@ describe("public booking outcome codes", () => {
   it("describes success from the stored appointment, not from the link", () => {
     expect(describeBookingOutcome({ result: "created", code: "ABCD234567" }, pending)).toMatchObject({
       accepted: true,
-      message: "Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.",
+      message: "Recibimos tu pedido de turno y queda pendiente de confirmación del taller.",
       publicCode: "ABCD234567",
     });
     expect(describeBookingOutcome({ result: "created", code: "ABCD234567" }, { ...pending, status: "CONFIRMED" })?.message)
-      .toBe("Tu turno quedo confirmado automaticamente.");
+      .toBe("Tu turno quedó confirmado automáticamente.");
     expect(describeBookingOutcome({ result: "created", code: "ZZZZZZZZZZ" }, null)).toBeUndefined();
   });
 
@@ -37,13 +37,13 @@ describe("public booking outcome codes", () => {
   it("marks failures as rejected and explains payment issues", () => {
     expect(describeBookingOutcome({ result: "slot-unavailable" }, null)).toEqual({
       accepted: false,
-      message: "Elegi otro horario disponible.",
+      message: "Elegí otro horario disponible.",
       paymentError: undefined,
     });
     expect(describeBookingOutcome({ result: "payment-retry", code: "ABCD234567", payment: "disabled" }, pending)).toMatchObject({
       accepted: true,
       message: "El turno sigue registrado, pero no pudimos iniciar la seña.",
-      paymentError: "El pago online todavia no esta habilitado. El taller coordinara la seña.",
+      paymentError: "El pago online todavía no está habilitado. El taller coordinará la seña.",
     });
   });
 });

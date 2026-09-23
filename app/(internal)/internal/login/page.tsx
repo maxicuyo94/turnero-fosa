@@ -28,7 +28,7 @@ export default async function InternalLoginPage({ searchParams }: InternalLoginP
       <SiteHeader active="internal" linkComponent={Link} />
       <PageShell centered width="sm">
         <PageHeading
-          description="Ingresa para gestionar la agenda del taller."
+          description="Ingresá para gestionar la agenda del taller."
           eyebrow="Acceso interno"
           title="Acceso interno"
         />

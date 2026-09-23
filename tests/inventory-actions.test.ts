@@ -9,7 +9,12 @@ const mocks = vi.hoisted(() => ({
   importProducts: vi.fn(),
   parseExcel: vi.fn(),
   revalidate: vi.fn(),
-  db: {},
+  db: {
+    user: {
+      findUnique: async ({ where }: { where: { id: string } }) =>
+        ({ id: where.id, name: null, username: "staff", email: "staff@taller.test", role: "STAFF" }),
+    },
+  },
 }));
 
 vi.mock("@/src/lib/auth", () => ({

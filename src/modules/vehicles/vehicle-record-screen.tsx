@@ -12,6 +12,7 @@ import {
   TextInput,
   Textarea,
 } from "@/src/components/ui";
+import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import type { VehicleRecord } from "@/src/modules/vehicles/service";
 
 export type VehicleRecordScreenProps = {
@@ -64,7 +65,7 @@ export function VehicleRecordScreen({
           <h2 className="text-2xl font-black text-white">Historial</h2>
           <p className="mt-2 text-sm text-zinc-500">
             {vehicle.appointmentCount === 0
-              ? "Todavia sin turnos."
+              ? "Todavía sin turnos."
               : `${vehicle.appointmentCount} turnos registrados, del mas reciente al mas antiguo.`}
           </p>
 
@@ -124,7 +125,7 @@ export function VehicleRecordScreen({
           </p>
           <form action={saveAction} className="mt-6 grid gap-4 md:grid-cols-2">
             <input name="vehicleId" type="hidden" value={vehicle.id} />
-            <Field label="Tipo de vehiculo">
+            <Field label="Tipo de vehículo">
               <Select defaultValue={vehicle.vehicleTypeId} name="vehicleTypeId" required>
                 {vehicleTypes.map((vehicleType) => (
                   <option key={vehicleType.id} value={vehicleType.id}>{vehicleType.name}</option>
@@ -146,10 +147,10 @@ export function VehicleRecordScreen({
             <Field label="Color">
               <TextInput defaultValue={vehicle.color ?? ""} maxLength={30} name="color" />
             </Field>
-            <Field label="Numero de chasis (VIN)">
+            <Field label="Número de chasis (VIN)">
               <TextInput defaultValue={vehicle.vin ?? ""} maxLength={40} name="vin" />
             </Field>
-            <Field label="Numero de motor">
+            <Field label="Número de motor">
               <TextInput defaultValue={vehicle.engineNumber ?? ""} maxLength={40} name="engineNumber" />
             </Field>
             <Field className="md:col-span-2" label="Notas internas">
@@ -202,7 +203,7 @@ export function VehicleRecordScreen({
 
 function feedbackMessage(feedback: string) {
   if (feedback === "vehicle-saved") return "Ficha actualizada.";
-  if (feedback === "vehicle-invalid") return "Revisa los datos del vehiculo.";
+  if (feedback === "vehicle-invalid") return "Revisá los datos del vehículo.";
   if (feedback === "merge-done") return "Unidades fusionadas.";
   if (feedback === "merge-repeated") return "Esa fusion ya se habia aplicado.";
   if (feedback === "merge-invalid") return "No se pudo fusionar: revisa que ambas unidades existan.";
@@ -210,12 +211,5 @@ function feedbackMessage(feedback: string) {
 }
 
 function formatDateTime(value: Date) {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "America/Argentina/Buenos_Aires",
-  }).format(value);
+  return formatWorkshopDateTime(value, { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }

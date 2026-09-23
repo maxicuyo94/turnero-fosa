@@ -3,13 +3,13 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
-import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
+import { PrismaWorkshopSettingsRepository } from "@/src/modules/settings/prisma-repository";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import type { WeeklySchedule } from "@/src/modules/settings/schemas";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
 const workshopSettingsId = "it-schedule-workshop";
-const repository = new PrismaInternalRepository(prisma, { workshopSettingsId });
+const repository = new PrismaWorkshopSettingsRepository(prisma, { workshopSettingsId });
 
 describe("Prisma internal schedule integration", () => {
   beforeEach(async () => {
@@ -49,7 +49,7 @@ describe("Prisma internal schedule integration", () => {
     const current = await repository.getWorkshopSettings();
     const contact = { publicPhone: "+54 261 5551234", whatsappNumber: "+5492615551234", publicAppUrl: "https://taller.example", emailFrom: "turnos@taller.example", depositRefundPolicy: "Solicitar al taller.", depositActivationDate: "2026-10-01" };
     await repository.updateWorkshopSettings({ ...current, ...contact });
-    const fresh = new PrismaInternalRepository(prisma, { workshopSettingsId });
+    const fresh = new PrismaWorkshopSettingsRepository(prisma, { workshopSettingsId });
     expect(await fresh.getWorkshopSettings()).toMatchObject(contact);
     expect((await fresh.getWeeklySchedule()).schedules).toHaveLength(7);
     await fresh.updateWorkshopSettings({ ...current, publicPhone: null, depositActivationDate: null });
@@ -61,7 +61,7 @@ describe("Prisma internal schedule integration", () => {
     try {
       await repository.updateServiceDuration(service.id, 180);
       expect(await prisma.service.findUnique({ where: { id: service.id } })).toMatchObject({ durationMinutes: 180 });
-      const foreign = new PrismaInternalRepository(prisma, { workshopSettingsId: "another-workshop" });
+      const foreign = new PrismaWorkshopSettingsRepository(prisma, { workshopSettingsId: "another-workshop" });
       await expect(foreign.updateServiceDuration(service.id, 240)).rejects.toThrow();
       expect(await prisma.service.findUnique({ where: { id: service.id } })).toMatchObject({ durationMinutes: 180 });
     } finally { await prisma.service.delete({ where: { id: service.id } }); }

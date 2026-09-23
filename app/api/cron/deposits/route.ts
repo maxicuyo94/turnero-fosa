@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { rejectUnauthorizedCron } from "@/src/lib/cron-auth";
 import { db } from "@/src/lib/db";
 import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
 
@@ -9,18 +9,9 @@ import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
  * scheduler) calls it with `Authorization: Bearer $CRON_SECRET`.
  */
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) return NextResponse.json({ ok: false, error: "CRON_SECRET is not configured." }, { status: 503 });
-  if (!isAuthorized(request.headers.get("authorization"), secret)) {
-    return NextResponse.json({ ok: false }, { status: 401 });
-  }
+  const rejection = rejectUnauthorizedCron(request);
+  if (rejection) return rejection;
 
   const expired = await settleOverdueDeposits(db);
   return NextResponse.json({ ok: true, expired });
-}
-
-function isAuthorized(header: string | null, secret: string): boolean {
-  const expected = Buffer.from(`Bearer ${secret}`);
-  const received = Buffer.from(header ?? "");
-  return expected.length === received.length && timingSafeEqual(expected, received);
 }

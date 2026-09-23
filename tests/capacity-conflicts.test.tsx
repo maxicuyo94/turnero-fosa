@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { findCapacityConflicts } from "@/src/modules/internal/capacity-conflicts";
+import { findCapacityConflicts } from "@/src/modules/appointments/capacity-conflicts";
 import { CapacityWarning } from "@/src/modules/internal/capacity-warning";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 

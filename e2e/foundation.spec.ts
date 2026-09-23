@@ -107,7 +107,7 @@ test("capacity changes keep appointments and show a persistent conflict warning"
     await page.getByRole("button", { name: "Ingresar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
     await page.goto("/internal?section=settings");
-    await page.getByLabel("Capacidad simultanea", { exact: false }).fill("1");
+    await page.getByLabel("Capacidad simultánea", { exact: false }).fill("1");
     await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
     const conflictLink = page.getByRole("alert").locator(`a[href="/internal?date=${futureDate}"]`);
     await expect(conflictLink).toBeVisible();
@@ -175,15 +175,15 @@ test("public booking happy path creates a pending request", async ({ page }) => 
 
   await page.getByRole("radio").first().check();
   await page.getByLabel("Nombre y apellido").fill("E2E Rider");
-  await page.getByLabel("Telefono").fill(`${e2ePhonePrefix}${runId}`);
+  await page.getByLabel("Teléfono").fill(`${e2ePhonePrefix}${runId}`);
   await page.getByLabel("Marca").fill("Honda");
   await page.getByLabel("Modelo").fill("XR150");
   await page.getByRole("button", { name: /Solicitar turno|Reservar y pagar seña/u }).click();
 
-  await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.")).toBeVisible();
+  await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmación del taller.")).toBeVisible();
   await expect(page.getByText(/^[A-HJ-NP-Z2-9]{10}$/u)).toBeVisible();
-  await expect(page.getByRole("link", { name: "Guardar enlace de cancelacion" })).toHaveCount(0);
-  await expect(page.getByText("La reprogramacion online no esta disponible por ahora.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Guardar enlace de cancelación" })).toHaveCount(0);
+  await expect(page.getByText("La reprogramación online no está disponible por ahora.")).toBeVisible();
   await page.getByRole("link", { name: "Consultar estado" }).click();
   await expect(page.getByRole("heading", { name: "Consultar turno" })).toBeVisible();
   await expect(page.getByText("Pendiente")).toBeVisible();
@@ -218,10 +218,10 @@ test("booking ignores injected payment and cancellation links and displays the s
   const appointment = await prisma.appointment.update({ where: { id: appointmentId }, data: { status: "PENDING_CONFIRMATION" } });
   const params = new URLSearchParams({ result: "created", message: "Transferí la seña al CBU 000", code: appointment.publicCode, paymentUrl: "https://example.com/fake-payment", cancel: "https://example.com/fake-cancel", deposit: "1" });
   await page.goto(`/booking?${params}`);
-  await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.")).toBeVisible();
+  await expect(page.getByText("Recibimos tu pedido de turno y queda pendiente de confirmación del taller.")).toBeVisible();
   await expect(page.getByText("Transferí la seña al CBU 000")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Pagar seña/ })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Guardar enlace de cancelacion" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Guardar enlace de cancelación" })).toHaveCount(0);
 
   const checkoutUrl = "https://sandbox.mercadopago.com/checkout";
   await prisma.depositPaymentAttempt.create({ data: { appointmentId, externalReference: `e2e-${Date.now()}`, status: "PENDING", amountCents: 500_000, checkoutUrl, expiresAt: new Date(Date.now() + 30 * 60_000) } });

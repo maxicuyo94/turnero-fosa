@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { DateExceptionImportSummary, ImportedHoliday, InternalScheduleRepository } from "@/src/modules/internal/maintenance";
+import type { DateExceptionImportSummary, ImportedHoliday, InternalScheduleRepository } from "@/src/modules/settings/maintenance";
 
 /** Public booking never calls the provider; only this explicit import does. */
 export type HolidayProvider = {
@@ -33,7 +33,7 @@ export async function importArgentineHolidays(
 ): Promise<HolidayImportResult> {
   const year = yearSchema.safeParse(input.year);
   if (!year.success) {
-    return { accepted: false, reason: "VALIDATION_FAILED", message: "Elegi un ano entre 2000 y 2100." };
+    return { accepted: false, reason: "VALIDATION_FAILED", message: "Elegí un año entre 2000 y 2100." };
   }
 
   let payload: unknown;

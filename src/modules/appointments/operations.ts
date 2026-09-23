@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { formatWorkshopDateTime, workshopDayBounds, workshopTime } from "@/src/lib/workshop-date";
 import { type AppointmentStatus, appointmentStatusSchema } from "@/src/modules/appointments/schemas";
 import {
   getInternalAvailableSlots,
   validateAppointmentInterval,
   type AppointmentIntervalRejection,
 } from "@/src/modules/availability";
-import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
+import type { EmailNotificationDraft } from "@/src/modules/notifications/service";
 import type { ScheduleBreak, ScheduleDateException, WeeklySchedule } from "@/src/modules/settings/schemas";
 
 export type InternalAppointmentIntervalHistory = {
@@ -37,7 +38,8 @@ export type InternalAppointmentRecord = {
 };
 
 export type InternalSchedulingRepository = {
-  withSchedulingTransaction<T>(operation: () => Promise<T>): Promise<T>;
+  /** Runs `operation` against a repository bound to one serializable transaction. */
+  withSchedulingTransaction<T>(operation: (repository: InternalSchedulingRepository) => Promise<T>): Promise<T>;
   findAppointmentById(appointmentId: string): Promise<InternalAppointmentRecord | null>;
   listAppointmentsForDate(date: string): Promise<InternalAppointmentRecord[]>;
   getSchedulingContext(): Promise<{
@@ -52,6 +54,8 @@ export type InternalSchedulingRepository = {
     endAt: Date;
     changedById: string | null;
     reason?: string;
+    /** Queued in the email outbox by the same write that moves the appointment. */
+    notification?: EmailNotificationDraft;
   }): Promise<InternalAppointmentRecord>;
 };
 
@@ -62,6 +66,8 @@ export type InternalAgenda = {
 
 export type InternalOperationsRepository = {
   listAppointmentsForDate(date: string): Promise<InternalAppointmentRecord[]>;
+  /** Appointments overlapping the workshop days `fromDate`..`toDate`, both included, by start time. */
+  listAppointmentsBetween(fromDate: string, toDate: string): Promise<InternalAppointmentRecord[]>;
   findAppointmentById(appointmentId: string): Promise<InternalAppointmentRecord | null>;
   /**
    * Applies the change only if the appointment is still in `fromStatus`; returns null when another
@@ -73,12 +79,9 @@ export type InternalOperationsRepository = {
     nextStatus: AppointmentStatus;
     changedById: string | null;
     note?: string;
+    /** Queued in the email outbox by the same write that changes the status. */
+    notification?: EmailNotificationDraft;
   }): Promise<InternalAppointmentRecord | null>;
-};
-
-export type InternalStatusNotificationOptions = {
-  logRepository: NotificationLogRepository;
-  port: NotificationPort;
 };
 
 const agendaInputSchema = z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u) });
@@ -111,22 +114,46 @@ const validTransitions: Record<AppointmentStatus, readonly AppointmentStatus[]> 
   NO_SHOW: [],
 };
 
+/** Statuses staff may move an appointment to; the agenda offers exactly these. */
+export function allowedNextStatuses(status: AppointmentStatus): readonly AppointmentStatus[] {
+  return validTransitions[status];
+}
+
+/** Finished appointments accept neither status changes nor rescheduling. */
+export function isTerminalStatus(status: AppointmentStatus): boolean {
+  return validTransitions[status].length === 0;
+}
+
 export async function getInternalAgenda(repository: InternalOperationsRepository, input: { date: string }): Promise<InternalAgenda> {
   const parsed = agendaInputSchema.parse(input);
   return { date: parsed.date, appointments: await repository.listAppointmentsForDate(parsed.date) };
 }
 
+/** One agenda per date from a single query, instead of one query per day of the week. */
+export async function getInternalAgendas(
+  repository: InternalOperationsRepository,
+  input: { dates: string[] },
+): Promise<InternalAgenda[]> {
+  const dates = input.dates.map((date) => agendaInputSchema.parse({ date }).date).sort();
+  if (dates.length === 0) return [];
+
+  const appointments = await repository.listAppointmentsBetween(dates[0]!, dates[dates.length - 1]!);
+  return dates.map((date) => {
+    const { start, end } = workshopDayBounds(date);
+    return { date, appointments: appointments.filter((item) => item.startAt < end && item.endAt > start) };
+  });
+}
+
 export async function updateInternalAppointmentStatus(
   repository: InternalOperationsRepository,
   input: z.input<typeof updateStatusInputSchema>,
-  notifications?: InternalStatusNotificationOptions,
 ): Promise<
   | { accepted: true; appointment: InternalAppointmentRecord }
   | { accepted: false; reason: "APPOINTMENT_NOT_FOUND" | "INVALID_TRANSITION"; message: string }
 > {
   const parsed = updateStatusInputSchema.parse(input);
   const appointment = await repository.findAppointmentById(parsed.appointmentId);
-  if (!appointment) return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No se encontro el turno." };
+  if (!appointment) return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No se encontró el turno." };
   if (!validTransitions[appointment.status].includes(parsed.nextStatus)) {
     return {
       accepted: false,
@@ -135,22 +162,24 @@ export async function updateInternalAppointmentStatus(
     };
   }
 
-  const updated = await repository.updateAppointmentStatus({ ...parsed, fromStatus: appointment.status });
+  const updated = await repository.updateAppointmentStatus({
+    ...parsed,
+    fromStatus: appointment.status,
+    notification: appointment.customerEmail
+      ? {
+          event: "APPOINTMENT_STATUS_CHANGED",
+          recipient: appointment.customerEmail,
+          subject: "Actualización de tu turno",
+          text: `Tu turno para ${appointment.serviceName} ahora está ${statusLabel(parsed.nextStatus)}.`,
+        }
+      : undefined,
+  });
   if (!updated) {
     return {
       accepted: false,
       reason: "INVALID_TRANSITION",
-      message: "El turno cambio de estado mientras lo editabas. Recarga la agenda e intenta de nuevo.",
+      message: "El turno cambió de estado mientras lo editabas. Recargá la agenda e intentá de nuevo.",
     };
-  }
-  if (updated.customerEmail && notifications) {
-    await sendEmailAndLog(notifications.logRepository, notifications.port, {
-      event: "APPOINTMENT_STATUS_CHANGED",
-      appointmentId: updated.id,
-      recipient: updated.customerEmail,
-      subject: "Actualizacion de tu turno",
-      text: `Tu turno para ${updated.serviceName} ahora esta ${statusLabel(updated.status)}.`,
-    });
   }
 
   return { accepted: true, appointment: updated };
@@ -159,7 +188,6 @@ export async function updateInternalAppointmentStatus(
 export async function rescheduleInternalAppointment(
   repository: InternalSchedulingRepository,
   input: z.input<typeof rescheduleInputSchema>,
-  notifications?: InternalStatusNotificationOptions,
 ): Promise<
   | { accepted: true; appointment: InternalAppointmentRecord }
   | {
@@ -169,18 +197,18 @@ export async function rescheduleInternalAppointment(
     }
 > {
   const parsed = rescheduleInputSchema.parse(input);
-  const result = await repository.withSchedulingTransaction(async () => {
-    const appointment = await repository.findAppointmentById(parsed.appointmentId);
+  return repository.withSchedulingTransaction(async (tx) => {
+    const appointment = await tx.findAppointmentById(parsed.appointmentId);
     if (!appointment) {
-      return { accepted: false as const, reason: "APPOINTMENT_NOT_FOUND" as const, message: "No se encontro el turno." };
+      return { accepted: false as const, reason: "APPOINTMENT_NOT_FOUND" as const, message: "No se encontró el turno." };
     }
-    if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(appointment.status)) {
+    if (isTerminalStatus(appointment.status)) {
       return { accepted: false as const, reason: "TERMINAL_APPOINTMENT" as const, message: "No se puede reprogramar un turno finalizado." };
     }
 
     // Sequential on purpose: a transaction's connection must not run concurrent queries.
-    const context = await repository.getSchedulingContext();
-    const appointments = await repository.listAppointmentsForDate(parsed.date);
+    const context = await tx.getSchedulingContext();
+    const appointments = await tx.listAppointmentsForDate(parsed.date);
     const validation = validateAppointmentInterval({
       ...context,
       date: parsed.date,
@@ -196,27 +224,23 @@ export async function rescheduleInternalAppointment(
 
     return {
       accepted: true as const,
-      appointment: await repository.updateAppointmentInterval({
+      appointment: await tx.updateAppointmentInterval({
         appointmentId: appointment.id,
         startAt: validation.startAt,
         endAt: validation.endAt,
         changedById: parsed.changedById,
         reason: parsed.reason,
+        notification: appointment.customerEmail
+          ? {
+              event: "APPOINTMENT_INTERVAL_CHANGED",
+              recipient: appointment.customerEmail,
+              subject: "Actualización de tu turno",
+              text: `Tu turno para ${appointment.serviceName} fue reprogramado para ${formatDateTime(validation.startAt)} hasta ${formatTime(validation.endAt)}.`,
+            }
+          : undefined,
       }),
     };
   });
-
-  if (result.accepted && result.appointment.customerEmail && notifications) {
-    await sendEmailAndLog(notifications.logRepository, notifications.port, {
-      event: "APPOINTMENT_INTERVAL_CHANGED",
-      appointmentId: result.appointment.id,
-      recipient: result.appointment.customerEmail,
-      subject: "Actualizacion de tu turno",
-      text: `Tu turno para ${result.appointment.serviceName} fue reprogramado para ${formatDateTime(result.appointment.startAt)} hasta ${formatTime(result.appointment.endAt)}.`,
-    });
-  }
-
-  return result;
 }
 
 export async function previewInternalAppointmentSlots(
@@ -233,9 +257,9 @@ export async function previewInternalAppointmentSlots(
   const parsed = previewIntervalInputSchema.parse(input);
   const appointment = await repository.findAppointmentById(parsed.appointmentId);
   if (!appointment) {
-    return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No se encontro el turno." };
+    return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No se encontró el turno." };
   }
-  if (["COMPLETED", "CANCELLED", "NO_SHOW"].includes(appointment.status)) {
+  if (isTerminalStatus(appointment.status)) {
     return {
       accepted: false,
       reason: "TERMINAL_APPOINTMENT",
@@ -293,33 +317,18 @@ export const internalStatusOptions = appointmentStatusSchema.options;
 
 export function intervalRejectionMessage(reason: AppointmentIntervalRejection): string {
   const messages: Record<AppointmentIntervalRejection, string> = {
-    INVALID_DURATION: "La duracion no respeta el minimo del servicio o el paso del taller.",
-    CLOSED_DATE: "El taller esta cerrado en la fecha seleccionada.",
+    INVALID_DURATION: "La duración no respeta el mínimo del servicio o el paso del taller.",
+    CLOSED_DATE: "El taller está cerrado en la fecha seleccionada.",
     OUTSIDE_OPENING_HOURS: "El turno debe quedar completamente dentro del horario de apertura.",
     BREAK_OVERLAP: "El turno se superpone con un descanso del taller.",
-    DAY_BOUNDARY_EXCEEDED: "El turno debe terminar en el mismo dia.",
+    DAY_BOUNDARY_EXCEEDED: "El turno debe terminar en el mismo día.",
     CAPACITY_EXHAUSTED: "No hay capacidad disponible para todo el intervalo seleccionado.",
   };
   return messages[reason];
 }
 
 function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "America/Argentina/Buenos_Aires",
-  }).format(date);
+  return formatWorkshopDateTime(date, { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 }
 
-function formatTime(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "America/Argentina/Buenos_Aires",
-  }).format(date);
-}
+const formatTime = workshopTime;

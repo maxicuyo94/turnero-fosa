@@ -3,7 +3,7 @@ import type {
   ImportedHoliday,
   InternalScheduleRepository,
   InternalWeeklyScheduleRecord,
-} from "@/src/modules/internal/maintenance";
+} from "@/src/modules/settings/maintenance";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 

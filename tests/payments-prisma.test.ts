@@ -11,8 +11,10 @@ import {
   expireOverdueDepositReservations,
   listPaidUnconfirmedDeposits,
 } from "@/src/modules/payments/prisma-repository";
-import { updateInternalAppointmentStatus } from "@/src/modules/internal/operations";
-import { PrismaInternalRepository } from "@/src/modules/internal/prisma-repository";
+import { updateInternalAppointmentStatus } from "@/src/modules/appointments/operations";
+import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
+import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
+import { workshopDate } from "@/src/lib/workshop-date";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 const repository = new PrismaDepositPaymentRepository(prisma);
@@ -228,7 +230,7 @@ describe("Prisma deposit reservations", () => {
 
       const [, cancellation] = await Promise.all([
         repository.applyProviderPayment(paymentUpdate(attempt.id, "APPROVED")),
-        updateInternalAppointmentStatus(new PrismaInternalRepository(prisma), { appointmentId: appointment.id, nextStatus: "CANCELLED", changedById: null }),
+        updateInternalAppointmentStatus(new PrismaAppointmentRepository(prisma), { appointmentId: appointment.id, nextStatus: "CANCELLED", changedById: null }),
       ]);
 
       const history = await prisma.appointmentStatusHistory.findMany({ where: { appointmentId: appointment.id }, orderBy: { changedAt: "asc" } });
@@ -264,6 +266,24 @@ describe("Prisma deposit reservations", () => {
     expect(await repository.getPublicCheckout(appointment.publicCode, new Date(now.getTime() + 31 * 60_000))).toBeNull();
     await prisma.appointment.update({ where: { id: appointment.id }, data: { status: "CANCELLED" } });
     expect(await repository.getPublicCheckout(appointment.publicCode, now)).toBeNull();
+  });
+
+  it("lets read-only availability skip lapsed deposit holds without writing anything", async () => {
+    const startAt = isolatedFutureSlot();
+    const date = workshopDate(startAt);
+    const lapsed = await createAppointment(startAt);
+    // `now` runs a day ahead, so two days back is already past for the real clock the view uses.
+    await createAttempt(lapsed.id, "PENDING", -2 * 24 * 60);
+    const open = await createAppointment(new Date(startAt.getTime() + 60 * 60_000));
+    await createAttempt(open.id, "PENDING", 60);
+    const bookings = new PrismaBookingRepository(prisma);
+
+    const view = await bookings.findAppointmentsForDate(date, { excludeLapsedDepositHolds: true });
+    const authoritative = await bookings.findAppointmentsForDate(date);
+
+    expect(view.map((item) => item.id)).toEqual([open.id]);
+    expect(authoritative.map((item) => item.id).sort()).toEqual([lapsed.id, open.id].sort());
+    expect(await appointmentStatus(lapsed.id)).toBe("PENDING_CONFIRMATION");
   });
 });
 

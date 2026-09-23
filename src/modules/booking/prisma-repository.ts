@@ -4,20 +4,31 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import type { BookingRepository, PublicAppointmentRecord, PublicServiceRecord } from "@/src/modules/booking/service";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { mapScheduleDateException } from "@/src/modules/settings/date-exceptions";
-import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
+import { emailOutboxEntry } from "@/src/modules/notifications/prisma-repository";
+import { lapsedDepositHoldWhere } from "@/src/modules/payments/prisma-repository";
+import { workshopDayBounds } from "@/src/lib/workshop-date";
 import { identityDerivedId, normalizeLicensePlate, normalizePhone } from "@/src/modules/customers/identity";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
-export class PrismaBookingRepository implements BookingRepository {
-  private tx?: TransactionClient;
+export type PrismaBookingRepositoryOptions = {
+  /** Set only on the copy handed to a transaction's operation; never mutated afterwards. */
+  tx?: TransactionClient;
+  /**
+   * Runs before each booking transaction, outside it: settles overdue deposit holds (which may ask
+   * Mercado Pago) so the capacity check inside the transaction sees their final state.
+   */
+  beforeBooking?: () => Promise<unknown>;
+};
 
-  constructor(private readonly prisma: PrismaClient, tx?: TransactionClient) {
-    this.tx = tx;
-  }
+export class PrismaBookingRepository implements BookingRepository {
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly options: PrismaBookingRepositoryOptions = {},
+  ) {}
 
   private get client(): PrismaClient | TransactionClient {
-    return this.tx ?? this.prisma;
+    return this.options.tx ?? this.prisma;
   }
 
   async getBookingContext() {
@@ -74,30 +85,31 @@ export class PrismaBookingRepository implements BookingRepository {
     return vehicleTypes.map((vehicleType) => ({ id: vehicleType.id, name: vehicleType.name }));
   }
 
-  async findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]> {
-    if (!this.tx) await settleOverdueDeposits(this.prisma);
-    const startOfDay = new Date(`${date}T00:00:00-03:00`);
-    const endOfDay = new Date(startOfDay.getTime() + 86_400_000);
+  async findAppointmentsForDate(
+    date: string,
+    options: { excludeLapsedDepositHolds?: boolean } = {},
+  ): Promise<PublicAppointmentRecord[]> {
+    const { start: startOfDay, end: endOfDay } = workshopDayBounds(date);
     const appointments = await this.client.appointment.findMany({
-      where: { startAt: { lt: endOfDay }, endAt: { gt: startOfDay } },
+      where: {
+        startAt: { lt: endOfDay },
+        endAt: { gt: startOfDay },
+        ...(options.excludeLapsedDepositHolds ? { NOT: lapsedDepositHoldWhere(new Date()) } : {}),
+      },
       include: { service: true },
     });
     return appointments.map(mapAppointment);
   }
 
-  async withBookingTransaction<T>(operation: () => Promise<T>): Promise<T> {
+  async withBookingTransaction<T>(operation: (repository: BookingRepository) => Promise<T>): Promise<T> {
+    if (this.options.tx) return operation(this);
+    await this.options.beforeBooking?.();
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
         return await this.prisma.$transaction(
           async (tx) => {
-            const previous = this.tx;
-            this.tx = tx;
-            try {
-              await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('public_booking_capacity'))`;
-              return await operation();
-            } finally {
-              this.tx = previous;
-            }
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('public_booking_capacity'))`;
+            return operation(new PrismaBookingRepository(this.prisma, { tx }));
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
         );
@@ -136,6 +148,7 @@ export class PrismaBookingRepository implements BookingRepository {
         cancellationTokenHash: input.cancellationToken ? hashCancellationToken(input.cancellationToken) : null,
         notes: input.notes,
         statusHistory: { create: { toStatus: input.status, note: "Public booking request created." } },
+        ...(input.notification ? { emailLogs: { create: emailOutboxEntry(input.notification) } } : {}),
       },
       include: { service: true },
     });

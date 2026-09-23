@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { workshopInstant } from "@/src/lib/workshop-date";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { seedAdminUser, seedWorkshopConfiguration } from "@/src/modules/settings/seed";
 import { normalizeLicensePlate, normalizePhone } from "@/src/modules/customers/identity";
@@ -55,7 +56,7 @@ const sampleAppointments: {
     serviceDisplayOrder: 1,
     startTime: "09:00",
     status: "PENDING_CONFIRMATION",
-    notes: "Dato de prueba: turno pendiente de confirmacion.",
+    notes: "Dato de prueba: turno pendiente de confirmación.",
   },
   {
     idempotencyKey: `${testDataPrefix}appointment-confirmed`,
@@ -124,7 +125,7 @@ export async function loadDevelopmentTestData(
     const service = await prisma.service.findFirstOrThrow({
       where: { workshopSettingsId, displayOrder: appointment.serviceDisplayOrder },
     });
-    const startAt = new Date(`${agendaDate}T${appointment.startTime}:00-03:00`);
+    const startAt = workshopInstant(agendaDate, appointment.startTime);
     const endAt = new Date(startAt.getTime() + service.durationMinutes * 60_000);
     const data = {
       serviceId: service.id,

@@ -35,18 +35,18 @@ export function resolveTestDataTarget(input: {
   }
 
   if (env.NODE_ENV === "production" || env.VERCEL_ENV === "production") {
-    return rejection("PRODUCTION_ENVIRONMENT", "Los datos de prueba estan prohibidos en produccion.");
+    return rejection("PRODUCTION_ENVIRONMENT", "Los datos de prueba están prohibidos en producción.");
   }
 
   const target = parseDatabaseUrl(env.DATABASE_URL);
   if (!target) {
-    return rejection("INVALID_DATABASE_URL", "DATABASE_URL no es una cadena de conexion PostgreSQL valida.");
+    return rejection("INVALID_DATABASE_URL", "DATABASE_URL no es una cadena de conexión PostgreSQL válida.");
   }
 
   if (productionMarker.test(target.host) || productionMarker.test(target.database)) {
     return rejection(
       "PRODUCTION_TARGET",
-      `El destino ${target.host}/${target.database} parece productivo. Los datos de prueba estan prohibidos en produccion.`,
+      `El destino ${target.host}/${target.database} parece productivo. Los datos de prueba están prohibidos en producción.`,
     );
   }
 

@@ -1,8 +1,9 @@
 import { db } from "@/src/lib/db";
 import { businessSettingsSchema } from "@/src/modules/settings/business-settings";
+import { findWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
 
 export async function WorkshopContact() {
-  const stored = await db.workshopSettings.findFirst({ orderBy: { createdAt: "asc" } });
+  const stored = await findWorkshopSettingsRow(db);
   const settings = businessSettingsSchema.parse(stored ?? {});
   if (!settings.publicPhone && !settings.whatsappNumber && !settings.publicAppUrl && !settings.depositRefundPolicy) return null;
   return <footer className="mx-auto w-full max-w-6xl px-5 py-8 text-sm text-zinc-300">

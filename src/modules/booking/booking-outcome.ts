@@ -21,17 +21,17 @@ export type PaymentIssueCode = (typeof paymentIssueCodes)[number];
 
 const failureMessages: Partial<Record<BookingResultCode, string>> = {
   "not-found": "No encontramos el turno para reintentar el pago.",
-  "slot-unavailable": "Elegi otro horario disponible.",
-  "service-unavailable": "Elegi un servicio activo.",
-  invalid: "Revisa los datos del cliente y del vehiculo.",
-  "invalid-duration": "Elegi una duracion valida para el servicio.",
+  "slot-unavailable": "Elegí otro horario disponible.",
+  "service-unavailable": "Elegí un servicio activo.",
+  invalid: "Revisá los datos del cliente y del vehículo.",
+  "invalid-duration": "Elegí una duración válida para el servicio.",
 };
 
 const paymentIssueMessages: Record<PaymentIssueCode, string> = {
-  unavailable: "El turno fue recibido, pero Mercado Pago no esta disponible. Intenta el pago nuevamente mas tarde.",
+  unavailable: "El turno fue recibido, pero Mercado Pago no está disponible. Intentá el pago nuevamente más tarde.",
   "not-payable": "Este turno ya no admite el pago de una seña.",
-  disabled: "El pago online todavia no esta habilitado. El taller coordinara la seña.",
-  "not-found": "Revisa el codigo del turno e intenta nuevamente.",
+  disabled: "El pago online todavía no está habilitado. El taller coordinará la seña.",
+  "not-found": "Revisá el código del turno e intentá nuevamente.",
 };
 
 export type BookingOutcomeParams = {
@@ -97,7 +97,7 @@ export function describeBookingOutcome(
 
 function successMessage(result: BookingResultCode, status: AppointmentStatus, paymentFailed: boolean): string {
   if (result === "repeated") {
-    return "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion.";
+    return "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.";
   }
   if (result === "payment-retry") {
     return paymentFailed
@@ -105,8 +105,8 @@ function successMessage(result: BookingResultCode, status: AppointmentStatus, pa
       : "Continua en Mercado Pago para confirmar el turno.";
   }
   return status === "CONFIRMED"
-    ? "Tu turno quedo confirmado automaticamente."
-    : "Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.";
+    ? "Tu turno quedó confirmado automáticamente."
+    : "Recibimos tu pedido de turno y queda pendiente de confirmación del taller.";
 }
 
 function first(value: string | string[] | undefined): string | undefined {

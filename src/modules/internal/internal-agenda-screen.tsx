@@ -1,18 +1,14 @@
 import {
-  deleteDateExceptionAction,
-  importHolidaysAction,
-  saveDateExceptionAction,
   signOutAction,
   createVehicleTypeAction,
   updateVehicleTypeVisibilityAction,
   updateServiceVisibilityAction,
   updateServiceDurationAction,
-  updateWeeklyScheduleAction,
   updateWorkshopSettingsAction,
 } from "@/app/(internal)/internal/actions";
 import Link from "next/link";
 import { CapacityWarning } from "@/src/modules/internal/capacity-warning";
-import type { CapacityConflict } from "@/src/modules/internal/capacity-conflicts";
+import type { CapacityConflict } from "@/src/modules/appointments/capacity-conflicts";
 import { PaidDepositWarning } from "@/src/modules/internal/paid-deposit-warning";
 import type { PaidUnconfirmedDeposit } from "@/src/modules/payments/prisma-repository";
 import { ContactSettingsFields, DepositSettingsFields } from "@/src/modules/settings/business-settings-fields";
@@ -20,8 +16,6 @@ import {
   Alert,
   Button,
   Card,
-  Chip,
-  EmptyState,
   Field,
   PageHeading,
   PageShell,
@@ -35,11 +29,12 @@ import type {
   InternalVehicleTypeRecord,
   InternalWeeklyScheduleRecord,
   InternalWorkshopSettingsRecord,
-} from "@/src/modules/internal/maintenance";
-import { agendaHref, type AgendaView } from "@/src/modules/internal/agenda-navigation";
+} from "@/src/modules/settings/maintenance";
+import { agendaHref, type AgendaView } from "@/src/modules/appointments/agenda-navigation";
 import { InternalAgendaWorkspace } from "@/src/modules/internal/internal-agenda-workspace";
-import { intervalRejectionMessage, type InternalAgenda } from "@/src/modules/internal/operations";
-import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
+import { intervalRejectionMessage, type InternalAgenda } from "@/src/modules/appointments/operations";
+import type { ScheduleDateException } from "@/src/modules/settings/schemas";
+import { DateExceptionsCard, WeeklyScheduleCard } from "@/src/modules/internal/schedule-settings";
 
 export const internalFeedbackCodes = [
   "settings-updated", "settings-invalid", "service-updated", "service-invalid",
@@ -63,6 +58,10 @@ export const internalFeedbackCodes = [
   "reschedule-break-overlap",
   "reschedule-day-boundary-exceeded",
   "reschedule-capacity-exhausted",
+  "vehicle-type-created",
+  "vehicle-type-updated",
+  "vehicle-type-invalid",
+  "forbidden",
 ] as const;
 
 export type InternalFeedbackCode = (typeof internalFeedbackCodes)[number];
@@ -76,13 +75,13 @@ const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message:
   "schedule-updated": { tone: "success", message: "Actualizamos el horario semanal del taller." },
   "schedule-invalid": {
     tone: "danger",
-    message: "Revisa los horarios: cada dia abierto debe cerrar mas tarde y los descansos deben quedar dentro del horario.",
+    message: "Revisá los horarios: cada día abierto debe cerrar más tarde y los descansos deben quedar dentro del horario.",
   },
   "exception-saved": { tone: "success", message: "Guardamos la fecha especial." },
   "exception-deleted": { tone: "success", message: "Quitamos la fecha especial. Vuelve a regir el horario semanal." },
   "exception-invalid": {
     tone: "danger",
-    message: "Revisa la fecha: una apertura excepcional necesita horario de apertura y cierre validos.",
+    message: "Revisá la fecha: una apertura excepcional necesita horario de apertura y cierre válidos.",
   },
   "holidays-imported": { tone: "success", message: "Importamos los feriados nacionales sin tocar tus ajustes manuales." },
   "holidays-unavailable": {
@@ -91,7 +90,7 @@ const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message:
   },
   "holidays-invalid": {
     tone: "danger",
-    message: "La respuesta de feriados no tiene el formato esperado. No se modifico ninguna fecha.",
+    message: "La respuesta de feriados no tiene el formato esperado. No se modificó ninguna fecha.",
   },
   "status-updated": { tone: "success", message: "Actualizamos el estado del turno." },
   "status-invalid": {
@@ -108,16 +107,13 @@ const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message:
   "reschedule-break-overlap": { tone: "danger", message: intervalRejectionMessage("BREAK_OVERLAP") },
   "reschedule-day-boundary-exceeded": { tone: "danger", message: intervalRejectionMessage("DAY_BOUNDARY_EXCEEDED") },
   "reschedule-capacity-exhausted": { tone: "danger", message: intervalRejectionMessage("CAPACITY_EXHAUSTED") },
-};
-
-const dayLabels: Record<DayOfWeek, string> = {
-  MONDAY: "Lunes",
-  TUESDAY: "Martes",
-  WEDNESDAY: "Miercoles",
-  THURSDAY: "Jueves",
-  FRIDAY: "Viernes",
-  SATURDAY: "Sabado",
-  SUNDAY: "Domingo",
+  "vehicle-type-created": { tone: "success", message: "Agregamos el tipo de vehículo." },
+  "vehicle-type-updated": { tone: "success", message: "Actualizamos la visibilidad del tipo de vehículo." },
+  "vehicle-type-invalid": {
+    tone: "danger",
+    message: "No se pudo guardar el tipo de vehículo: el nombre es obligatorio, de hasta 40 caracteres y sin repetir, y debe quedar al menos un tipo activo.",
+  },
+  forbidden: { tone: "danger", message: "Esa sección es solo para administradores del taller." },
 };
 
 export function InternalAgendaScreen({
@@ -135,6 +131,7 @@ export function InternalAgendaScreen({
   signedInUserName,
   today = agenda.date,
   view = "day",
+  canManageWorkshop = true,
 }: {
   agenda: InternalAgenda;
   weekAgendas?: InternalAgenda[];
@@ -150,6 +147,8 @@ export function InternalAgendaScreen({
   signedInUserName?: string | null;
   today?: string;
   view?: AgendaView;
+  /** Administrators only: shows the Configuración section. */
+  canManageWorkshop?: boolean;
 }) {
   const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
 
@@ -167,9 +166,11 @@ export function InternalAgendaScreen({
           <InternalNavLink active={section === "agenda"} href={agendaHref({ date: agenda.date, view })}>
             Agenda
           </InternalNavLink>
-          <InternalNavLink active={section === "settings"} href={`/internal?section=settings&date=${agenda.date}`}>
-            Configuración
-          </InternalNavLink>
+          {canManageWorkshop ? (
+            <InternalNavLink active={section === "settings"} href={`/internal?section=settings&date=${agenda.date}`}>
+              Configuración
+            </InternalNavLink>
+          ) : null}
           <InternalNavLink active={false} href="/internal/vehicles">
             Unidades
           </InternalNavLink>
@@ -190,7 +191,7 @@ export function InternalAgendaScreen({
           </Alert>
         ) : null}
 
-        {section === "agenda" ? (
+        {section === "agenda" || !canManageWorkshop ? (
           <InternalAgendaWorkspace
             agenda={agenda}
             capacity={settings?.capacity}
@@ -216,17 +217,17 @@ export function InternalAgendaScreen({
               <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
                 <ContactSettingsFields settings={settings} />
                 <h3 className="mt-3 text-lg font-bold text-white">Operación y señas</h3>
-                <Field hint="(1-20)" label="Capacidad simultanea">
+                <Field hint="(1-20)" label="Capacidad simultánea">
                   <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
                 </Field>
-                <Field hint="(minutos, 0-10080)" label="Aviso minimo">
+                <Field hint="(minutos, 0-10080)" label="Aviso mínimo">
                   <TextInput
                     defaultValue={settings.minimumNoticeMinutes}
                     name="minimumNoticeMinutes"
                     type="number"
                   />
                 </Field>
-                <Field hint="(dias, 1-365)" label="Ventana de reserva">
+                <Field hint="(días, 1-365)" label="Ventana de reserva">
                   <TextInput
                     defaultValue={settings.maximumBookingWindowDays}
                     name="maximumBookingWindowDays"
@@ -302,8 +303,8 @@ export function InternalAgendaScreen({
 
           {services.length > 0 ? (
             <Card>
-              <h2 className="text-2xl font-black text-white">Catalogo de servicios</h2>
-              <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad publica.</p>
+              <h2 className="text-2xl font-black text-white">Catálogo de servicios</h2>
+              <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad pública.</p>
               <div className="mt-5 grid gap-3">
                 {services.map((service) => (
                   <div key={service.id} className="rounded-xl border border-white/5 bg-charcoal-950 p-3">
@@ -361,170 +362,4 @@ function InternalNavLink({ active, href, children }: { active: boolean; href: st
       {children}
     </Link>
   );
-}
-
-function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: string; schedule: InternalWeeklyScheduleRecord }) {
-  return (
-    <Card className="mt-5">
-      <h2 className="text-2xl font-black text-white">Horario semanal</h2>
-      <p className="mt-2 text-sm text-zinc-500">
-        Se guarda completo: los turnos publicos usan estos valores apenas confirmas los cambios.
-      </p>
-
-      <form action={updateWeeklyScheduleAction} className="mt-6 grid gap-4">
-        <input name="agendaDate" type="hidden" value={agendaDate} />
-        {dayOfWeekSchema.options.map((dayOfWeek) => {
-          const day = schedule.schedules.find((item) => item.dayOfWeek === dayOfWeek);
-          const dayBreaks = schedule.breaks.filter((item) => item.dayOfWeek === dayOfWeek);
-
-          return (
-            <fieldset className="rounded-xl border border-white/5 bg-charcoal-950 p-4" key={dayOfWeek}>
-              <legend className="px-1 text-sm font-medium text-white">{dayLabels[dayOfWeek]}</legend>
-              <div className="grid gap-3 sm:grid-cols-[auto_1fr_1fr]">
-                <Field className="sm:items-center" label="Abierto">
-                  <input
-                    aria-label={`${dayLabels[dayOfWeek]}: abierto`}
-                    className="h-5 w-5 accent-apple-400"
-                    defaultChecked={day?.isOpen ?? false}
-                    name={`isOpen-${dayOfWeek}`}
-                    type="checkbox"
-                    value="true"
-                  />
-                </Field>
-                <Field label="Abre">
-                  <TextInput
-                    aria-label={`${dayLabels[dayOfWeek]}: abre`}
-                    defaultValue={day?.opensAt ?? "09:00"}
-                    density="sm"
-                    name={`opensAt-${dayOfWeek}`}
-                    type="time"
-                  />
-                </Field>
-                <Field label="Cierra">
-                  <TextInput
-                    aria-label={`${dayLabels[dayOfWeek]}: cierra`}
-                    defaultValue={day?.closesAt ?? "19:00"}
-                    density="sm"
-                    name={`closesAt-${dayOfWeek}`}
-                    type="time"
-                  />
-                </Field>
-              </div>
-
-              <div className="mt-3 grid gap-3">
-                {[...dayBreaks, null].map((scheduleBreak, index) => (
-                  <div className="grid gap-3 sm:grid-cols-2" key={`${dayOfWeek}-break-${index}`}>
-                    <Field label={`Descanso ${index + 1} desde`}>
-                      <TextInput
-                        aria-label={`${dayLabels[dayOfWeek]}: descanso ${index + 1} desde`}
-                        defaultValue={scheduleBreak?.startsAt ?? ""}
-                        density="sm"
-                        name={`break-${dayOfWeek}-${index}-startsAt`}
-                        type="time"
-                      />
-                    </Field>
-                    <Field label={`Descanso ${index + 1} hasta`}>
-                      <TextInput
-                        aria-label={`${dayLabels[dayOfWeek]}: descanso ${index + 1} hasta`}
-                        defaultValue={scheduleBreak?.endsAt ?? ""}
-                        density="sm"
-                        name={`break-${dayOfWeek}-${index}-endsAt`}
-                        type="time"
-                      />
-                    </Field>
-                  </div>
-                ))}
-              </div>
-            </fieldset>
-          );
-        })}
-
-        <Button className="mt-1 w-fit" size="md" type="submit">
-          Guardar horarios
-        </Button>
-      </form>
-    </Card>
-  );
-}
-
-function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: string; exceptions: ScheduleDateException[] }) {
-  return (
-    <Card className="mt-5">
-      <h2 className="text-2xl font-black text-white">Fechas especiales</h2>
-      <p className="mt-2 text-sm text-zinc-500">
-        Feriados y cierres puntuales. Una fecha especial manda sobre el horario semanal.
-      </p>
-
-      {exceptions.length === 0 ? (
-        <EmptyState className="mt-5">Todavia no hay fechas especiales cargadas.</EmptyState>
-      ) : (
-        <div className="mt-5 grid gap-3">
-          {exceptions.map((exception) => (
-            <div
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
-              key={exception.date}
-            >
-              <span>
-                <span className="block font-medium text-white">{exception.label ?? "Sin motivo"}</span>
-                <span className="mt-1 block text-xs text-zinc-500">
-                  <span>{formatDisplayDate(exception.date)}</span>
-                  {" · "}
-                  <span>{exception.isOpen ? `Abre ${exception.opensAt} a ${exception.closesAt}` : "Cerrado"}</span>
-                </span>
-              </span>
-              <span className="flex items-center gap-3">
-                <Chip>{exception.manualOverride ? "Manual" : "Importado"}</Chip>
-                <form action={deleteDateExceptionAction}>
-                  <input name="agendaDate" type="hidden" value={agendaDate} />
-                  <input name="exceptionDate" type="hidden" value={exception.date} />
-                  <Button aria-label={`Eliminar la excepcion del ${exception.date}`} type="submit" variant="ghost">
-                    Eliminar
-                  </Button>
-                </form>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <form action={saveDateExceptionAction} className="mt-6 grid gap-4 sm:grid-cols-2">
-        <input name="agendaDate" type="hidden" value={agendaDate} />
-        <Field label="Fecha">
-          <TextInput density="sm" name="date" required type="date" />
-        </Field>
-        <Field label="Motivo">
-          <TextInput density="sm" name="label" placeholder="Feriado, mudanza, capacitacion" type="text" />
-        </Field>
-        <Field className="sm:items-center" label="Abre excepcionalmente">
-          <input className="h-5 w-5 accent-apple-400" name="isOpen" type="checkbox" value="true" />
-        </Field>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Abre">
-            <TextInput density="sm" name="opensAt" type="time" />
-          </Field>
-          <Field label="Cierra">
-            <TextInput density="sm" name="closesAt" type="time" />
-          </Field>
-        </div>
-        <Button className="w-fit" size="md" type="submit">
-          Guardar excepcion
-        </Button>
-      </form>
-
-      <form action={importHolidaysAction} className="mt-6 flex flex-col gap-3 border-t border-white/5 pt-6 sm:flex-row sm:items-end">
-        <input name="agendaDate" type="hidden" value={agendaDate} />
-        <Field hint="(feriados nacionales de Argentina)" label="Ano">
-          <TextInput defaultValue={agendaDate.slice(0, 4)} density="sm" max={2100} min={2000} name="year" type="number" />
-        </Field>
-        <Button size="md" type="submit" variant="ghost">
-          Importar feriados
-        </Button>
-      </form>
-    </Card>
-  );
-}
-
-function formatDisplayDate(date: string): string {
-  const value = new Date(`${date}T12:00:00-03:00`);
-  return new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Argentina/Buenos_Aires" }).format(value);
 }

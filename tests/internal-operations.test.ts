@@ -1,18 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   getInternalAgenda,
+  getInternalAgendas,
   previewInternalAppointmentSlots,
   rescheduleInternalAppointment,
   updateInternalAppointmentStatus,
   type InternalAppointmentRecord,
   type InternalOperationsRepository,
   type InternalSchedulingRepository,
-} from "@/src/modules/internal/operations";
-import type {
-  EmailNotificationMessage,
-  NotificationLogRepository,
-  NotificationPort,
-} from "@/src/modules/notifications/service";
+} from "@/src/modules/appointments/operations";
+import type { EmailNotificationDraft } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 const today = "2026-07-06";
@@ -34,6 +31,23 @@ describe("internal daily agenda", () => {
     const repository = new InMemoryInternalRepository([]);
 
     await expect(getInternalAgenda(repository, { date: today })).resolves.toEqual({ date: today, appointments: [] });
+  });
+
+  it("builds every agenda of the week from one range query", async () => {
+    const repository = new InMemoryInternalRepository([
+      appointment({ id: "tuesday", startAt: "2026-07-07T09:00:00-03:00", endAt: "2026-07-07T09:30:00-03:00" }),
+      appointment({ id: "monday", startAt: "2026-07-06T09:00:00-03:00" }),
+      appointment({ id: "next-week", startAt: "2026-07-13T09:00:00-03:00", endAt: "2026-07-13T09:30:00-03:00" }),
+    ]);
+
+    const agendas = await getInternalAgendas(repository, { dates: ["2026-07-07", "2026-07-06", "2026-07-08"] });
+
+    expect(repository.rangeQueries).toEqual([["2026-07-06", "2026-07-08"]]);
+    expect(agendas.map((agenda) => [agenda.date, agenda.appointments.map((item) => item.id)])).toEqual([
+      ["2026-07-06", ["monday"]],
+      ["2026-07-07", ["tuesday"]],
+      ["2026-07-08", []],
+    ]);
   });
 });
 
@@ -82,28 +96,37 @@ describe("internal status transitions", () => {
     expect(repository.statusHistory).toHaveLength(0);
   });
 
-  it("sends and logs a provider-neutral notification after a status change", async () => {
+  it("queues the customer email in the same write as the status change", async () => {
     const repository = new InMemoryInternalRepository([appointment({ id: "appt_3", status: "CONFIRMED" })]);
-    const port = new CollectingNotificationPort();
-    const logRepository = new InMemoryNotificationLogRepository();
 
-    const result = await updateInternalAppointmentStatus(
-      repository,
-      { appointmentId: "appt_3", nextStatus: "IN_PROGRESS", changedById: "user_1" },
-      { port, logRepository },
-    );
+    const result = await updateInternalAppointmentStatus(repository, {
+      appointmentId: "appt_3",
+      nextStatus: "IN_PROGRESS",
+      changedById: "user_1",
+    });
 
     expect(result).toMatchObject({ accepted: true, appointment: { status: "IN_PROGRESS" } });
-    expect(port.messages).toEqual([
-      expect.objectContaining({
-        event: "APPOINTMENT_STATUS_CHANGED",
+    expect(repository.queuedEmails).toEqual([
+      {
         appointmentId: "appt_3",
+        event: "APPOINTMENT_STATUS_CHANGED",
         recipient: "ada@example.com",
-      }),
+        subject: "Actualización de tu turno",
+        text: "Tu turno para Service Esencial ahora está en curso.",
+      },
     ]);
-    expect(logRepository.entries).toEqual([
-      expect.objectContaining({ appointmentId: "appt_3", status: "SENT", providerId: "provider-message-id" }),
+  });
+
+  it("queues no email for a customer without one, nor for a rejected change", async () => {
+    const repository = new InMemoryInternalRepository([
+      appointment({ id: "no-email", status: "CONFIRMED", customerEmail: null }),
+      appointment({ id: "done", status: "COMPLETED" }),
     ]);
+
+    await updateInternalAppointmentStatus(repository, { appointmentId: "no-email", nextStatus: "IN_PROGRESS", changedById: null });
+    await updateInternalAppointmentStatus(repository, { appointmentId: "done", nextStatus: "IN_PROGRESS", changedById: null });
+
+    expect(repository.queuedEmails).toEqual([]);
   });
 });
 
@@ -175,19 +198,35 @@ describe("internal appointment rescheduling", () => {
     expect(repository.appointments[0]?.intervalHistory).toEqual([]);
   });
 
-  it("notifies the customer only after a successful reschedule", async () => {
+  it("queues the customer email only with a successful reschedule", async () => {
     const repository = new InMemoryInternalRepository([appointment({ id: "notify", status: "CONFIRMED" })]);
-    const port = new CollectingNotificationPort();
-    const logRepository = new InMemoryNotificationLogRepository();
 
-    const result = await rescheduleInternalAppointment(
-      repository,
-      { appointmentId: "notify", date: "2026-07-07", startTime: "10:00", durationMinutes: 60, changedById: null },
-      { port, logRepository },
-    );
+    const rejected = await rescheduleInternalAppointment(repository, {
+      appointmentId: "notify",
+      date: "2026-07-07",
+      startTime: "13:00",
+      durationMinutes: 60,
+      changedById: null,
+    });
+    expect(rejected).toMatchObject({ accepted: false });
+    expect(repository.queuedEmails).toEqual([]);
+
+    const result = await rescheduleInternalAppointment(repository, {
+      appointmentId: "notify",
+      date: "2026-07-07",
+      startTime: "10:00",
+      durationMinutes: 60,
+      changedById: null,
+    });
 
     expect(result).toMatchObject({ accepted: true });
-    expect(port.messages).toEqual([expect.objectContaining({ event: "APPOINTMENT_INTERVAL_CHANGED", appointmentId: "notify" })]);
+    expect(repository.queuedEmails).toEqual([
+      expect.objectContaining({
+        appointmentId: "notify",
+        event: "APPOINTMENT_INTERVAL_CHANGED",
+        text: "Tu turno para Service Esencial fue reprogramado para 7 de julio de 2026 a las 10:00 hasta 11:00.",
+      }),
+    ]);
   });
 });
 
@@ -213,27 +252,22 @@ function appointment(
   };
 }
 
-class CollectingNotificationPort implements NotificationPort {
-  messages: EmailNotificationMessage[] = [];
-
-  async sendEmail(message: EmailNotificationMessage) {
-    this.messages.push(message);
-    return { providerId: "provider-message-id" };
-  }
-}
-
-class InMemoryNotificationLogRepository implements NotificationLogRepository {
-  entries: Parameters<NotificationLogRepository["logEmail"]>[0][] = [];
-
-  async logEmail(input: Parameters<NotificationLogRepository["logEmail"]>[0]) {
-    this.entries.push(input);
-  }
-}
-
 class InMemoryInternalRepository implements InternalOperationsRepository, InternalSchedulingRepository {
   statusHistory: Array<{ appointmentId: string; fromStatus: string; toStatus: string; changedById: string | null; note?: string }> = [];
+  queuedEmails: Array<EmailNotificationDraft & { appointmentId: string }> = [];
+  rangeQueries: Array<[string, string]> = [];
 
   constructor(public appointments: InternalAppointmentRecord[]) {}
+
+  async listAppointmentsBetween(fromDate: string, toDate: string) {
+    this.rangeQueries.push([fromDate, toDate]);
+    return this.appointments
+      .filter((item) => {
+        const day = item.startAt.toISOString().slice(0, 10);
+        return day >= fromDate && day <= toDate;
+      })
+      .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  }
 
   async listAppointmentsForDate(date: string) {
     return this.appointments
@@ -258,11 +292,12 @@ class InMemoryInternalRepository implements InternalOperationsRepository, Intern
       changedById: input.changedById,
       note: input.note,
     });
+    if (input.notification) this.queuedEmails.push({ appointmentId: input.appointmentId, ...input.notification });
     return found;
   }
 
-  async withSchedulingTransaction<T>(operation: () => Promise<T>) {
-    return operation();
+  async withSchedulingTransaction<T>(operation: (repository: InternalSchedulingRepository) => Promise<T>): Promise<T> {
+    return operation(this);
   }
 
   async getSchedulingContext() {
@@ -289,6 +324,7 @@ class InMemoryInternalRepository implements InternalOperationsRepository, Intern
     });
     found.startAt = input.startAt;
     found.endAt = input.endAt;
+    if (input.notification) this.queuedEmails.push({ appointmentId: input.appointmentId, ...input.notification });
     return found;
   }
 }

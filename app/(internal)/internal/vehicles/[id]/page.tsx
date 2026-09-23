@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { notFound, redirect } from "next/navigation";
-import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
+import { notFound } from "next/navigation";
+import { requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { signOutAction } from "@/app/(internal)/internal/actions";
 import { mergeVehiclesAction, saveVehicleAction } from "@/app/(internal)/internal/vehicles/actions";
@@ -15,8 +15,7 @@ export default async function VehicleRecordPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ feedback?: string }>;
 }) {
-  const session = await auth();
-  if (!isInternalSession(session)) redirect("/internal/login");
+  const staff = await requireStaff();
 
   const { id } = await params;
   const repository = new PrismaVehicleRepository(db);
@@ -39,7 +38,7 @@ export default async function VehicleRecordPage({
       mergeRequestKey={randomUUID()}
       onSignOut={signOutAction}
       saveAction={saveVehicleAction}
-      signedInUserName={getInternalSessionDisplayName(session)}
+      signedInUserName={staff.displayName}
       vehicle={vehicle}
       vehicleTypes={vehicleTypes.map((vehicleType) => ({ id: vehicleType.id, name: vehicleType.name }))}
     />

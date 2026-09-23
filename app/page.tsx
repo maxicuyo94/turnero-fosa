@@ -21,7 +21,7 @@ export default async function HomePage() {
         <section className="mt-9 grid gap-5 md:grid-cols-2">
           <RouteCard
             actionLabel="Ir a reservar →"
-            description="Elegi el servicio, la fecha y el horario que mejor te quede."
+            description="Elegí el servicio, la fecha y el horario que mejor te quede."
             eyebrow="Publico"
             href="/booking"
             linkComponent={Link}

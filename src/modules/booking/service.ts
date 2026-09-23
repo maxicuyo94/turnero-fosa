@@ -1,10 +1,11 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
+import { formatWorkshopDateTime, workshopInstant } from "@/src/lib/workshop-date";
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { customerSchema, vehicleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
 import { calendarDateSchema } from "@/src/modules/settings/business-settings";
-import { sendEmailAndLog, type NotificationLogRepository, type NotificationPort } from "@/src/modules/notifications/service";
+import type { EmailNotificationDraft } from "@/src/modules/notifications/service";
 import type { ScheduleBreak, ScheduleDateException, WeeklySchedule, WorkshopSettings } from "@/src/modules/settings/schemas";
 
 export type PublicVehicleTypeRecord = {
@@ -44,8 +45,14 @@ export type BookingRepository = {
   listActiveServices(): Promise<PublicServiceRecord[]>;
   findActiveService(serviceId: string): Promise<PublicServiceRecord | null>;
   listActiveVehicleTypes(): Promise<PublicVehicleTypeRecord[]>;
-  findAppointmentsForDate(date: string): Promise<PublicAppointmentRecord[]>;
-  withBookingTransaction<T>(operation: () => Promise<T>): Promise<T>;
+  /**
+   * Appointments overlapping the date. `excludeLapsedDepositHolds` leaves out reservations whose
+   * deposit deadline passed unpaid: a read-only view can already offer that time, while the booking
+   * itself, after the overdue holds are settled, still counts anything left pending.
+   */
+  findAppointmentsForDate(date: string, options?: { excludeLapsedDepositHolds?: boolean }): Promise<PublicAppointmentRecord[]>;
+  /** Runs `operation` against a repository bound to one serializable transaction. */
+  withBookingTransaction<T>(operation: (repository: BookingRepository) => Promise<T>): Promise<T>;
   findByIdempotencyKey(idempotencyKey: string): Promise<PublicAppointmentRecord | null>;
   findByPublicCode(publicCode: string): Promise<PublicAppointmentRecord | null>;
   createAppointment(input: {
@@ -59,6 +66,8 @@ export type BookingRepository = {
     customer: z.infer<typeof customerSchema>;
     vehicle: z.infer<typeof vehicleSchema>;
     notes?: string;
+    /** Queued in the email outbox by the same write that creates the appointment. */
+    notification?: EmailNotificationDraft;
   }): Promise<PublicAppointmentRecord>;
   findCancellableAppointment(appointmentId: string, token: string): Promise<PublicAppointmentRecord | null>;
   /**
@@ -100,11 +109,6 @@ export type CreatePublicBookingResult =
       fieldErrors?: Record<string, string[]>;
     };
 
-export type PublicBookingNotificationOptions = {
-  logRepository: NotificationLogRepository;
-  port: NotificationPort;
-};
-
 export type PublicAppointmentStatusResult =
   | {
       accepted: true;
@@ -144,7 +148,7 @@ export async function getPublicAvailability(
   const [context, service, appointments] = await Promise.all([
     repository.getBookingContext(),
     repository.findActiveService(input.serviceId),
-    repository.findAppointmentsForDate(input.date),
+    repository.findAppointmentsForDate(input.date, { excludeLapsedDepositHolds: true }),
   ]);
 
   if (!service) {
@@ -185,7 +189,7 @@ export async function getPublicAppointmentStatus(
   const parsed = publicCodeSchema.safeParse(input.code);
   const appointment = parsed.success ? await repository.findByPublicCode(parsed.data) : null;
   if (!appointment) {
-    return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese codigo." };
+    return { accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese código." };
   }
 
   return {
@@ -204,38 +208,31 @@ export async function getPublicAppointmentStatus(
 export async function createPublicBooking(
   repository: BookingRepository,
   input: CreatePublicBookingInput,
-  notifications?: PublicBookingNotificationOptions,
 ): Promise<CreatePublicBookingResult> {
   const parsed = bookingInputSchema.safeParse(input);
   if (!parsed.success) {
     return {
       accepted: false,
       reason: "VALIDATION_FAILED",
-      message: "Revisa los datos del cliente y del vehiculo.",
+      message: "Revisá los datos del cliente y del vehículo.",
       fieldErrors: z.flattenError(parsed.error).fieldErrors,
     };
   }
 
-  const transactionResult = await repository.withBookingTransaction(async (): Promise<{
-    result: CreatePublicBookingResult;
-    notification: { appointmentId: string; publicCode: string; recipient: string; serviceName: string; startAt: Date } | null;
-  }> => {
-    const context = await repository.getBookingContext();
-    const existing = await repository.findByIdempotencyKey(parsed.data.idempotencyKey);
+  return repository.withBookingTransaction(async (tx): Promise<CreatePublicBookingResult> => {
+    const context = await tx.getBookingContext();
+    const existing = await tx.findByIdempotencyKey(parsed.data.idempotencyKey);
     if (existing) {
-      return {
-        result: bookingSuccess(existing, existing.cancellationToken, {
-          repeated: true,
-          rawTokenRecoverable: existing.cancellationToken !== null,
-          depositRequired: context.settings.depositRequired,
-        }),
-        notification: null,
-      };
+      return bookingSuccess(existing, existing.cancellationToken, {
+        repeated: true,
+        rawTokenRecoverable: existing.cancellationToken !== null,
+        depositRequired: context.settings.depositRequired,
+      });
     }
 
-    const service = await repository.findActiveService(parsed.data.serviceId);
+    const service = await tx.findActiveService(parsed.data.serviceId);
     if (!service) {
-      return { result: { accepted: false, reason: "SERVICE_UNAVAILABLE", message: "Elegi un servicio activo." }, notification: null };
+      return { accepted: false, reason: "SERVICE_UNAVAILABLE", message: "Elegí un servicio activo." };
     }
 
     const durationMinutes = effectiveDurationMinutes(
@@ -245,16 +242,13 @@ export async function createPublicBooking(
     );
     if (durationMinutes === null) {
       return {
-        result: {
-          accepted: false,
-          reason: "VALIDATION_FAILED",
-          message: "Elegi una duracion valida para el servicio.",
-          fieldErrors: { durationMinutes: ["La duracion debe respetar el minimo del servicio y el paso del taller."] },
-        },
-        notification: null,
+        accepted: false,
+        reason: "VALIDATION_FAILED",
+        message: "Elegí una duración válida para el servicio.",
+        fieldErrors: { durationMinutes: ["La duración debe respetar el mínimo del servicio y el paso del taller."] },
       };
     }
-    const startAt = dateAtTime(parsed.data.date, parsed.data.startTime);
+    const startAt = workshopInstant(parsed.data.date, parsed.data.startTime);
     const endAt = new Date(startAt.getTime() + durationMinutes * 60_000);
     const available = getAvailableSlots({
       settings: context.settings,
@@ -263,20 +257,22 @@ export async function createPublicBooking(
       exceptions: context.exceptions,
       date: parsed.data.date,
       serviceDurationMinutes: durationMinutes,
-      appointments: await repository.findAppointmentsForDate(parsed.data.date),
+      appointments: await tx.findAppointmentsForDate(parsed.data.date),
       now: parsed.data.now,
     }).some((slot) => slot.startAt.getTime() === startAt.getTime() && slot.endAt.getTime() === endAt.getTime());
 
     if (!available) {
-      return { result: { accepted: false, reason: "SLOT_UNAVAILABLE", message: "Elegi otro horario disponible." }, notification: null };
+      return { accepted: false, reason: "SLOT_UNAVAILABLE", message: "Elegí otro horario disponible." };
     }
 
     const cancellationToken = context.settings.cancellationEnabled ? createCancellationToken() : null;
     const status = !context.settings.depositRequired && context.settings.confirmationMode === "AUTOMATIC"
       ? "CONFIRMED"
       : "PENDING_CONFIRMATION";
-    const appointment = await repository.createAppointment({
-      publicCode: createPublicCode(),
+    const publicCode = createPublicCode();
+    const recipient = parsed.data.customer.email;
+    const appointment = await tx.createAppointment({
+      publicCode,
       service,
       startAt,
       endAt,
@@ -286,33 +282,18 @@ export async function createPublicBooking(
       customer: parsed.data.customer,
       vehicle: parsed.data.vehicle,
       notes: parsed.data.notes,
-    });
-
-    return {
-      result: bookingSuccess(appointment, cancellationToken, { depositRequired: context.settings.depositRequired }),
-      notification: parsed.data.customer.email
+      notification: recipient
         ? {
-            appointmentId: appointment.id,
-            publicCode: appointment.publicCode,
-            recipient: parsed.data.customer.email,
-            serviceName: appointment.serviceName,
-            startAt: appointment.startAt,
+            event: "PUBLIC_BOOKING_CREATED",
+            recipient,
+            subject: "Recibimos tu turno",
+            text: `Recibimos tu turno para ${service.name} el ${formatDateTime(startAt)}. Código: ${publicCode}.`,
           }
-        : null,
-    };
-  });
-
-  if (transactionResult.notification && notifications) {
-    await sendEmailAndLog(notifications.logRepository, notifications.port, {
-      event: "PUBLIC_BOOKING_CREATED",
-      appointmentId: transactionResult.notification.appointmentId,
-      recipient: transactionResult.notification.recipient,
-      subject: "Recibimos tu turno",
-      text: `Recibimos tu turno para ${transactionResult.notification.serviceName} el ${formatDateTime(transactionResult.notification.startAt)}. Codigo: ${transactionResult.notification.publicCode}.`,
+        : undefined,
     });
-  }
 
-  return transactionResult.result;
+    return bookingSuccess(appointment, cancellationToken, { depositRequired: context.settings.depositRequired });
+  });
 }
 
 function effectiveDurationMinutes(serviceDurationMinutes: number, requestedDurationMinutes: number | undefined, slotStepMinutes: number): number | null {
@@ -362,10 +343,10 @@ function bookingSuccess(
   return {
     accepted: true,
     message: repeatedWithoutToken
-      ? "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion."
+      ? "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación."
       : appointment.status === "CONFIRMED"
-        ? "Tu turno quedo confirmado automaticamente."
-        : "Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.",
+        ? "Tu turno quedó confirmado automáticamente."
+        : "Recibimos tu pedido de turno y queda pendiente de confirmación del taller.",
     appointment,
     cancellationToken,
     reschedulingAvailable: false,
@@ -383,14 +364,6 @@ function createPublicCode(): string {
   return [...randomBytes(10)].map((value) => alphabet[value & 31]).join("");
 }
 
-function dateAtTime(date: string, time: string): Date {
-  return new Date(`${date}T${time}:00-03:00`);
-}
-
 function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "America/Argentina/Salta",
-  }).format(date);
+  return formatWorkshopDateTime(date, { dateStyle: "short", timeStyle: "short" });
 }

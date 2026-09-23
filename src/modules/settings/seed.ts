@@ -70,6 +70,7 @@ export async function seedAdminUser(
     username: adminUsername,
     email: adminEmail,
     name: env.ADMIN_NAME ?? "Express Admin",
+    role: "ADMIN" as const,
     ...(passwordHash ? { passwordHash } : {}),
   };
 

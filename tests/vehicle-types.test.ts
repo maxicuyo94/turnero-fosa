@@ -4,7 +4,7 @@ import {
   updateInternalVehicleTypeVisibility,
   type InternalVehicleTypeRecord,
   type InternalVehicleTypeRepository,
-} from "@/src/modules/internal/maintenance";
+} from "@/src/modules/settings/maintenance";
 
 describe("vehicle type catalog", () => {
   it("adds a type so it can be chosen without a deployment", async () => {

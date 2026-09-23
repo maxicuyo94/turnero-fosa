@@ -1,12 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { createAppointmentAction, retryDepositAction } from "@/app/(public)/booking/actions";
-import { auth, getInternalSessionDisplayName, isInternalSession } from "@/src/lib/auth";
-import { db } from "@/src/lib/db";
+import { bookingRepository, depositPaymentRepository, settleOverdueDepositsAfterResponse } from "@/src/lib/composition";
+import { getStaffMember } from "@/src/lib/staff-access";
 import { workshopDate } from "@/src/lib/workshop-date";
 import { calendarDateSchema } from "@/src/modules/settings/business-settings";
-import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
 import { PublicBookingScreen } from "@/src/modules/booking/public-booking-screen";
-import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { describeBookingOutcome, parseBookingOutcome } from "@/src/modules/booking/booking-outcome";
 import {
   getPublicAppointmentStatus,
@@ -21,8 +19,10 @@ type BookingPageProps = {
 
 export default async function BookingPage({ searchParams }: BookingPageProps) {
   const params = (await searchParams) ?? {};
-  const session = await auth();
-  const repository = new PrismaBookingRepository(db);
+  const staff = await getStaffMember();
+  const repository = bookingRepository();
+  // Availability already treats lapsed deposit holds as free; releasing them waits for the response.
+  settleOverdueDepositsAfterResponse();
   const [vehicleTypes, services, depositPolicy] = await Promise.all([
     repository.listActiveVehicleTypes(),
     listPublicServices(repository),
@@ -31,7 +31,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
   const selectedServiceId = stringParam(params.serviceId) ?? services[0]?.id ?? "";
   const selectedService = services.find((service) => service.id === selectedServiceId);
   const selectedDate = calendarDateSchema.safeParse(stringParam(params.date)).data ?? defaultBookingDate();
-  const canEditDuration = isInternalSession(session);
+  const canEditDuration = staff !== null;
   const requestedDurationMinutes = canEditDuration ? numberParam(params.durationMinutes) : undefined;
   const availability = selectedServiceId
     ? await getPublicAvailability(repository, {
@@ -54,7 +54,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     ? describeBookingOutcome(outcomeParams, bookedAppointment?.accepted ? bookedAppointment.appointment : null)
     : undefined;
   const checkout = outcome?.publicCode
-    ? await new PrismaDepositPaymentRepository(db).getPublicCheckout(outcome.publicCode)
+    ? await depositPaymentRepository().getPublicCheckout(outcome.publicCode)
     : null;
 
   return <PublicBookingScreen
@@ -73,7 +73,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     canEditDuration={canEditDuration}
     depositPolicy={depositPolicy}
     selectedServiceId={selectedServiceId}
-    signedInUserName={getInternalSessionDisplayName(session)}
+    signedInUserName={staff?.displayName}
     services={services}
     slots={availability.accepted ? availability.slots : []}
   />;

@@ -1,4 +1,4 @@
-import type { HolidayProvider } from "@/src/modules/internal/holiday-import";
+import type { HolidayProvider } from "@/src/modules/settings/holiday-import";
 
 const defaultBaseUrl = "https://api.argentinadatos.com/v1/feriados";
 

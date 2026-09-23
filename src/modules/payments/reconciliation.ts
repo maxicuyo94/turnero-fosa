@@ -28,9 +28,19 @@ export async function getDepositReconciler(prisma: PrismaClient): Promise<Deposi
   return env ? createDepositReconciler(prisma, env) : undefined;
 }
 
-/** Expires overdue reservations, first asking Mercado Pago about each one when payments are configured. */
-export async function settleOverdueDeposits(prisma: PrismaClient, now = new Date()): Promise<number> {
-  return expireOverdueDepositReservations(prisma, now, { loadReconciler: () => getDepositReconciler(prisma) });
+let sweepInFlight: Promise<number> | null = null;
+
+/**
+ * Expires overdue reservations, first asking Mercado Pago about each one when payments are configured.
+ * Callers in the same instance share one running sweep instead of stacking provider calls; sweeps in
+ * other instances stay safe because every release re-checks the appointment under a row lock.
+ */
+export function settleOverdueDeposits(prisma: PrismaClient, now = new Date()): Promise<number> {
+  sweepInFlight ??= expireOverdueDepositReservations(prisma, now, { loadReconciler: () => getDepositReconciler(prisma) })
+    .finally(() => {
+      sweepInFlight = null;
+    });
+  return sweepInFlight;
 }
 
 /**

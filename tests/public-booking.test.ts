@@ -10,7 +10,7 @@ import {
   type PublicServiceRecord,
 } from "@/src/modules/booking/service";
 import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
-import type { EmailNotificationMessage, NotificationLogRepository, NotificationPort } from "@/src/modules/notifications/service";
+import type { EmailNotificationDraft } from "@/src/modules/notifications/service";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import type { ScheduleDateException } from "@/src/modules/settings/schemas";
 
@@ -127,7 +127,7 @@ describe("createPublicBooking", () => {
 
     const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }));
 
-    expect(result).toEqual({ accepted: false, reason: "SLOT_UNAVAILABLE", message: "Elegi otro horario disponible." });
+    expect(result).toEqual({ accepted: false, reason: "SLOT_UNAVAILABLE", message: "Elegí otro horario disponible." });
     expect(repository.createdAppointments).toHaveLength(0);
   });
 
@@ -141,7 +141,7 @@ describe("createPublicBooking", () => {
 
     expect(result).toMatchObject({
       accepted: true,
-      message: "Tu turno quedo confirmado automaticamente.",
+      message: "Tu turno quedó confirmado automáticamente.",
       appointment: { serviceName: "Service Esencial", status: "CONFIRMED", publicCode: expect.stringMatching(/^[A-HJ-NP-Z2-9]{10}$/u) },
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
@@ -181,7 +181,7 @@ describe("createPublicBooking", () => {
 
     expect(result).toMatchObject({
       accepted: true,
-      message: "Recibimos tu pedido de turno y queda pendiente de confirmacion del taller.",
+      message: "Recibimos tu pedido de turno y queda pendiente de confirmación del taller.",
       appointment: { serviceName: "Service Esencial", status: "PENDING_CONFIRMATION" },
     });
     expect(result.accepted ? result.cancellationToken : "").toHaveLength(32);
@@ -196,7 +196,7 @@ describe("createPublicBooking", () => {
     expect(first).toMatchObject({ accepted: true, appointment: { idempotencyKey: "repeat-key" } });
     expect(second).toMatchObject({
       accepted: true,
-      message: "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion.",
+      message: "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.",
       appointment: { idempotencyKey: "repeat-key" },
     });
     expect(second.accepted ? second.cancellationToken : "unexpected").toBeNull();
@@ -216,45 +216,33 @@ describe("createPublicBooking", () => {
 
     expect(result).toMatchObject({
       accepted: true,
-      message: "Este pedido de turno ya fue recibido. Usa el mensaje original para acceder al enlace de cancelacion.",
+      message: "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.",
       appointment: { id: "appt_repeat", idempotencyKey: "repeat-key" },
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
     expect(repository.createdAppointments).toHaveLength(0);
   });
 
-  it("logs notification failures without blocking a successful booking", async () => {
+  it("queues the confirmation email with the appointment instead of sending it during the request", async () => {
     const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
-    const logRepository = new InMemoryNotificationLogRepository();
 
-    const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }), {
-      logRepository,
-      port: new FailingNotificationPort(),
-    });
+    const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }));
 
     expect(result).toMatchObject({ accepted: true, appointment: { status: "PENDING_CONFIRMATION" } });
-    expect(repository.createdAppointments).toHaveLength(1);
-    expect(logRepository.entries).toEqual([
-      expect.objectContaining({
-        appointmentId: "appt_1",
-        event: "PUBLIC_BOOKING_CREATED",
-        recipient: "ada@example.com",
-        status: "FAILED",
-        errorMessage: "Email provider unavailable.",
-      }),
+    expect(repository.queuedEmails).toEqual([
+      expect.objectContaining({ appointmentId: "appt_1", event: "PUBLIC_BOOKING_CREATED", recipient: "ada@example.com" }),
     ]);
   });
 
-  it("does not block a successful booking when notification failure logging also fails", async () => {
+  it("queues nothing when the customer leaves no email or the request repeats", async () => {
     const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
+    const withoutEmail = validBooking({ serviceId: "oil", startTime: "09:00" });
 
-    const result = await createPublicBooking(repository, validBooking({ serviceId: "oil", startTime: "09:00" }), {
-      logRepository: new FailingNotificationLogRepository(),
-      port: new FailingNotificationPort(),
-    });
+    await createPublicBooking(repository, { ...withoutEmail, customer: { ...withoutEmail.customer, email: undefined } });
+    await createPublicBooking(repository, { ...withoutEmail, customer: { ...withoutEmail.customer, email: undefined } });
 
-    expect(result).toMatchObject({ accepted: true, appointment: { status: "PENDING_CONFIRMATION" } });
     expect(repository.createdAppointments).toHaveLength(1);
+    expect(repository.queuedEmails).toEqual([]);
   });
 });
 
@@ -334,15 +322,11 @@ describe("getPublicAppointmentStatus", () => {
 
   it("includes the public code in the booking confirmation email", async () => {
     const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
-    const port = new CapturingNotificationPort();
 
-    const result = await createPublicBooking(repository, validBooking(), {
-      logRepository: new InMemoryNotificationLogRepository(),
-      port,
-    });
+    const result = await createPublicBooking(repository, validBooking());
 
     expect(result.accepted).toBe(true);
-    expect(port.messages[0]?.text).toContain(result.accepted ? result.appointment.publicCode : "unexpected");
+    expect(repository.queuedEmails[0]?.text).toContain(result.accepted ? result.appointment.publicCode : "unexpected");
   });
 
   it("returns the same generic result for malformed and unknown codes", async () => {
@@ -351,7 +335,7 @@ describe("getPublicAppointmentStatus", () => {
     const malformed = await getPublicAppointmentStatus(repository, { code: "bad" });
     const unknown = await getPublicAppointmentStatus(repository, { code: "ABCD234567" });
 
-    expect(malformed).toEqual({ accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese codigo." });
+    expect(malformed).toEqual({ accepted: false, reason: "APPOINTMENT_NOT_FOUND", message: "No encontramos un turno con ese código." });
     expect(unknown).toEqual(malformed);
   });
 });
@@ -406,6 +390,7 @@ class InMemoryBookingRepository implements BookingRepository {
   services;
   appointments;
   createdAppointments: PublicAppointmentRecord[] = [];
+  queuedEmails: Array<EmailNotificationDraft & { appointmentId: string }> = [];
 
   constructor(input: {
     settings?: typeof workshopSeedConfig.settings;
@@ -441,8 +426,8 @@ class InMemoryBookingRepository implements BookingRepository {
     return [{ id: "type-moto", name: "Moto" }];
   }
 
-  async withBookingTransaction<T>(operation: () => Promise<T>) {
-    return operation();
+  async withBookingTransaction<T>(operation: (repository: BookingRepository) => Promise<T>): Promise<T> {
+    return operation(this);
   }
 
   async findByIdempotencyKey(idempotencyKey: string) {
@@ -467,6 +452,7 @@ class InMemoryBookingRepository implements BookingRepository {
     });
     this.appointments.push(created);
     this.createdAppointments.push(created);
+    if (input.notification) this.queuedEmails.push({ appointmentId: created.id, ...input.notification });
     return created;
   }
 
@@ -483,31 +469,4 @@ class InMemoryBookingRepository implements BookingRepository {
   }
 }
 
-class FailingNotificationPort implements NotificationPort {
-  async sendEmail(): Promise<never> {
-    throw new Error("Email provider unavailable.");
-  }
-}
 
-class CapturingNotificationPort implements NotificationPort {
-  messages: EmailNotificationMessage[] = [];
-
-  async sendEmail(message: EmailNotificationMessage) {
-    this.messages.push(message);
-    return { providerId: "message-id" };
-  }
-}
-
-class InMemoryNotificationLogRepository implements NotificationLogRepository {
-  entries: Parameters<NotificationLogRepository["logEmail"]>[0][] = [];
-
-  async logEmail(input: Parameters<NotificationLogRepository["logEmail"]>[0]) {
-    this.entries.push(input);
-  }
-}
-
-class FailingNotificationLogRepository implements NotificationLogRepository {
-  async logEmail(): Promise<never> {
-    throw new Error("Notification log unavailable.");
-  }
-}

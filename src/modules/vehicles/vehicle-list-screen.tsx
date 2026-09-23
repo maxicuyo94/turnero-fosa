@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Alert, Button, Card, EmptyState, Field, PageHeading, PageShell, SiteHeader, TextInput } from "@/src/components/ui";
+import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import type { VehicleDuplicateGroup, VehicleSummary } from "@/src/modules/vehicles/service";
 
 export type VehicleListScreenProps = {
@@ -16,7 +17,7 @@ export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUs
       <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={onSignOut} userName={signedInUserName} />
       <PageShell>
         <PageHeading
-          description="Cada unidad acumula sus turnos. Busca por patente, marca, modelo o cliente."
+          description="Cada unidad acumula sus turnos. Buscá por patente, marca, modelo o cliente."
           eyebrow="Interno"
           title="Unidades"
         />
@@ -37,11 +38,11 @@ export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUs
           <Alert tone="info">
             <p className="font-medium">
               {duplicateGroups.length === 1
-                ? "Hay 1 patente cargada en mas de una unidad."
-                : `Hay ${duplicateGroups.length} patentes cargadas en mas de una unidad.`}
+                ? "Hay 1 patente cargada en más de una unidad."
+                : `Hay ${duplicateGroups.length} patentes cargadas en más de una unidad.`}
             </p>
             <p className="mt-1 text-sm">
-              Vienen de turnos anteriores, cuando cada reserva creaba una unidad nueva. Abri una de ellas para revisar
+              Vienen de turnos anteriores, cuando cada reserva creaba una unidad nueva. Abrí una de ellas para revisar
               y fusionar; no se toca nada hasta que confirmes.
             </p>
             <ul className="mt-3 grid gap-1 text-sm">
@@ -60,7 +61,7 @@ export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUs
         <Card>
           {vehicles.length === 0 ? (
             <EmptyState>
-              {query ? "Sin resultados. Proba con otra patente, marca o cliente." : "Todavia no hay unidades cargadas."}
+              {query ? "Sin resultados. Probá con otra patente, marca o cliente." : "Todavía no hay unidades cargadas."}
             </EmptyState>
           ) : (
             <ul className="grid gap-2">
@@ -96,5 +97,5 @@ export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUs
 }
 
 function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Argentina/Buenos_Aires" }).format(value);
+  return formatWorkshopDateTime(value, { day: "2-digit", month: "2-digit", year: "numeric" });
 }
