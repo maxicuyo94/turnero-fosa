@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   Alert,
   Button,
@@ -17,12 +16,8 @@ import type { VehicleRecord } from "@/src/modules/vehicles/service";
 export type VehicleRecordScreenProps = {
   vehicle: VehicleRecord;
   vehicleTypes: { id: string; name: string }[];
-  /** Other units sharing this plate. Shown so a merge is always a decision, never a default. */
-  duplicates: { id: string; brand: string; model: string; licensePlate: string | null; ownerName: string; appointmentCount: number }[];
-  mergeRequestKey: string;
   feedback?: string | null;
   saveAction?: (formData: FormData) => void | Promise<void>;
-  mergeAction?: (formData: FormData) => void | Promise<void>;
   signedInUserName?: string | null;
   canManageWorkshop?: boolean;
 };
@@ -39,11 +34,8 @@ const statusLabels: Record<string, string> = {
 export function VehicleRecordScreen({
   vehicle,
   vehicleTypes,
-  duplicates,
-  mergeRequestKey,
   feedback,
   saveAction,
-  mergeAction,
   signedInUserName,
   canManageWorkshop,
 }: VehicleRecordScreenProps) {
@@ -57,9 +49,9 @@ export function VehicleRecordScreen({
         title={`${vehicle.brand} ${vehicle.model}`}
       />
 
-      {feedback ? <Alert tone={feedback.includes("invalid") ? "danger" : "success"}>{feedbackMessage(feedback)}</Alert> : null}
+      {feedback ? <Alert className="mt-6" tone={feedback.includes("invalid") ? "danger" : "success"}>{feedbackMessage(feedback)}</Alert> : null}
 
-      <Card>
+      <Card className="mt-8">
         <h2 className="text-2xl font-black text-white">Historial</h2>
         <p className="mt-2 text-sm text-zinc-500">
           {vehicle.appointmentCount === 0
@@ -99,27 +91,12 @@ export function VehicleRecordScreen({
             </ul>
           </div>
         ) : null}
-
-        {vehicle.merges.length > 0 ? (
-          <div className="mt-6 border-t border-white/5 pt-5">
-            <h3 className="text-sm font-black uppercase tracking-wide text-zinc-400">Fusiones recibidas</h3>
-            <ul className="mt-3 grid gap-2 text-sm text-zinc-400">
-              {vehicle.merges.map((merge) => (
-                <li key={merge.id}>
-                  {formatDateTime(merge.mergedAt)} · se absorbio &quot;{merge.sourceLabel}&quot; con {merge.movedAppointments} turnos
-                  {merge.mergedByName ? ` (${merge.mergedByName})` : ""}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
       </Card>
 
-      <Card>
+      <Card className="mt-6">
         <h2 className="text-2xl font-black text-white">Ficha</h2>
         <p className="mt-2 text-sm text-zinc-500">
-          La patente no se edita acá: identifica a la unidad y cambiarla partiría o mezclaría historiales. Se corrige
-          fusionando.
+          La patente no se edita acá: identifica a la unidad y cambiarla partiría o mezclaría historiales.
         </p>
         <form action={saveAction} className="mt-6 grid gap-4 md:grid-cols-2">
           <input name="vehicleId" type="hidden" value={vehicle.id} />
@@ -160,40 +137,6 @@ export function VehicleRecordScreen({
         </form>
       </Card>
 
-      {duplicates.length > 0 ? (
-        <Card>
-          <h2 className="text-2xl font-black text-white">Posibles duplicados</h2>
-          <p className="mt-2 text-sm text-zinc-500">
-            Estas unidades comparten la patente {vehicle.plateNormalized}. Fusionar mueve sus turnos a esta ficha y
-            elimina la otra: no se puede deshacer desde el panel.
-          </p>
-          <div className="mt-5 grid gap-3">
-            {duplicates.map((duplicate) => (
-              <form
-                action={mergeAction}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
-                key={duplicate.id}
-              >
-                <input name="targetVehicleId" type="hidden" value={vehicle.id} />
-                <input name="sourceVehicleId" type="hidden" value={duplicate.id} />
-                <input name="requestKey" type="hidden" value={`${mergeRequestKey}-${duplicate.id}`} />
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-white">
-                    {duplicate.brand} {duplicate.model}
-                  </span>
-                  <span className="mt-1 block truncate text-xs text-zinc-500">
-                    {duplicate.licensePlate ?? "Sin patente"} · {duplicate.ownerName} · {duplicate.appointmentCount} turnos
-                  </span>
-                </span>
-                <span className="flex items-center gap-3">
-                  <Link className="text-sm text-zinc-500 underline" href={`/internal/vehicles/${duplicate.id}`}>Ver</Link>
-                  <Button size="sm" type="submit" variant="ghost">Fusionar en esta</Button>
-                </span>
-              </form>
-            ))}
-          </div>
-        </Card>
-      ) : null}
     </InternalShell>
   );
 }
@@ -201,9 +144,6 @@ export function VehicleRecordScreen({
 function feedbackMessage(feedback: string) {
   if (feedback === "vehicle-saved") return "Ficha actualizada.";
   if (feedback === "vehicle-invalid") return "Revisá los datos del vehículo.";
-  if (feedback === "merge-done") return "Unidades fusionadas.";
-  if (feedback === "merge-repeated") return "Esa fusion ya se habia aplicado.";
-  if (feedback === "merge-invalid") return "No se pudo fusionar: revisa que ambas unidades existan.";
   return feedback;
 }
 

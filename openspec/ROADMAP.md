@@ -24,7 +24,7 @@ certificar el estado remoto ni constituye una auditoría exhaustiva.
 | Email de creación, cambio de estado y reprogramación | Implementado con outbox y reintentos (`98851c1`) | Programar `/api/cron/emails`; confirmar remitente/dominio productivo y entrega real; sin recordatorios |
 | Roles de personal ADMIN/STAFF | Publicado (`98851c1`) | Configuración queda para ADMIN; falta el rol de mecánico y permisos por operación |
 | Inventario interno y escaneo de códigos | Publicado en producción el 2026-09-18 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); etiquetas y conteos (E2) implementados el 2026-09-24, pendientes de Preview |
-| Unidad genérica con historial, reutilización y fusión | Publicado (`3cbdc2b`) | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md); falta verificar una fusión en Preview y la unicidad de patente (VEH-001) |
+| Unidad genérica con historial y reutilización | Publicado (`3cbdc2b`); patente única el 2026-09-24 | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md); la fusión se quitó (VEH-001); falta un camino para corregir una patente mal cargada |
 
 Publicar el código de pagos no habilita Mercado Pago automáticamente. En la
 verificación del 2026-09-09 no había credenciales de Mercado Pago en producción y
@@ -56,9 +56,9 @@ Objetivo: reducir pasos para atender y administrar turnos.
 - ~~Navegación anterior/hoy/siguiente para día y semana.~~ Hecho el 2026-09-19: la
   vista elegida viaja en la URL (`?view=week`) y sobrevive a recargas y redirects.
 - ~~Historial por unidad.~~ Entregado en el cambio `generic-vehicle-history` (`3cbdc2b`): la reserva reutiliza cliente y unidad en lugar de crearlos de nuevo,
-  y el panel muestra la ficha con sus turnos, cambios de dueño y fusiones. Antes de
-  producción falta verificar una fusión real en Preview y, con los duplicados ya
-  fusionados, la migración de unicidad parcial de la patente.
+  y el panel muestra la ficha con sus turnos y cambios de dueño. Desde el 2026-09-24 la
+  patente es única y la fusión de duplicados se quitó.
+- Corrección validada de una patente mal cargada, que hoy no se puede editar.
 - Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.
 - Edición validada de contacto, moto y notas, con trazabilidad.
 - Mostrar historial de estados junto al historial de intervalos ya disponible, y

@@ -8,9 +8,10 @@ el outbox de emails y los roles de personal).
 | ERR-001, ERR-002 | Cerrados; se conservan como referencia |
 | PAY-001, PAY-002 | Mitigados en código; falta evidencia contra el sandbox |
 | PAY-003 | Endpoints listos; falta programar los cron |
-| VEH-001 | Abierto: fusionar duplicados antes de la unicidad |
+| VEH-001 | Cerrado: patente única desde `20260924150000_unique_vehicle_plate` |
 | VEH-002 | Asumido, sin corrección |
 | OPS-001 | Outbox implementado; falta remitente productivo y visibilidad de entrega |
+
 Orden de trabajo: [ROADMAP.md](ROADMAP.md).
 
 P1: priorizar antes de ampliar uso o activar el flujo afectado. P2: siguiente
@@ -135,6 +136,13 @@ el outbox de emails con el mismo `CRON_SECRET`: programarlo junto al de señas.
   expiración con reintentos y pagos en curso.
 
 ## VEH-001 — Patente sin unicidad mientras queden duplicados
+
+Cierre 2026-09-24: se vaciaron los datos operativos de producción y Preview (solo había
+datos de prueba), así que no quedaron duplicados. La migración
+`20260924150000_unique_vehicle_plate` agrega el índice único parcial y corta con un
+mensaje claro si encuentra patentes repetidas. La fusión de unidades existía solo para
+limpiar esos duplicados: se quitó, junto con la tabla `VehicleMerge`. Queda pendiente
+un camino para corregir una patente mal cargada, que hoy no se puede editar.
 
 - **Prioridad:** P2. **Evidencia:** limitación conocida, asumida al entregar
   `generic-vehicle-history`.

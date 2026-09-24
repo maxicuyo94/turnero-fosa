@@ -15,11 +15,6 @@ export type VehicleSummary = {
   lastVisitAt: Date | null;
 };
 
-export type VehicleDuplicateGroup = {
-  plateNormalized: string;
-  vehicles: VehicleSummary[];
-};
-
 export type VehicleRepository = {
   listVehicles(): Promise<VehicleSummary[]>;
   updateVehicle(vehicleId: string, data: Record<string, unknown>): Promise<unknown>;
@@ -53,28 +48,6 @@ export async function searchVehicles(
   });
 }
 
-/**
- * Reports units that share a plate. It only proposes: every booking made before the plate became an
- * identity key created its own unit, and which of those rows is the real one is a judgement the
- * workshop makes, not something to guess from the data.
- */
-export async function listDuplicateVehicleGroups(repository: VehicleRepository): Promise<VehicleDuplicateGroup[]> {
-  const vehicles = await repository.listVehicles();
-  const byPlate = new Map<string, VehicleSummary[]>();
-
-  for (const vehicle of vehicles) {
-    // A unit without a plate has nothing to be matched on, so it is never proposed as a duplicate.
-    if (!vehicle.plateNormalized) continue;
-    const group = byPlate.get(vehicle.plateNormalized) ?? [];
-    group.push(vehicle);
-    byPlate.set(vehicle.plateNormalized, group);
-  }
-
-  return [...byPlate.entries()]
-    .filter(([, group]) => group.length > 1)
-    .map(([plateNormalized, group]) => ({ plateNormalized, vehicles: group }));
-}
-
 const optionalText = (max: number) =>
   z
     .string()
@@ -100,7 +73,7 @@ const vehicleDetailsSchema = z.object({
 /**
  * Saves the record's descriptive fields. The license plate is absent on purpose: it identifies the
  * unit, so editing it here could split one history in two or pull another unit's history in without
- * anyone noticing. A wrong plate is corrected by merging.
+ * anyone noticing. The plate is unique, so a booking with a known plate always reuses its unit.
  */
 export async function updateVehicleDetails(
   repository: VehicleRepository,
@@ -134,14 +107,6 @@ export type VehicleOwnerChangeEntry = {
   changedAt: Date;
 };
 
-export type VehicleMergeEntry = {
-  id: string;
-  sourceLabel: string;
-  movedAppointments: number;
-  mergedByName: string | null;
-  mergedAt: Date;
-};
-
 export type VehicleRecord = VehicleSummary & {
   vehicleTypeId: string;
   vin: string | null;
@@ -150,23 +115,10 @@ export type VehicleRecord = VehicleSummary & {
   notes: string | null;
   appointments: VehicleAppointmentEntry[];
   ownerChanges: VehicleOwnerChangeEntry[];
-  merges: VehicleMergeEntry[];
 };
-
-/** APPLIED merged now, REPEATED means this request key already ran, MISSING means a unit is gone. */
-export type VehicleMergeOutcome =
-  | { status: "APPLIED"; movedAppointments: number }
-  | { status: "REPEATED"; movedAppointments: number }
-  | { status: "MISSING" };
 
 export type VehicleHistoryRepository = VehicleRepository & {
   findVehicleRecord(vehicleId: string): Promise<VehicleRecord | null>;
-  applyMerge(input: {
-    sourceVehicleId: string;
-    targetVehicleId: string;
-    requestKey: string;
-    mergedById: string | null;
-  }): Promise<VehicleMergeOutcome>;
 };
 
 export async function getVehicleRecord(
@@ -174,32 +126,4 @@ export async function getVehicleRecord(
   input: { vehicleId: string },
 ): Promise<VehicleRecord | null> {
   return repository.findVehicleRecord(input.vehicleId);
-}
-
-/**
- * Merges a duplicate into the unit that survives. Deliberately explicit: nothing here runs on its
- * own, because a merge deletes a row and moves history, and a wrong one cannot be undone from the
- * panel.
- */
-export async function mergeVehicles(
-  repository: VehicleHistoryRepository,
-  input: { sourceVehicleId: string; targetVehicleId: string; requestKey: string; mergedById: string | null },
-) {
-  if (input.sourceVehicleId === input.targetVehicleId) {
-    return rejection("Elegí dos unidades distintas para fusionar.");
-  }
-  if (!input.requestKey.trim()) {
-    return rejection("Falta la clave de la operacion.");
-  }
-
-  const outcome = await repository.applyMerge(input);
-  if (outcome.status === "MISSING") {
-    return rejection("Alguna de las unidades ya no existe.");
-  }
-
-  return {
-    accepted: true as const,
-    repeated: outcome.status === "REPEATED",
-    movedAppointments: outcome.movedAppointments,
-  };
 }

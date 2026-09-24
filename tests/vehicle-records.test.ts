@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  listDuplicateVehicleGroups,
   searchVehicles,
   updateVehicleDetails,
   type VehicleRepository,
@@ -36,32 +35,6 @@ describe("vehicle search", () => {
     ]);
 
     expect(await idsOf(searchVehicles(repository, { query: "  " }))).toEqual(["v1", "v2"]);
-  });
-});
-
-describe("duplicate detection", () => {
-  it("groups units that share a normalized plate without changing them", async () => {
-    const repository = new InMemoryVehicleRepository([
-      summary({ id: "v1", brand: "Honda", model: "XR150", licensePlate: "AB123CD", ownerName: "Ana" }),
-      summary({ id: "v2", brand: "Honda", model: "XR 150", licensePlate: "ab 123 cd", ownerName: "Ana" }),
-      summary({ id: "v3", brand: "Yamaha", model: "FZ25", licensePlate: "XY987ZW", ownerName: "Beto" }),
-    ]);
-
-    const groups = await listDuplicateVehicleGroups(repository);
-
-    expect(groups).toHaveLength(1);
-    expect(groups[0].plateNormalized).toBe("AB123CD");
-    expect(groups[0].vehicles.map((vehicle) => vehicle.id)).toEqual(["v1", "v2"]);
-    expect(repository.merged).toEqual([]);
-  });
-
-  it("never groups units without a plate", async () => {
-    const repository = new InMemoryVehicleRepository([
-      summary({ id: "v1", brand: "Honda", model: "XR150", licensePlate: null, ownerName: "Ana" }),
-      summary({ id: "v2", brand: "Honda", model: "XR150", licensePlate: null, ownerName: "Beto" }),
-    ]);
-
-    expect(await listDuplicateVehicleGroups(repository)).toEqual([]);
   });
 });
 

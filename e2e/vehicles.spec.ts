@@ -26,7 +26,7 @@ test.afterAll(async () => {
 });
 
 test("el historial de la unidad requiere sesión interna", async ({ page }) => {
-  const { target: vehicleId } = await seedDuplicatePair();
+  const { vehicleId } = await seedVehicle();
 
   await page.goto(`/internal/vehicles/${vehicleId}`);
 
@@ -34,9 +34,9 @@ test("el historial de la unidad requiere sesión interna", async ({ page }) => {
   await expect(page.getByText(plate)).toHaveCount(0);
 });
 
-test("el taller busca una unidad, ve su historial y fusiona el duplicado", async ({ page }) => {
+test("el taller busca una unidad, ve su historial y completa la ficha", async ({ page }) => {
   test.slow();
-  const { source, target: vehicleId } = await seedDuplicatePair();
+  const { vehicleId } = await seedVehicle();
   await signIn(page);
 
   await page.goto("/internal/vehicles");
@@ -49,8 +49,7 @@ test("el taller busca una unidad, ve su historial y fusiona el duplicado", async
 
   await page.goto(`/internal/vehicles/${vehicleId}`);
   await expect(page.getByRole("heading", { name: "Honda XR150" })).toBeVisible();
-  await expect(page.getByText("1 turnos registrados", { exact: false })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Posibles duplicados" })).toBeVisible();
+  await expect(page.getByText("2 turnos registrados", { exact: false })).toBeVisible();
 
   // La patente se muestra pero no se edita: identifica a la unidad.
   await expect(page.getByLabel("Patente")).toBeDisabled();
@@ -60,22 +59,15 @@ test("el taller busca una unidad, ve su historial y fusiona el duplicado", async
   await page.getByRole("button", { name: "Guardar ficha" }).click();
   await expect(page.getByText("Ficha actualizada.")).toBeVisible();
   await expect(page.getByLabel("Número de motor")).toHaveValue("MOTOR-E2E-001");
-
-  await page.getByRole("button", { name: "Fusionar en esta" }).click();
-  await expect(page.getByText("Unidades fusionadas.")).toBeVisible();
-  await expect(page.getByText("2 turnos registrados", { exact: false })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Posibles duplicados" })).toHaveCount(0);
-
-  expect(await prisma.vehicle.findUnique({ where: { id: source } })).toBeNull();
-  expect(await prisma.appointment.count({ where: { vehicleId } })).toBe(2);
+  await page.screenshot({ path: test.info().outputPath(`vehicle-${test.info().project.name}.png`), fullPage: true });
 });
 
 test("el detalle del turno enlaza al historial de su unidad", async ({ page }) => {
-  const { target: vehicleId, appointmentDate } = await seedDuplicatePair();
+  const { vehicleId, appointmentDate } = await seedVehicle();
   await signIn(page);
 
   await page.goto(`/internal?date=${appointmentDate}`);
-  // Ese dia hay un turno por cada unidad duplicada; el que empieza 10:00 es el de la que sobrevive.
+  // Ese dia la unidad tiene dos turnos; se abre el de las 10:00.
   // El nombre accesible arranca con la hora de inicio, asi que "10:00 hasta" no matchea al de las 09:00.
   await page.getByRole("button", { name: /^10:00 hasta 11:00 Vehiculo E2E Rider/ }).click();
   await page.getByRole("link", { name: "Ver historial de la unidad" }).click();
@@ -102,35 +94,32 @@ async function signIn(page: Page) {
   await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible({ timeout: 30_000 });
 }
 
-async function seedDuplicatePair() {
+async function seedVehicle() {
   const vehicleType = await prisma.vehicleType.findFirstOrThrow({ where: { isActive: true } });
   const service = await prisma.service.findFirstOrThrow({ where: { isActive: true } });
   const customer = await prisma.customer.create({
     data: { id: `${prefix}${randomUUID()}`, fullName: "Vehiculo E2E Rider", phone: `11${Math.floor(Math.random() * 1_000_000)}` },
   });
 
-  const make = (licensePlate: string) =>
-    prisma.vehicle.create({
-      data: {
-        id: `${prefix}${randomUUID()}`,
-        customerId: customer.id,
-        vehicleTypeId: vehicleType.id,
-        brand: "Honda",
-        model: "XR150",
-        licensePlate,
-        plateNormalized: plate,
-      },
-    });
-  const source = await make(plate.toLowerCase());
-  const target = await make(plate);
+  const vehicle = await prisma.vehicle.create({
+    data: {
+      id: `${prefix}${randomUUID()}`,
+      customerId: customer.id,
+      vehicleTypeId: vehicleType.id,
+      brand: "Honda",
+      model: "XR150",
+      licensePlate: plate,
+      plateNormalized: plate,
+    },
+  });
 
   const appointmentDate = "2026-08-17";
-  for (const [index, vehicleId] of [source.id, target.id].entries()) {
+  for (const index of [0, 1]) {
     await prisma.appointment.create({
       data: {
         serviceId: service.id,
         customerId: customer.id,
-        vehicleId,
+        vehicleId: vehicle.id,
         startAt: new Date(`${appointmentDate}T${String(9 + index).padStart(2, "0")}:00:00-03:00`),
         endAt: new Date(`${appointmentDate}T${String(10 + index).padStart(2, "0")}:00:00-03:00`),
         idempotencyKey: `${prefix}${randomUUID()}`,
@@ -139,12 +128,11 @@ async function seedDuplicatePair() {
     });
   }
 
-  return { source: source.id, target: target.id, appointmentDate };
+  return { vehicleId: vehicle.id, appointmentDate };
 }
 
 async function deleteFixtures() {
   await prisma.appointment.deleteMany({ where: { idempotencyKey: { startsWith: prefix } } });
-  await prisma.vehicleMerge.deleteMany({ where: { sourceVehicleId: { startsWith: prefix } } });
   await prisma.vehicle.deleteMany({ where: { id: { startsWith: prefix } } });
   await prisma.customer.deleteMany({ where: { id: { startsWith: prefix } } });
 }
