@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
-import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, SiteHeader, TextInput, Textarea } from "@/src/components/ui";
+import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, TextInput, Textarea } from "@/src/components/ui";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
-import { signOutAction } from "@/app/(internal)/internal/actions";
 import {
   createInventoryProductAction,
   importInventoryExcelAction,
@@ -17,6 +16,7 @@ import {
 import { BarcodeScanner } from "@/src/modules/shop/barcode-scanner";
 import { shopInitialActionState, type ShopActionState } from "@/src/modules/shop/inventory-action-state";
 import type { InventoryCodeMatch } from "@/src/modules/shop/inventory-code-service";
+import { InternalBackLink, InternalShell, InternalSubNav } from "@/src/modules/internal/internal-shell";
 
 export type InventoryListProduct = {
   id: string;
@@ -60,6 +60,7 @@ export function ShopDashboardScreen({
   availableStockUnits,
   recentProducts,
   signedInUserName,
+  canManageWorkshop,
 }: {
   totalProducts: number;
   activeProducts: number;
@@ -68,9 +69,10 @@ export function ShopDashboardScreen({
   availableStockUnits: number;
   recentProducts: InventoryListProduct[];
   signedInUserName?: string | null;
+  canManageWorkshop?: boolean;
 }) {
   return (
-    <ShopShell active="summary" signedInUserName={signedInUserName}>
+    <ShopShell active="summary" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <PageHeading
         eyebrow="Taller · stock"
         title="Inventario"
@@ -108,6 +110,7 @@ export function InventoryScreen({
   createRequestKey,
   initialBarcode,
   signedInUserName,
+  canManageWorkshop,
 }: {
   products: InventoryListProduct[];
   categories: string[];
@@ -117,9 +120,10 @@ export function InventoryScreen({
   /** Codigo leido que no existia; precarga el alta de un repuesto nuevo. */
   initialBarcode?: string;
   signedInUserName?: string | null;
+  canManageWorkshop?: boolean;
 }) {
   return (
-    <ShopShell active="inventory" signedInUserName={signedInUserName}>
+    <ShopShell active="inventory" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <PageHeading eyebrow="Taller · stock" title="Repuestos" description="Buscá por nombre, SKU o código de barras. Las cantidades se actualizan desde cada ficha." action={<a className="rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href="#nuevo">Nuevo repuesto</a>} />
       <InventoryCodeLookup />
       <Card className="mt-6" aria-label="Filtros de inventario">
@@ -196,11 +200,11 @@ function ExcelImportCard() {
   );
 }
 
-export function InventoryProductScreen({ product, history, historyLimit, movementRequestKey, notice, signedInUserName }: { product: InventoryDetailProduct; history: InventoryHistoryItem[]; historyLimit: number; movementRequestKey: string; notice?: string; signedInUserName?: string | null }) {
+export function InventoryProductScreen({ product, history, historyLimit, movementRequestKey, notice, signedInUserName, canManageWorkshop }: { product: InventoryDetailProduct; history: InventoryHistoryItem[]; historyLimit: number; movementRequestKey: string; notice?: string; signedInUserName?: string | null; canManageWorkshop?: boolean }) {
   const available = product.stock - product.reservedStock;
   return (
-    <ShopShell active="inventory" signedInUserName={signedInUserName}>
-      <Link className="text-sm font-bold text-zinc-400 hover:text-white" href="/internal/shop/inventory">← Volver a inventario</Link>
+    <ShopShell active="inventory" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
+      <InternalBackLink href="/internal/shop/inventory">Volver a inventario</InternalBackLink>
       <div className="mt-7 flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div className="min-w-0"><p className="break-all font-mono text-xs font-bold tracking-[0.18em] text-apple-300">{product.sku}</p><h1 className="mt-2 break-words text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">{product.name}</h1><p className="mt-3 break-words text-zinc-400">{product.category}{product.brand ? ` · ${product.brand}` : ""}{product.location ? ` · ${product.location}` : ""}</p></div><StatusChip active={product.isActive} /></div>
       {notice ? <Alert className="mt-6" tone="success">{notice}</Alert> : null}
       <section className="mt-8 grid gap-4 sm:grid-cols-3" aria-label="Stock actual"><Metric label="Físico" value={product.stock} note="Unidades en taller" /><Metric label="Reservado" value={product.reservedStock} note="Para pedidos futuros" /><Metric label="Disponible" value={available} note={`Mínimo: ${product.minimumStock}`} alert={available <= product.minimumStock} /></section>
@@ -219,11 +223,11 @@ export function InventoryProductScreen({ product, history, historyLimit, movemen
 export type InventoryLinkCandidate = InventoryCodeMatch & { version: number };
 
 /** Codigo leido que no identifica un unico repuesto: se ofrece alta o vinculacion, sin inventar datos. */
-export function InventoryCodeScreen({ code, matches, similar = [], linkCandidates, linkQuery, error, signedInUserName }: { code: string; matches: InventoryCodeMatch[]; similar?: InventoryCodeMatch[]; linkCandidates: InventoryLinkCandidate[]; linkQuery: string; error?: string; signedInUserName?: string | null }) {
+export function InventoryCodeScreen({ code, matches, similar = [], linkCandidates, linkQuery, error, signedInUserName, canManageWorkshop }: { code: string; matches: InventoryCodeMatch[]; similar?: InventoryCodeMatch[]; linkCandidates: InventoryLinkCandidate[]; linkQuery: string; error?: string; signedInUserName?: string | null; canManageWorkshop?: boolean }) {
   const ambiguous = matches.length > 1;
   return (
-    <ShopShell active="inventory" signedInUserName={signedInUserName}>
-      <Link className="text-sm font-bold text-zinc-400 hover:text-white" href="/internal/shop/inventory">← Volver a inventario</Link>
+    <ShopShell active="inventory" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
+      <InternalBackLink href="/internal/shop/inventory">Volver a inventario</InternalBackLink>
       <PageHeading
         className="mt-7"
         eyebrow="Escaneo"
@@ -281,25 +285,19 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
   );
 }
 
-function ShopShell({ active, children, signedInUserName }: { active: "summary" | "inventory"; children: ReactNode; signedInUserName?: string | null }) {
+function ShopShell({ active, children, signedInUserName, canManageWorkshop }: { active: "summary" | "inventory"; children: ReactNode; signedInUserName?: string | null; canManageWorkshop?: boolean }) {
   return (
-    <>
-      <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
-      <main className="mx-auto min-h-screen w-full max-w-6xl px-5 py-8 sm:px-6 lg:py-10">
-        <nav aria-label="Secciones internas" className="mb-8 flex min-w-0 gap-2 overflow-x-auto border-b border-white/10 whitespace-nowrap">
-          <ShopNavLink href="/internal">Agenda</ShopNavLink>
-          <ShopNavLink active={active === "summary"} href="/internal/shop">Resumen</ShopNavLink>
-          <ShopNavLink active={active === "inventory"} href="/internal/shop/inventory">Inventario</ShopNavLink>
-          <ShopNavLink href="/internal/account">Mi cuenta</ShopNavLink>
-        </nav>
-        {children}
-      </main>
-    </>
+    <InternalShell active="shop" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
+      <InternalSubNav
+        items={[
+          { label: "Resumen", href: "/internal/shop", active: active === "summary" },
+          { label: "Inventario", href: "/internal/shop/inventory", active: active === "inventory" },
+        ]}
+        label="Secciones de repuestos"
+      />
+      {children}
+    </InternalShell>
   );
-}
-
-function ShopNavLink({ active = false, href, children }: { active?: boolean; href: string; children: string }) {
-  return <Link aria-current={active ? "page" : undefined} className={`border-b-2 px-4 py-3 text-sm font-black transition sm:px-5 ${active ? "border-apple-400 text-white" : "border-transparent text-zinc-500 hover:text-white"}`} href={href}>{children}</Link>;
 }
 
 function NewProductForm({ requestKey, initialBarcode }: { requestKey: string; initialBarcode?: string }) {
