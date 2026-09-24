@@ -1,4 +1,4 @@
-import { requireStaff } from "@/src/lib/staff-access";
+import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { ShopDashboardScreen, type InventoryListProduct } from "@/src/modules/shop/inventory-screen";
 
@@ -30,5 +30,5 @@ export default async function ShopPage() {
   ]);
 
   const lowStockProducts = lowStockRows.filter((product) => product.stock - product.reservedStock <= product.minimumStock).length;
-  return <ShopDashboardScreen activeProducts={activeProducts} availableStockUnits={(stock._sum.stock ?? 0) - (stock._sum.reservedStock ?? 0)} lowStockProducts={lowStockProducts} recentProducts={recentProducts as InventoryListProduct[]} signedInUserName={staff.displayName} stockUnits={stock._sum.stock ?? 0} totalProducts={totalProducts} />;
+  return <ShopDashboardScreen activeProducts={activeProducts} availableStockUnits={(stock._sum.stock ?? 0) - (stock._sum.reservedStock ?? 0)} lowStockProducts={lowStockProducts} recentProducts={recentProducts as InventoryListProduct[]} canManageWorkshop={hasRole(staff, "ADMIN")} signedInUserName={staff.displayName} stockUnits={stock._sum.stock ?? 0} totalProducts={totalProducts} />;
 }

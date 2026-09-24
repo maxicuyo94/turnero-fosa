@@ -1,12 +1,11 @@
 import {
-  signOutAction,
   createVehicleTypeAction,
   updateVehicleTypeVisibilityAction,
   updateServiceVisibilityAction,
   updateServiceDurationAction,
   updateWorkshopSettingsAction,
 } from "@/app/(internal)/internal/actions";
-import Link from "next/link";
+import { InternalShell } from "@/src/modules/internal/internal-shell";
 import { CapacityWarning } from "@/src/modules/internal/capacity-warning";
 import type { CapacityConflict } from "@/src/modules/appointments/capacity-conflicts";
 import { PaidDepositWarning } from "@/src/modules/internal/paid-deposit-warning";
@@ -18,8 +17,6 @@ import {
   Card,
   Field,
   PageHeading,
-  PageShell,
-  SiteHeader,
   TextInput,
   Toggle,
   type AlertTone,
@@ -153,213 +150,180 @@ export function InternalAgendaScreen({
   const feedbackAlert = feedback ? feedbackMessages[feedback] : null;
 
   return (
-    <>
-      <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
+    <InternalShell
+      active={section === "settings" && canManageWorkshop ? "settings" : "agenda"}
+      canManageWorkshop={canManageWorkshop}
+      hrefs={{ agenda: agendaHref({ date: agenda.date, view }), settings: `/internal?section=settings&date=${agenda.date}` }}
+      signedInUserName={signedInUserName}
+    >
+      <PageHeading
+        eyebrow="Gestión del taller"
+        title={section === "settings" && canManageWorkshop ? "Configuración" : "Agenda"}
+      />
 
-      <PageShell>
-        <PageHeading
-          eyebrow="Gestión del taller"
-          title={section === "agenda" ? "Agenda" : "Configuración"}
+      {settings ? <CapacityWarning capacity={settings.capacity} conflicts={capacityConflicts} /> : null}
+      <PaidDepositWarning deposits={paidUnconfirmedDeposits} />
+
+      {feedbackAlert ? (
+        <Alert className="mt-6" tone={feedbackAlert.tone}>
+          {feedbackAlert.message}
+        </Alert>
+      ) : null}
+
+      {section === "agenda" || !canManageWorkshop ? (
+        <InternalAgendaWorkspace
+          agenda={agenda}
+          capacity={settings?.capacity}
+          exceptions={exceptions}
+          slotStepMinutes={settings?.slotStepMinutes}
+          today={today}
+          view={view}
+          weekAgendas={weekAgendas}
         />
+      ) : (
+        <div className="mt-8">
+          <div className="mb-5">
+            <h2 className="text-2xl font-black text-white">Preferencias del taller</h2>
+            <p className="mt-2 max-w-2xl text-sm text-zinc-500">
+              Administrá la capacidad, los servicios publicados y la disponibilidad sin mezclar estos cambios con la operación diaria.
+            </p>
+          </div>
 
-        <nav aria-label="Secciones del panel" className="mt-7 flex gap-2 overflow-x-auto border-b border-white/10">
-          <InternalNavLink active={section === "agenda"} href={agendaHref({ date: agenda.date, view })}>
-            Agenda
-          </InternalNavLink>
-          {canManageWorkshop ? (
-            <InternalNavLink active={section === "settings"} href={`/internal?section=settings&date=${agenda.date}`}>
-              Configuración
-            </InternalNavLink>
-          ) : null}
-          <InternalNavLink active={false} href="/internal/vehicles">
-            Unidades
-          </InternalNavLink>
-          <InternalNavLink active={false} href="/internal/shop">
-            Repuestos
-          </InternalNavLink>
-          <InternalNavLink active={false} href="/internal/account">
-            Mi cuenta
-          </InternalNavLink>
-        </nav>
-
-        {settings ? <CapacityWarning capacity={settings.capacity} conflicts={capacityConflicts} /> : null}
-        <PaidDepositWarning deposits={paidUnconfirmedDeposits} />
-
-        {feedbackAlert ? (
-          <Alert className="mt-6" tone={feedbackAlert.tone}>
-            {feedbackAlert.message}
-          </Alert>
+          <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+        {settings ? (
+          <Card>
+            <h2 className="text-2xl font-black text-white">Configuración general</h2>
+            <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
+              <ContactSettingsFields settings={settings} />
+              <h3 className="mt-3 text-lg font-bold text-white">Operación y señas</h3>
+              <Field hint="(1-20)" label="Capacidad simultánea">
+                <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
+              </Field>
+              <Field hint="(minutos, 0-10080)" label="Aviso mínimo">
+                <TextInput
+                  defaultValue={settings.minimumNoticeMinutes}
+                  name="minimumNoticeMinutes"
+                  type="number"
+                />
+              </Field>
+              <Field hint="(días, 1-365)" label="Ventana de reserva">
+                <TextInput
+                  defaultValue={settings.maximumBookingWindowDays}
+                  name="maximumBookingWindowDays"
+                  type="number"
+                />
+              </Field>
+              <Field label="Cobrar seña con Mercado Pago">
+                <input
+                  className="h-5 w-5 accent-apple-400"
+                  defaultChecked={settings.depositRequired}
+                  name="depositRequired"
+                  type="checkbox"
+                  value="true"
+                />
+              </Field>
+              <Field hint="(pesos argentinos)" label="Monto de la seña">
+                <TextInput
+                  defaultValue={settings.depositAmountCents / 100}
+                  min={1}
+                  name="depositAmountArs"
+                  step="0.01"
+                  type="number"
+                />
+              </Field>
+              <Field hint="(minutos, 5-10080)" label="Vencimiento de la reserva">
+                <TextInput
+                  defaultValue={settings.depositExpirationMinutes}
+                  min={5}
+                  name="depositExpirationMinutes"
+                  type="number"
+                />
+              </Field>
+              <DepositSettingsFields settings={settings} />
+              <Button className="mt-1 w-fit" size="md" type="submit">
+                Guardar cambios
+              </Button>
+            </form>
+          </Card>
         ) : null}
 
-        {section === "agenda" || !canManageWorkshop ? (
-          <InternalAgendaWorkspace
-            agenda={agenda}
-            capacity={settings?.capacity}
-            exceptions={exceptions}
-            slotStepMinutes={settings?.slotStepMinutes}
-            today={today}
-            view={view}
-            weekAgendas={weekAgendas}
-          />
-        ) : (
-          <div className="mt-8">
-            <div className="mb-5">
-              <h2 className="text-2xl font-black text-white">Preferencias del taller</h2>
-              <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-                Administrá la capacidad, los servicios publicados y la disponibilidad sin mezclar estos cambios con la operación diaria.
-              </p>
+        {vehicleTypes.length > 0 ? (
+          <Card>
+            <h2 className="text-2xl font-black text-white">Tipos de vehículo</h2>
+            <p className="mt-2 text-sm text-zinc-500">
+              Lo que el taller atiende. El toggle controla si se ofrece al reservar; un tipo no se borra, para no
+              perder el historial de las unidades cargadas con él.
+            </p>
+            <div className="mt-5 grid gap-3">
+              {vehicleTypes.map((vehicleType) => (
+                <form
+                  action={updateVehicleTypeVisibilityAction}
+                  className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
+                  key={vehicleType.id}
+                >
+                  <input name="vehicleTypeId" type="hidden" value={vehicleType.id} />
+                  <input name="isActive" type="hidden" value={vehicleType.isActive ? "false" : "true"} />
+                  <span className="font-medium text-white">{vehicleType.name}</span>
+                  <Toggle
+                    aria-label={vehicleType.isActive ? `Ocultar ${vehicleType.name}` : `Ofrecer ${vehicleType.name}`}
+                    checked={vehicleType.isActive}
+                  />
+                </form>
+              ))}
             </div>
+            <form action={createVehicleTypeAction} className="mt-5 flex flex-wrap items-end gap-3 border-t border-white/5 pt-5">
+              <Field label="Agregar tipo">
+                <TextInput name="name" maxLength={40} placeholder="Cuatriciclo" required />
+              </Field>
+              <Button size="sm" type="submit" variant="ghost">Agregar</Button>
+            </form>
+          </Card>
+        ) : null}
 
-            <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
-          {settings ? (
-            <Card>
-              <h2 className="text-2xl font-black text-white">Configuración general</h2>
-              <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
-                <ContactSettingsFields settings={settings} />
-                <h3 className="mt-3 text-lg font-bold text-white">Operación y señas</h3>
-                <Field hint="(1-20)" label="Capacidad simultánea">
-                  <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
-                </Field>
-                <Field hint="(minutos, 0-10080)" label="Aviso mínimo">
-                  <TextInput
-                    defaultValue={settings.minimumNoticeMinutes}
-                    name="minimumNoticeMinutes"
-                    type="number"
-                  />
-                </Field>
-                <Field hint="(días, 1-365)" label="Ventana de reserva">
-                  <TextInput
-                    defaultValue={settings.maximumBookingWindowDays}
-                    name="maximumBookingWindowDays"
-                    type="number"
-                  />
-                </Field>
-                <Field label="Cobrar seña con Mercado Pago">
-                  <input
-                    className="h-5 w-5 accent-apple-400"
-                    defaultChecked={settings.depositRequired}
-                    name="depositRequired"
-                    type="checkbox"
-                    value="true"
-                  />
-                </Field>
-                <Field hint="(pesos argentinos)" label="Monto de la seña">
-                  <TextInput
-                    defaultValue={settings.depositAmountCents / 100}
-                    min={1}
-                    name="depositAmountArs"
-                    step="0.01"
-                    type="number"
-                  />
-                </Field>
-                <Field hint="(minutos, 5-10080)" label="Vencimiento de la reserva">
-                  <TextInput
-                    defaultValue={settings.depositExpirationMinutes}
-                    min={5}
-                    name="depositExpirationMinutes"
-                    type="number"
-                  />
-                </Field>
-                <DepositSettingsFields settings={settings} />
-                <Button className="mt-1 w-fit" size="md" type="submit">
-                  Guardar cambios
-                </Button>
-              </form>
-            </Card>
-          ) : null}
-
-          {vehicleTypes.length > 0 ? (
-            <Card>
-              <h2 className="text-2xl font-black text-white">Tipos de vehículo</h2>
-              <p className="mt-2 text-sm text-zinc-500">
-                Lo que el taller atiende. El toggle controla si se ofrece al reservar; un tipo no se borra, para no
-                perder el historial de las unidades cargadas con él.
-              </p>
-              <div className="mt-5 grid gap-3">
-                {vehicleTypes.map((vehicleType) => (
-                  <form
-                    action={updateVehicleTypeVisibilityAction}
-                    className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
-                    key={vehicleType.id}
-                  >
-                    <input name="vehicleTypeId" type="hidden" value={vehicleType.id} />
-                    <input name="isActive" type="hidden" value={vehicleType.isActive ? "false" : "true"} />
-                    <span className="font-medium text-white">{vehicleType.name}</span>
-                    <Toggle
-                      aria-label={vehicleType.isActive ? `Ocultar ${vehicleType.name}` : `Ofrecer ${vehicleType.name}`}
-                      checked={vehicleType.isActive}
-                    />
-                  </form>
-                ))}
-              </div>
-              <form action={createVehicleTypeAction} className="mt-5 flex flex-wrap items-end gap-3 border-t border-white/5 pt-5">
-                <Field label="Agregar tipo">
-                  <TextInput name="name" maxLength={40} placeholder="Cuatriciclo" required />
-                </Field>
-                <Button size="sm" type="submit" variant="ghost">Agregar</Button>
-              </form>
-            </Card>
-          ) : null}
-
-          {services.length > 0 ? (
-            <Card>
-              <h2 className="text-2xl font-black text-white">Catálogo de servicios</h2>
-              <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad pública.</p>
-              <div className="mt-5 grid gap-3">
-                {services.map((service) => (
-                  <div key={service.id} className="rounded-xl border border-white/5 bg-charcoal-950 p-3">
-                  <form
-                    action={updateServiceVisibilityAction}
-                    className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
-                    key={service.id}
-                  >
-                    <input name="serviceId" type="hidden" value={service.id} />
-                    <input name="isActive" type="hidden" value={service.isActive ? "false" : "true"} />
-                    <span>
-                      <span className="block font-medium text-white">{service.name}</span>
-                      <span className="mt-1 block text-xs text-zinc-500">
-                        {service.durationMinutes} min
-                      </span>
+        {services.length > 0 ? (
+          <Card>
+            <h2 className="text-2xl font-black text-white">Catálogo de servicios</h2>
+            <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad pública.</p>
+            <div className="mt-5 grid gap-3">
+              {services.map((service) => (
+                <div key={service.id} className="rounded-xl border border-white/5 bg-charcoal-950 p-3">
+                <form
+                  action={updateServiceVisibilityAction}
+                  className="flex items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3"
+                  key={service.id}
+                >
+                  <input name="serviceId" type="hidden" value={service.id} />
+                  <input name="isActive" type="hidden" value={service.isActive ? "false" : "true"} />
+                  <span>
+                    <span className="block font-medium text-white">{service.name}</span>
+                    <span className="mt-1 block text-xs text-zinc-500">
+                      {service.durationMinutes} min
                     </span>
-                    <Toggle
-                      aria-label={service.isActive ? `Ocultar ${service.name}` : `Publicar ${service.name}`}
-                      checked={service.isActive}
-                    />
-                  </form>
-                  <form action={updateServiceDurationAction} className="mt-3 flex flex-wrap items-end gap-3">
-                    <input name="serviceId" type="hidden" value={service.id} />
-                    <Field label={`Duración de ${service.name}`} hint="minutos">
-                      <TextInput name="durationMinutes" type="number" min={1} max={1440} step={1} required defaultValue={service.durationMinutes} />
-                    </Field>
-                    <Button type="submit" variant="ghost" size="sm">Guardar duración</Button>
-                  </form>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          ) : null}
+                  </span>
+                  <Toggle
+                    aria-label={service.isActive ? `Ocultar ${service.name}` : `Publicar ${service.name}`}
+                    checked={service.isActive}
+                  />
+                </form>
+                <form action={updateServiceDurationAction} className="mt-3 flex flex-wrap items-end gap-3">
+                  <input name="serviceId" type="hidden" value={service.id} />
+                  <Field label={`Duración de ${service.name}`} hint="minutos">
+                    <TextInput name="durationMinutes" type="number" min={1} max={1440} step={1} required defaultValue={service.durationMinutes} />
+                  </Field>
+                  <Button type="submit" variant="ghost" size="sm">Guardar duración</Button>
+                </form>
+                </div>
+              ))}
             </div>
-
-            {schedule ? <WeeklyScheduleCard agendaDate={agenda.date} schedule={schedule} /> : null}
-
-            <DateExceptionsCard agendaDate={agenda.date} exceptions={exceptions} />
+          </Card>
+        ) : null}
           </div>
-        )}
-      </PageShell>
-    </>
-  );
-}
 
-function InternalNavLink({ active, href, children }: { active: boolean; href: string; children: string }) {
-  return (
-    <Link
-      aria-current={active ? "page" : undefined}
-      className={`border-b-2 px-5 py-3 text-sm font-black transition ${
-        active ? "border-apple-400 text-white" : "border-transparent text-zinc-500 hover:text-white"
-      }`}
-      href={href}
-    >
-      {children}
-    </Link>
+          {schedule ? <WeeklyScheduleCard agendaDate={agenda.date} schedule={schedule} /> : null}
+
+          <DateExceptionsCard agendaDate={agenda.date} exceptions={exceptions} />
+        </div>
+      )}
+    </InternalShell>
   );
 }
