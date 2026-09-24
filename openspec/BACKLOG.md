@@ -1,7 +1,16 @@
 # Backlog de errores y riesgos
 
-Revisión: **2026-09-21**, código `a702f30` más el cambio `generic-vehicle-history` en revisión.
-Todos los ítems siguientes están abiertos.
+Revisión: **2026-09-24**, código `ca19321` en `main` (incluye `generic-vehicle-history`,
+el outbox de emails y los roles de personal).
+
+| Ítem | Estado |
+| --- | --- |
+| ERR-001, ERR-002 | Cerrados; se conservan como referencia |
+| PAY-001, PAY-002 | Mitigados en código; falta evidencia contra el sandbox |
+| PAY-003 | Endpoints listos; falta programar los cron |
+| VEH-001 | Abierto: fusionar duplicados antes de la unicidad |
+| VEH-002 | Asumido, sin corrección |
+| OPS-001 | Outbox implementado; falta remitente productivo y visibilidad de entrega |
 Orden de trabajo: [ROADMAP.md](ROADMAP.md).
 
 P1: priorizar antes de ampliar uso o activar el flujo afectado. P2: siguiente
@@ -161,14 +170,17 @@ el outbox de emails con el mismo `CRON_SECRET`: programarlo junto al de señas.
 
 ## OPS-001 — Entrega de email y recuperación de fallos
 
+Avance 2026-09-23 (`98851c1`): los emails se encolan en `EmailLog` (`PENDING`) en la
+misma escritura que crea, confirma o reprograma el turno y se entregan después de
+responder, con reintentos, antigüedad máxima de 24 h e `Idempotency-Key` de Resend.
+`/api/cron/emails` reintenta los pendientes, pero todavía no está programado (ver
+PAY-003).
+
 - **Prioridad:** P2. **Evidencia:** capacidad incompleta por inspección.
-- [sendEmailAndLog](../src/modules/notifications/service.ts) espera al proveedor
-  durante la solicitud y registra el resultado en modo best-effort. No existe
-  outbox durable ni un reintento automático; si falla también el log, el evento
-  puede perderse sin quedar visible para el taller.
-- **Cierre:** evento transaccional, worker con timeout/reintentos y visibilidad de
-  entrega; validar remitente productivo. Una caída del proveedor no debe perder
-  eventos ni impedir el registro del turno.
+- **Pendiente:** programar el cron, mostrar al taller el estado de entrega de cada
+  email y validar remitente/dominio productivo con una entrega real.
+- **Cierre:** una caída del proveedor no pierde eventos ni impide el registro del
+  turno, y el taller ve qué emails no se entregaron.
 
 ## Verificaciones operativas pendientes
 
