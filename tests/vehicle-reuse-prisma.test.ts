@@ -6,6 +6,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { createPublicBooking } from "@/src/modules/booking/service";
+import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
+import { correctVehiclePlate } from "@/src/modules/vehicles/service";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
 const now = new Date("2026-07-01T09:00:00-03:00");
@@ -125,6 +127,44 @@ describe("vehicle reuse across bookings", () => {
     });
     expect(vehicle.vehicleType.name).toBe("Moto");
   });
+
+  it("moves the unit to the new plate, records it, and lets the old plate book a new unit", async () => {
+    const bookings = new PrismaBookingRepository(prisma);
+    const wrong = uniquePlate();
+    const right = uniquePlate();
+    await createPublicBooking(bookings, bookingInput({ key: "it-reuse-fix-1", startTime: "09:00", plate: wrong }));
+    const unit = (await vehiclesForPlate(wrong))[0];
+
+    const result = await correctVehiclePlate(new PrismaVehicleRepository(prisma), { vehicleId: unit.id, licensePlate: right, changedById: null });
+
+    expect(result).toEqual({ accepted: true, changed: true });
+    expect(await prisma.vehiclePlateChange.findMany({ where: { vehicleId: unit.id }, select: { previousPlate: true, newPlate: true } }))
+      .toEqual([{ previousPlate: wrong, newPlate: right }]);
+
+    // The new plate reuses the corrected unit; the old one is free for whoever really has it.
+    await createPublicBooking(bookings, bookingInput({ key: "it-reuse-fix-2", startTime: "10:00", plate: right }));
+    const old = await createPublicBooking(bookings, bookingInput({ key: "it-reuse-fix-3", startTime: "11:00", plate: wrong }));
+    expect(old.accepted).toBe(true);
+    const [second, third] = await appointmentVehicleIds(["it-reuse-fix-2", "it-reuse-fix-3"]);
+    expect(second).toBe(unit.id);
+    expect(third).not.toBe(unit.id);
+  });
+
+  it("refuses a plate another unit already holds and leaves both untouched", async () => {
+    const bookings = new PrismaBookingRepository(prisma);
+    const first = uniquePlate();
+    const second = uniquePlate();
+    await createPublicBooking(bookings, bookingInput({ key: "it-reuse-taken-1", startTime: "09:00", plate: first }));
+    await createPublicBooking(bookings, bookingInput({ key: "it-reuse-taken-2", startTime: "10:00", plate: second }));
+    const [unit] = await vehiclesForPlate(first);
+    const [other] = await vehiclesForPlate(second);
+
+    const result = await correctVehiclePlate(new PrismaVehicleRepository(prisma), { vehicleId: unit.id, licensePlate: second.toLowerCase(), changedById: null });
+
+    expect(result).toMatchObject({ accepted: false, reason: "PLATE_TAKEN", otherVehicleId: other.id });
+    expect((await prisma.vehicle.findUniqueOrThrow({ where: { id: unit.id } })).plateNormalized).toBe(first);
+    expect(await prisma.vehiclePlateChange.count({ where: { vehicleId: unit.id } })).toBe(0);
+  });
 });
 
 function uniquePlate() {
@@ -181,6 +221,7 @@ async function deleteTestData() {
   await prisma.appointment.deleteMany({ where: { id: { in: appointments.map((item) => item.id) } } });
   const vehicleIds = [...new Set(appointments.map((item) => item.vehicleId))];
   await prisma.vehicleOwnerHistory.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
+  await prisma.vehiclePlateChange.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
   await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: [...new Set(appointments.map((item) => item.customerId))] } } });
 }

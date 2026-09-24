@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Alert,
   Button,
@@ -18,6 +19,9 @@ export type VehicleRecordScreenProps = {
   vehicleTypes: { id: string; name: string }[];
   feedback?: string | null;
   saveAction?: (formData: FormData) => void | Promise<void>;
+  plateAction?: (formData: FormData) => void | Promise<void>;
+  /** The unit that already holds the plate someone tried to set, to link to it. */
+  plateHolderId?: string | null;
   signedInUserName?: string | null;
   canManageWorkshop?: boolean;
 };
@@ -36,6 +40,8 @@ export function VehicleRecordScreen({
   vehicleTypes,
   feedback,
   saveAction,
+  plateAction,
+  plateHolderId,
   signedInUserName,
   canManageWorkshop,
 }: VehicleRecordScreenProps) {
@@ -49,7 +55,12 @@ export function VehicleRecordScreen({
         title={`${vehicle.brand} ${vehicle.model}`}
       />
 
-      {feedback ? <Alert className="mt-6" tone={feedback.includes("invalid") ? "danger" : "success"}>{feedbackMessage(feedback)}</Alert> : null}
+      {feedback ? (
+        <Alert className="mt-6" tone={feedback.includes("invalid") || feedback === "plate-taken" ? "danger" : "success"}>
+          {feedbackMessage(feedback)}
+          {plateHolderId ? <Link className="ml-2 font-bold underline" href={`/internal/vehicles/${plateHolderId}`}>Ver esa unidad</Link> : null}
+        </Alert>
+      ) : null}
 
       <Card className="mt-8">
         <h2 className="text-2xl font-black text-white">Historial</h2>
@@ -79,6 +90,20 @@ export function VehicleRecordScreen({
           </ol>
         )}
 
+        {vehicle.plateChanges.length > 0 ? (
+          <div className="mt-6 border-t border-white/5 pt-5">
+            <h3 className="text-sm font-black uppercase tracking-wide text-zinc-400">Cambios de patente</h3>
+            <ul className="mt-3 grid gap-2 text-sm text-zinc-400">
+              {vehicle.plateChanges.map((change) => (
+                <li key={change.id}>
+                  {formatDateTime(change.changedAt)} · {change.previousPlate ?? "Sin patente"} → {change.newPlate ?? "Sin patente"}
+                  {change.changedByName ? ` (${change.changedByName})` : ""}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {vehicle.ownerChanges.length > 0 ? (
           <div className="mt-6 border-t border-white/5 pt-5">
             <h3 className="text-sm font-black uppercase tracking-wide text-zinc-400">Cambios de dueño</h3>
@@ -96,7 +121,7 @@ export function VehicleRecordScreen({
       <Card className="mt-6">
         <h2 className="text-2xl font-black text-white">Ficha</h2>
         <p className="mt-2 text-sm text-zinc-500">
-          La patente no se edita acá: identifica a la unidad y cambiarla partiría o mezclaría historiales.
+          La patente se corrige aparte, más abajo: identifica a la unidad.
         </p>
         <form action={saveAction} className="mt-6 grid gap-4 md:grid-cols-2">
           <input name="vehicleId" type="hidden" value={vehicle.id} />
@@ -106,9 +131,6 @@ export function VehicleRecordScreen({
                 <option key={vehicleType.id} value={vehicleType.id}>{vehicleType.name}</option>
               ))}
             </Select>
-          </Field>
-          <Field label="Patente" hint="No editable">
-            <TextInput defaultValue={vehicle.licensePlate ?? "Sin patente"} disabled readOnly />
           </Field>
           <Field label="Marca">
             <TextInput defaultValue={vehicle.brand} maxLength={60} name="brand" required />
@@ -137,6 +159,20 @@ export function VehicleRecordScreen({
         </form>
       </Card>
 
+      <Card className="mt-6">
+        <h2 className="text-2xl font-black text-white">Corregir patente</h2>
+        <p className="mt-2 text-sm text-zinc-500">
+          Para una patente mal cargada. Si ya es de otra unidad no se guarda: revisá cuál es la correcta. Vacía, la
+          unidad queda sin patente. Cada cambio queda en el historial.
+        </p>
+        <form action={plateAction} className="mt-6 flex flex-wrap items-end gap-3">
+          <input name="vehicleId" type="hidden" value={vehicle.id} />
+          <Field className="min-w-[12rem] flex-1" label="Patente">
+            <TextInput autoCapitalize="characters" defaultValue={vehicle.licensePlate ?? ""} maxLength={20} name="licensePlate" placeholder="Sin patente" />
+          </Field>
+          <Button size="sm" type="submit" variant="ghost">Corregir patente</Button>
+        </form>
+      </Card>
     </InternalShell>
   );
 }
@@ -144,6 +180,10 @@ export function VehicleRecordScreen({
 function feedbackMessage(feedback: string) {
   if (feedback === "vehicle-saved") return "Ficha actualizada.";
   if (feedback === "vehicle-invalid") return "Revisá los datos del vehículo.";
+  if (feedback === "plate-saved") return "Patente corregida.";
+  if (feedback === "plate-unchanged") return "La unidad ya tenía esa patente.";
+  if (feedback === "plate-taken") return "Esa patente ya es de otra unidad: no se cambió.";
+  if (feedback === "plate-invalid") return "Revisá la patente: letras y números, hasta 20 caracteres.";
   return feedback;
 }
 

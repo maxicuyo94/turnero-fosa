@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  correctVehiclePlate,
   searchVehicles,
   updateVehicleDetails,
+  type PlateChangeInput,
+  type PlateChangeOutcome,
   type VehicleRepository,
   type VehicleSummary,
 } from "@/src/modules/vehicles/service";
@@ -114,6 +117,48 @@ describe("vehicle record editing", () => {
   });
 });
 
+describe("license plate correction", () => {
+  it("stores the plate as typed and matches on its normalized form", async () => {
+    const repository = new PlateRepository({ status: "CHANGED" });
+
+    const result = await correctVehiclePlate(repository, { vehicleId: "v1", licensePlate: " ab-123 cd ", changedById: "staff" });
+
+    expect(result).toEqual({ accepted: true, changed: true });
+    expect(repository.changes).toEqual([{ vehicleId: "v1", licensePlate: "ab-123 cd", plateNormalized: "AB123CD", changedById: "staff" }]);
+  });
+
+  it("clears the plate when the field is left empty", async () => {
+    const repository = new PlateRepository({ status: "CHANGED" });
+
+    await correctVehiclePlate(repository, { vehicleId: "v1", licensePlate: "  ", changedById: null });
+
+    expect(repository.changes[0]).toMatchObject({ licensePlate: null, plateNormalized: null });
+  });
+
+  it("rejects a plate without letters or digits, or too long, without writing", async () => {
+    const repository = new PlateRepository({ status: "CHANGED" });
+
+    expect((await correctVehiclePlate(repository, { vehicleId: "v1", licensePlate: "--", changedById: null })).accepted).toBe(false);
+    expect((await correctVehiclePlate(repository, { vehicleId: "v1", licensePlate: "A".repeat(21), changedById: null })).accepted).toBe(false);
+    expect(repository.changes).toEqual([]);
+  });
+
+  it("reports which unit already holds the plate", async () => {
+    const result = await correctVehiclePlate(new PlateRepository({ status: "TAKEN", otherVehicleId: "v2" }), { vehicleId: "v1", licensePlate: "AB123CD", changedById: null });
+
+    expect(result).toMatchObject({ accepted: false, reason: "PLATE_TAKEN", otherVehicleId: "v2" });
+  });
+});
+
+class PlateRepository {
+  changes: PlateChangeInput[] = [];
+  constructor(private readonly outcome: PlateChangeOutcome) {}
+  async changePlate(input: PlateChangeInput) {
+    this.changes.push(input);
+    return this.outcome;
+  }
+}
+
 function summary(overrides: Partial<VehicleSummary> & { id: string; brand: string; model: string; licensePlate: string | null; ownerName: string }): VehicleSummary {
   return {
     typeName: "Moto",
@@ -132,7 +177,6 @@ async function idsOf(result: Promise<VehicleSummary[]>) {
 
 class InMemoryVehicleRepository implements VehicleRepository {
   updates: Record<string, unknown>[] = [];
-  merged: string[] = [];
 
   constructor(private vehicles: VehicleSummary[]) {}
 

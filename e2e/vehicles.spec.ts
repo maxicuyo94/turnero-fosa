@@ -51,15 +51,43 @@ test("el taller busca una unidad, ve su historial y completa la ficha", async ({
   await expect(page.getByRole("heading", { name: "Honda XR150" })).toBeVisible();
   await expect(page.getByText("2 turnos registrados", { exact: false })).toBeVisible();
 
-  // La patente se muestra pero no se edita: identifica a la unidad.
-  await expect(page.getByLabel("Patente")).toBeDisabled();
-
   await page.getByLabel("Número de motor").fill("MOTOR-E2E-001");
   await page.getByLabel("Color").fill("Rojo");
   await page.getByRole("button", { name: "Guardar ficha" }).click();
   await expect(page.getByText("Ficha actualizada.")).toBeVisible();
   await expect(page.getByLabel("Número de motor")).toHaveValue("MOTOR-E2E-001");
   await page.screenshot({ path: test.info().outputPath(`vehicle-${test.info().project.name}.png`), fullPage: true });
+});
+
+test("el taller corrige una patente mal cargada y no puede tomar la de otra unidad", async ({ page }) => {
+  test.slow();
+  const { vehicleId } = await seedVehicle();
+  const corrected = `EW${Math.floor(Math.random() * 90_000 + 10_000)}ZZ`;
+  const other = await prisma.vehicle.create({
+    data: {
+      id: `${prefix}${randomUUID()}`,
+      customerId: (await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } })).customerId,
+      vehicleTypeId: (await prisma.vehicleType.findFirstOrThrow({ where: { isActive: true } })).id,
+      brand: "Yamaha",
+      model: "YBR125",
+      licensePlate: `EX${plate.slice(2)}`,
+      plateNormalized: `EX${plate.slice(2)}`,
+    },
+  });
+  await signIn(page);
+  await page.goto(`/internal/vehicles/${vehicleId}`);
+
+  // La patente de otra unidad se rechaza y ofrece abrirla.
+  await page.getByLabel("Patente").fill(other.licensePlate!.toLowerCase());
+  await page.getByRole("button", { name: "Corregir patente" }).click();
+  await expect(page.getByText("Esa patente ya es de otra unidad: no se cambió.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ver esa unidad" })).toHaveAttribute("href", `/internal/vehicles/${other.id}`);
+
+  await page.getByLabel("Patente").fill(corrected);
+  await page.getByRole("button", { name: "Corregir patente" }).click();
+  await expect(page.getByText("Patente corregida.")).toBeVisible();
+  await expect(page.getByText(`${plate} → ${corrected}`)).toBeVisible();
+  expect((await prisma.vehicle.findUniqueOrThrow({ where: { id: vehicleId } })).plateNormalized).toBe(corrected);
 });
 
 test("el detalle del turno enlaza al historial de su unidad", async ({ page }) => {
@@ -132,6 +160,7 @@ async function seedVehicle() {
 }
 
 async function deleteFixtures() {
+  await prisma.vehiclePlateChange.deleteMany({ where: { vehicleId: { startsWith: prefix } } });
   await prisma.appointment.deleteMany({ where: { idempotencyKey: { startsWith: prefix } } });
   await prisma.vehicle.deleteMany({ where: { id: { startsWith: prefix } } });
   await prisma.customer.deleteMany({ where: { id: { startsWith: prefix } } });

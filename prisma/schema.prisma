@@ -197,12 +197,27 @@ model Vehicle {
   vehicleType     VehicleType   @relation(fields: [vehicleTypeId], references: [id], onDelete: Restrict)
   appointments    Appointment[]
   ownerHistory    VehicleOwnerHistory[]
+  plateChanges    VehiclePlateChange[]
 
   @@index([customerId])
   @@index([licensePlate])
   /// Also unique where not null, through a partial index Prisma cannot declare
   /// (migration 20260924150000_unique_vehicle_plate).
   @@index([plateNormalized])
+}
+
+/// A corrected plate. The plate identifies the unit, so every change is kept with who made it.
+model VehiclePlateChange {
+  id            String   @id @default(cuid())
+  vehicleId     String
+  previousPlate String?
+  newPlate      String?
+  changedById   String?
+  changedAt     DateTime @default(now())
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  changedBy     User?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([vehicleId, changedAt])
 }
 
 model VehicleOwnerHistory {
@@ -315,6 +330,7 @@ model User {
   statusChanges AppointmentStatusHistory[]
   intervalChanges AppointmentIntervalHistory[]
   inventoryMovements InventoryMovement[]
+  plateChanges    VehiclePlateChange[]
   stockCountsOpened StockCount[] @relation("StockCountOpenedBy")
   stockCountsClosed StockCount[] @relation("StockCountClosedBy")
   stockCountLines StockCountLine[]

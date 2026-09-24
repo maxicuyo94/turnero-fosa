@@ -73,7 +73,7 @@ const vehicleDetailsSchema = z.object({
 /**
  * Saves the record's descriptive fields. The license plate is absent on purpose: it identifies the
  * unit, so editing it here could split one history in two or pull another unit's history in without
- * anyone noticing. The plate is unique, so a booking with a known plate always reuses its unit.
+ * anyone noticing. It is corrected on its own, through `correctVehiclePlate`.
  */
 export async function updateVehicleDetails(
   repository: VehicleRepository,
@@ -99,6 +99,14 @@ export type VehicleAppointmentEntry = {
   notes: string | null;
 };
 
+export type VehiclePlateChangeEntry = {
+  id: string;
+  previousPlate: string | null;
+  newPlate: string | null;
+  changedByName: string | null;
+  changedAt: Date;
+};
+
 export type VehicleOwnerChangeEntry = {
   id: string;
   previousOwnerName: string | null;
@@ -115,15 +123,55 @@ export type VehicleRecord = VehicleSummary & {
   notes: string | null;
   appointments: VehicleAppointmentEntry[];
   ownerChanges: VehicleOwnerChangeEntry[];
+  plateChanges: VehiclePlateChangeEntry[];
 };
+
+export type PlateChangeInput = { vehicleId: string; licensePlate: string | null; plateNormalized: string | null; changedById: string | null };
+/** CHANGED wrote a new plate, UNCHANGED means it already had it, TAKEN names the unit that holds it. */
+export type PlateChangeOutcome =
+  | { status: "CHANGED" }
+  | { status: "UNCHANGED" }
+  | { status: "TAKEN"; otherVehicleId: string }
+  | { status: "MISSING" };
+
+export type VehiclePlateRepository = { changePlate(input: PlateChangeInput): Promise<PlateChangeOutcome> };
 
 export type VehicleHistoryRepository = VehicleRepository & {
   findVehicleRecord(vehicleId: string): Promise<VehicleRecord | null>;
-};
+} & VehiclePlateRepository;
 
 export async function getVehicleRecord(
   repository: VehicleHistoryRepository,
   input: { vehicleId: string },
 ): Promise<VehicleRecord | null> {
   return repository.findVehicleRecord(input.vehicleId);
+}
+
+const MAX_PLATE_LENGTH = 20;
+
+/**
+ * Corrects a wrongly loaded plate. The plate identifies the unit, so the new one must not belong to
+ * another unit: that case is reported, never merged, and the workshop decides what to do. An empty
+ * field clears the plate. Every change is recorded with who made it.
+ */
+export async function correctVehiclePlate(
+  repository: VehiclePlateRepository,
+  input: { vehicleId: string; licensePlate: string; changedById: string | null },
+): Promise<{ accepted: true; changed: boolean } | VehicleRejection | { accepted: false; reason: "PLATE_TAKEN"; otherVehicleId: string; message: string }> {
+  const licensePlate = input.licensePlate.trim();
+  if (licensePlate.length > MAX_PLATE_LENGTH) return rejection(`La patente no puede superar ${MAX_PLATE_LENGTH} caracteres.`);
+  const plateNormalized = normalizeLicensePlate(licensePlate);
+  if (licensePlate && !plateNormalized) return rejection("La patente tiene que tener letras o números.");
+
+  const outcome = await repository.changePlate({
+    vehicleId: input.vehicleId,
+    licensePlate: licensePlate || null,
+    plateNormalized,
+    changedById: input.changedById,
+  });
+  if (outcome.status === "MISSING") return rejection("La unidad ya no existe.");
+  if (outcome.status === "TAKEN") {
+    return { accepted: false, reason: "PLATE_TAKEN", otherVehicleId: outcome.otherVehicleId, message: "Esa patente ya es de otra unidad." };
+  }
+  return { accepted: true, changed: outcome.status === "CHANGED" };
 }

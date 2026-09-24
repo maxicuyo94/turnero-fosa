@@ -6,7 +6,7 @@ import { db } from "@/src/lib/db";
 import { formString } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
 import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
-import { updateVehicleDetails } from "@/src/modules/vehicles/service";
+import { correctVehiclePlate, updateVehicleDetails } from "@/src/modules/vehicles/service";
 
 export async function saveVehicleAction(formData: FormData) {
   await requireStaff();
@@ -24,4 +24,19 @@ export async function saveVehicleAction(formData: FormData) {
   });
   if (result.accepted) revalidatePath("/", "layout");
   redirect(`/internal/vehicles/${vehicleId}?feedback=${result.accepted ? "vehicle-saved" : "vehicle-invalid"}`);
+}
+
+export async function correctVehiclePlateAction(formData: FormData) {
+  const { userId } = await requireStaff();
+  const vehicleId = formString(formData, "vehicleId");
+  const result = await correctVehiclePlate(new PrismaVehicleRepository(db), {
+    vehicleId,
+    licensePlate: formString(formData, "licensePlate"),
+    changedById: userId,
+  });
+  if (result.accepted && result.changed) revalidatePath("/", "layout");
+  const feedback = result.accepted
+    ? result.changed ? "plate-saved" : "plate-unchanged"
+    : result.reason === "PLATE_TAKEN" ? `plate-taken&other=${encodeURIComponent(result.otherVehicleId)}` : "plate-invalid";
+  redirect(`/internal/vehicles/${vehicleId}?feedback=${feedback}`);
 }

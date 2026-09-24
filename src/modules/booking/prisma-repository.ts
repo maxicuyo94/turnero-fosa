@@ -205,7 +205,8 @@ export class PrismaBookingRepository implements BookingRepository {
     if (!existing) {
       return this.client.vehicle.create({
         data: {
-          ...(plateKey ? { id: identityDerivedId("veh", plateKey) } : {}),
+          // No id derived from the plate: the plate can be corrected later, and the unique plate index
+          // already turns two simultaneous bookings into a conflict the transaction retries.
           customerId,
           vehicleTypeId: await this.resolveVehicleTypeId(input.vehicleTypeId),
           brand: input.brand,
