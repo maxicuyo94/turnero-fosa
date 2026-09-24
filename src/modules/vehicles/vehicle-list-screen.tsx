@@ -1,18 +1,17 @@
 import Link from "next/link";
-import { Alert, Button, Card, EmptyState, Field, PageHeading, TextInput } from "@/src/components/ui";
+import { Button, Card, EmptyState, Field, PageHeading, TextInput } from "@/src/components/ui";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import { InternalShell } from "@/src/modules/internal/internal-shell";
-import type { VehicleDuplicateGroup, VehicleSummary } from "@/src/modules/vehicles/service";
+import type { VehicleSummary } from "@/src/modules/vehicles/service";
 
 export type VehicleListScreenProps = {
   vehicles: VehicleSummary[];
-  duplicateGroups: VehicleDuplicateGroup[];
   query: string;
   signedInUserName?: string | null;
   canManageWorkshop?: boolean;
 };
 
-export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUserName, canManageWorkshop }: VehicleListScreenProps) {
+export function VehicleListScreen({ vehicles, query, signedInUserName, canManageWorkshop }: VehicleListScreenProps) {
   return (
     <InternalShell active="vehicles" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <PageHeading
@@ -21,7 +20,7 @@ export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUs
         title="Unidades"
       />
 
-      <Card>
+      <Card className="mt-8">
         <form action="/internal/vehicles" className="flex flex-wrap items-end gap-3" method="get">
           <Field className="min-w-[16rem] flex-1" label="Buscar">
             <TextInput defaultValue={query} name="q" placeholder="AB123CD, Honda, Ana" />
@@ -33,31 +32,7 @@ export function VehicleListScreen({ vehicles, duplicateGroups, query, signedInUs
         </form>
       </Card>
 
-      {duplicateGroups.length > 0 ? (
-        <Alert tone="info">
-          <p className="font-medium">
-            {duplicateGroups.length === 1
-              ? "Hay 1 patente cargada en más de una unidad."
-              : `Hay ${duplicateGroups.length} patentes cargadas en más de una unidad.`}
-          </p>
-          <p className="mt-1 text-sm">
-            Vienen de turnos anteriores, cuando cada reserva creaba una unidad nueva. Abrí una de ellas para revisar
-            y fusionar; no se toca nada hasta que confirmes.
-          </p>
-          <ul className="mt-3 grid gap-1 text-sm">
-            {duplicateGroups.map((group) => (
-              <li key={group.plateNormalized}>
-                <Link className="underline" href={`/internal/vehicles/${group.vehicles[0].id}`}>
-                  {group.plateNormalized}
-                </Link>{" "}
-                · {group.vehicles.length} unidades
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      ) : null}
-
-      <Card>
+      <Card className="mt-6">
         {vehicles.length === 0 ? (
           <EmptyState>
             {query ? "Sin resultados. Probá con otra patente, marca o cliente." : "Todavía no hay unidades cargadas."}

@@ -43,25 +43,11 @@ la fusión, que el diseño pedía registrar.
 
 ## Pendientes fuera de estas revisiones
 
-- [ ] 3.1 Verificar la ficha y una fusión en Vercel Preview antes de publicar en producción.
-- [ ] 3.2 Migración de unicidad parcial de `plateNormalized`, recién con los duplicados ya fusionados (VEH-001).
-      Antes de agregarla, confirmar en Preview y en producción que Interno → Unidades no muestra el aviso
-      de patentes repetidas, o que esta consulta no devuelve filas:
-      `SELECT "plateNormalized", count(*) FROM "Vehicle" WHERE "plateNormalized" IS NOT NULL GROUP BY 1 HAVING count(*) > 1;`
-      Migración propuesta; la guarda corta con un mensaje claro en lugar de un error de índice:
-
-      ```sql
-      DO $$ BEGIN
-        IF EXISTS (SELECT 1 FROM "Vehicle" WHERE "plateNormalized" IS NOT NULL GROUP BY "plateNormalized" HAVING count(*) > 1) THEN
-          RAISE EXCEPTION 'Quedan patentes repetidas: fusionalas desde Interno → Unidades antes de migrar.';
-        END IF;
-      END $$;
-      DROP INDEX "Vehicle_plateNormalized_idx";
-      CREATE UNIQUE INDEX "Vehicle_plateNormalized_key" ON "Vehicle"("plateNormalized") WHERE "plateNormalized" IS NOT NULL;
-      ```
-
-      Prisma no representa índices parciales en el esquema: dejar `@@index([plateNormalized])` y avisarlo
-      con un comentario, o comprobar que `migrate diff` no proponga revertirlo.
+- [x] 3.1 ~~Verificar una fusión en Vercel Preview.~~ Descartada el 2026-09-24: con los datos
+      operativos vaciados y la patente única, la fusión no tenía uso y se quitó.
+- [x] 3.2 Migración de unicidad parcial de `plateNormalized` (VEH-001):
+      `20260924150000_unique_vehicle_plate`, con guarda ante patentes repetidas. También elimina
+      `VehicleMerge`. Prisma no declara índices parciales: el esquema conserva `@@index([plateNormalized])`.
 - [x] 3.3 Actualizar README, ROADMAP y BACKLOG con el alcance entregado y lo que queda abierto
       (2026-09-21). Los riesgos asumidos quedaron como VEH-001 (patente sin unicidad) y
       VEH-002 (la migración necesita configuración del taller).
