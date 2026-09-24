@@ -7,7 +7,8 @@ import {
   rescheduleAppointmentAction,
   updateAppointmentStatusAction,
 } from "@/app/(internal)/internal/actions";
-import { Button, Field, Select, StatusBadge, TextInput } from "@/src/components/ui";
+import { Button, Field, Select, Spinner, StatusBadge, TextInput } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { capitalizeLabel, formatWorkshopDateTime, workshopDate, workshopTime } from "@/src/lib/workshop-date";
 import type { AgendaView } from "@/src/modules/appointments/agenda-navigation";
 import {
@@ -134,7 +135,7 @@ export function AppointmentDrawer({
               ))}
             </Select>
           </Field>
-          <Button className="mt-4" disabled={isTerminalStatus(appointment.status)} size="md" type="submit">Actualizar estado</Button>
+          <SubmitButton className="mt-4" disabled={isTerminalStatus(appointment.status)} size="md">Actualizar estado</SubmitButton>
         </form>
 
         <form action={rescheduleAppointmentAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
@@ -151,7 +152,7 @@ export function AppointmentDrawer({
                 value={targetDate}
               />
             </Field>
-            <Field hint={isPreviewPending ? "(consultando...)" : undefined} label="Horario disponible">
+            <Field hint={isPreviewPending ? <span className="inline-flex items-center gap-1"><Spinner className="h-3 w-3" />consultando…</span> : undefined} label="Horario disponible">
               <Select
                 disabled={isTerminalStatus(appointment.status) || isPreviewPending || availableSlots.length === 0}
                 name="startTime"
@@ -187,7 +188,7 @@ export function AppointmentDrawer({
             </p>
           ) : null}
           <p className="mt-4 text-xs text-zinc-500">Al guardar se vuelve a verificar horarios, descansos, feriados y capacidad dentro de la transacción.</p>
-          <Button className="mt-4" disabled={isTerminalStatus(appointment.status) || isPreviewPending || !selectedSlot} size="md" type="submit">Guardar reprogramación</Button>
+          <SubmitButton className="mt-4" disabled={isTerminalStatus(appointment.status) || isPreviewPending || !selectedSlot} size="md">Guardar reprogramación</SubmitButton>
         </form>
 
         {appointment.intervalHistory.length > 0 ? (

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Field, Select, TextInput } from "@/src/components/ui";
+import Form from "next/form";
+import { Field, Select, TextInput } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import type { PublicServiceRecord } from "@/src/modules/booking/service";
 
 export type BookingSearchFormProps = {
@@ -32,7 +34,7 @@ export function BookingSearchForm({
   const selectedService = services.find((service) => service.id === serviceId);
 
   return (
-    <form
+    <Form
       action="/booking"
       className={
         canEditDuration
@@ -78,7 +80,7 @@ export function BookingSearchForm({
           />
         </Field>
       ) : null}
-      <Button type="submit">Ver</Button>
-    </form>
+      <SubmitButton>Ver</SubmitButton>
+    </Form>
   );
 }

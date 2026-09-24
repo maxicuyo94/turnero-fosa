@@ -1,5 +1,7 @@
+import Form from "next/form";
 import Link from "next/link";
-import { Button, Card, EmptyState, Field, PageHeading, TextInput } from "@/src/components/ui";
+import { Card, EmptyState, Field, PageHeading, TextInput } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import { InternalShell } from "@/src/modules/internal/internal-shell";
 import type { VehicleSummary } from "@/src/modules/vehicles/service";
@@ -21,15 +23,15 @@ export function VehicleListScreen({ vehicles, query, signedInUserName, canManage
       />
 
       <Card className="mt-8">
-        <form action="/internal/vehicles" className="flex flex-wrap items-end gap-3" method="get">
+        <Form action="/internal/vehicles" className="flex flex-wrap items-end gap-3">
           <Field className="min-w-[16rem] flex-1" label="Buscar">
             <TextInput defaultValue={query} name="q" placeholder="AB123CD, Honda, Ana" />
           </Field>
-          <Button size="sm" type="submit" variant="ghost">Buscar</Button>
+          <SubmitButton size="sm" variant="ghost">Buscar</SubmitButton>
           {query ? (
             <Link className="text-sm text-zinc-500 underline" href="/internal/vehicles">Limpiar</Link>
           ) : null}
-        </form>
+        </Form>
       </Card>
 
       <Card className="mt-6">

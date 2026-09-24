@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Alert,
-  Button,
   Card,
   CodeDisplay,
   EmptyState,
@@ -14,6 +13,7 @@ import {
   Textarea,
   TextInput,
 } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import type { AvailableSlot } from "@/src/modules/availability";
 import { BookingSearchForm } from "@/src/modules/booking/booking-search-form";
 import type { PublicServiceRecord, PublicVehicleTypeRecord } from "@/src/modules/booking/service";
@@ -114,7 +114,7 @@ export function PublicBookingScreen({
                 {paymentAction && outcome.publicCode ? (
                   <form action={paymentAction} className="mt-3">
                     <input name="publicCode" type="hidden" value={outcome.publicCode} />
-                    <Button type="submit" variant="ghost">Reintentar pago</Button>
+                    <SubmitButton variant="ghost">Reintentar pago</SubmitButton>
                   </form>
                 ) : null}
               </div>
@@ -229,9 +229,9 @@ export function PublicBookingScreen({
               </Field>
             </div>
 
-            <Button className="mt-6" disabled={slots.length === 0} fullWidth size="md" type="submit">
+            <SubmitButton className="mt-6" disabled={slots.length === 0} fullWidth size="md">
               {depositPolicy?.required ? "Reservar y pagar seña" : "Solicitar turno"}
-            </Button>
+            </SubmitButton>
           </Card>
         </form>
       </PageShell>

@@ -13,14 +13,13 @@ import type { PaidUnconfirmedDeposit } from "@/src/modules/payments/prisma-repos
 import { ContactSettingsFields, DepositSettingsFields } from "@/src/modules/settings/business-settings-fields";
 import {
   Alert,
-  Button,
   Card,
   Field,
   PageHeading,
   TextInput,
-  Toggle,
   type AlertTone,
 } from "@/src/components/ui";
+import { SubmitButton, SubmitToggle } from "@/src/components/pending";
 import type {
   InternalServiceRecord,
   InternalVehicleTypeRecord,
@@ -240,9 +239,9 @@ export function InternalAgendaScreen({
                 />
               </Field>
               <DepositSettingsFields settings={settings} />
-              <Button className="mt-1 w-fit" size="md" type="submit">
+              <SubmitButton className="mt-1 w-fit" size="md">
                 Guardar cambios
-              </Button>
+              </SubmitButton>
             </form>
           </Card>
         ) : null}
@@ -264,7 +263,7 @@ export function InternalAgendaScreen({
                   <input name="vehicleTypeId" type="hidden" value={vehicleType.id} />
                   <input name="isActive" type="hidden" value={vehicleType.isActive ? "false" : "true"} />
                   <span className="font-medium text-white">{vehicleType.name}</span>
-                  <Toggle
+                  <SubmitToggle
                     aria-label={vehicleType.isActive ? `Ocultar ${vehicleType.name}` : `Ofrecer ${vehicleType.name}`}
                     checked={vehicleType.isActive}
                   />
@@ -275,7 +274,7 @@ export function InternalAgendaScreen({
               <Field label="Agregar tipo">
                 <TextInput name="name" maxLength={40} placeholder="Cuatriciclo" required />
               </Field>
-              <Button size="sm" type="submit" variant="ghost">Agregar</Button>
+              <SubmitButton size="sm" variant="ghost">Agregar</SubmitButton>
             </form>
           </Card>
         ) : null}
@@ -300,7 +299,7 @@ export function InternalAgendaScreen({
                       {service.durationMinutes} min
                     </span>
                   </span>
-                  <Toggle
+                  <SubmitToggle
                     aria-label={service.isActive ? `Ocultar ${service.name}` : `Publicar ${service.name}`}
                     checked={service.isActive}
                   />
@@ -310,7 +309,7 @@ export function InternalAgendaScreen({
                   <Field label={`Duración de ${service.name}`} hint="minutos">
                     <TextInput name="durationMinutes" type="number" min={1} max={1440} step={1} required defaultValue={service.durationMinutes} />
                   </Field>
-                  <Button type="submit" variant="ghost" size="sm">Guardar duración</Button>
+                  <SubmitButton variant="ghost" size="sm">Guardar duración</SubmitButton>
                 </form>
                 </div>
               ))}

@@ -1,10 +1,11 @@
 "use client";
 
+import Form from "next/form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
-import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, TextInput, Textarea } from "@/src/components/ui";
+import { useActionState, useTransition, type ReactNode } from "react";
+import { Alert, Card, EmptyState, Field, PageHeading, Select, Spinner, TextInput, Textarea } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import {
   createInventoryProductAction,
@@ -129,13 +130,13 @@ export function InventoryScreen({
       <PageHeading eyebrow="Taller · stock" title="Repuestos" description="Buscá por nombre, SKU o código de barras. Las cantidades se actualizan desde cada ficha." action={<a className="rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href="#nuevo">Nuevo repuesto</a>} />
       <InventoryCodeLookup />
       <Card className="mt-6" aria-label="Filtros de inventario">
-        <form className="grid min-w-0 gap-3 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem_auto]" method="get">
+        <Form action="" className="grid min-w-0 gap-3 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem_auto]">
           <TextInput aria-label="Buscar repuesto" defaultValue={filters.q} density="sm" name="q" placeholder="Buscar por nombre, SKU o código" />
           <Select aria-label="Estado" defaultValue={filters.status} density="sm" name="status"><option value="">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option><option value="low">En mínimo</option></Select>
           <Select aria-label="Categoría" defaultValue={filters.category} density="sm" name="category"><option value="">Todas las categorías</option>{categories.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
           <Select aria-label="Ubicación" defaultValue={filters.location} density="sm" name="location"><option value="">Todas las ubicaciones</option>{locations.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
-          <Button className="justify-self-start" type="submit">Filtrar</Button>
-        </form>
+          <SubmitButton className="justify-self-start">Filtrar</SubmitButton>
+        </Form>
       </Card>
       <Card padding="none" className="mt-6 overflow-hidden">
         <div className="flex items-center justify-between gap-4 px-6 py-5"><div><h2 className="font-bold text-white">Listado</h2><p className="mt-1 text-sm text-zinc-500">{products.length} {products.length === 1 ? "resultado" : "resultados"}</p></div>{products.length ? <Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href={`/internal/shop/inventory/labels${filterQuery ? `?${filterQuery}` : ""}`}>Imprimir etiquetas</Link> : null}</div>
@@ -149,6 +150,7 @@ export function InventoryScreen({
 
 function InventoryCodeLookup() {
   const router = useRouter();
+  const [searching, startSearch] = useTransition();
   return (
     <Card className="mt-8" aria-label="Buscar por código">
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
@@ -156,12 +158,13 @@ function InventoryCodeLookup() {
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Escaneo</p>
           <h2 className="mt-3 text-2xl font-black text-white">Buscar por código</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-400">Escaneá con la cámara o escribí el código de barras o el SKU; también funciona con un lector USB. Leer un código abre la ficha: no cambia el stock.</p>
-          <form action="/internal/shop/inventory/code" className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end" method="get">
+          <Form action="/internal/shop/inventory/code" className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end">
             <Field className="min-w-0 flex-1" label="Código" htmlFor="inventory-code"><TextInput autoComplete="off" className="w-full min-w-0" enterKeyHint="search" id="inventory-code" name="value" required /></Field>
-            <Button className="justify-self-start" type="submit">Buscar código</Button>
-          </form>
+            <SubmitButton className="justify-self-start">Buscar código</SubmitButton>
+          </Form>
+          {searching ? <p className="mt-3 flex items-center gap-2 text-sm font-bold text-apple-300" role="status"><Spinner />Buscando el código…</p> : null}
         </div>
-        <BarcodeScanner onDetected={(code) => router.push(`/internal/shop/inventory/code?value=${encodeURIComponent(code)}`)} />
+        <BarcodeScanner onDetected={(code) => startSearch(() => router.push(`/internal/shop/inventory/code?value=${encodeURIComponent(code)}`))} />
       </div>
     </Card>
   );
@@ -190,7 +193,7 @@ function ExcelImportCard() {
         <Field className="min-w-0 flex-1" label="Archivo Excel" hint=".xlsx · máximo 3 MB · hasta 1.000 productos" htmlFor="inventory-excel-file">
           <input className="block w-full min-w-0 rounded-xl border border-dashed border-white/20 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 file:mr-4 file:rounded-lg file:border-0 file:bg-apple-400 file:px-4 file:py-2 file:font-black file:text-zinc-950 hover:border-apple-400/40" id="inventory-excel-file" name="file" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
         </Field>
-        <SubmitButton label="Importar productos" pendingLabel="Importando…" />
+        <SubmitButton className="mt-2 justify-self-start" pendingLabel="Importando…">Importar productos</SubmitButton>
       </form>
       <ActionFeedback state={state} />
       {state.status === "error" && state.issues?.length ? (
@@ -260,11 +263,11 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
             <div className="border-b border-white/10 px-6 py-5">
               <h2 className="text-2xl font-black text-white">Ya está cargado sin código</h2>
               <p className="mt-2 text-sm leading-6 text-zinc-400">Vinculá el código a un repuesto que todavía no tiene código de barras.</p>
-              <form className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end" method="get">
+              <Form action="" className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end">
                 <input name="value" type="hidden" value={code} />
                 <TextInput aria-label="Buscar repuestos sin código" className="w-full min-w-0 flex-1" defaultValue={linkQuery} density="sm" name="q" placeholder="Nombre, SKU o marca" />
-                <Button className="justify-self-start" type="submit" variant="ghost">Buscar</Button>
-              </form>
+                <SubmitButton className="justify-self-start" variant="ghost">Buscar</SubmitButton>
+              </Form>
             </div>
             {linkCandidates.length ? (
               <ul className="divide-y divide-white/10">{linkCandidates.map((product) => (
@@ -274,7 +277,7 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
                     <input name="productId" type="hidden" value={product.id} />
                     <input name="barcode" type="hidden" value={code} />
                     <input name="version" type="hidden" value={product.version} />
-                    <SubmitButton label="Vincular" pendingLabel="Vinculando…" />
+                    <SubmitButton className="mt-2 justify-self-start" pendingLabel="Vinculando…">Vincular</SubmitButton>
                   </form>
                 </li>
               ))}</ul>
@@ -334,7 +337,7 @@ function ProductFields({ formAction, state, product, version, requestKey, defaul
       <Field label="Compatibilidad" hint="opcional" htmlFor={`${baseId}-compatibility`} className="sm:col-span-2"><TextInput id={`${baseId}-compatibility`} name="compatibility" defaultValue={value("compatibility")} placeholder="Ej. Honda Wave 110, 2020–2024" /></Field>
       <Field label="Descripción" hint="opcional" htmlFor={`${baseId}-description`} className="sm:col-span-2"><Textarea id={`${baseId}-description`} name="description" defaultValue={value("description")} /></Field>
       <label className="flex items-center gap-3 text-sm text-zinc-300 sm:col-span-2"><input name="isActive" type="hidden" value="false" /><input className="h-4 w-4 accent-[#8EE000]" defaultChecked={(values?.isActive ?? String(product?.isActive ?? true)) === "true"} name="isActive" type="checkbox" value="true" />Activo para operar</label>
-      <SubmitButton label={product ? "Guardar ficha" : "Crear repuesto"} />
+      <SubmitButton className="mt-2 justify-self-start" pendingLabel="Guardando…">{product ? "Guardar ficha" : "Crear repuesto"}</SubmitButton>
     </form>
   );
 }
@@ -345,10 +348,9 @@ function MovementForm({ product, requestKey }: { product: InventoryDetailProduct
   return <Card aria-label="Registrar movimiento"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Stock físico</p><h2 className="mt-3 text-2xl font-black text-white">Registrar movimiento</h2><p className="mt-2 text-sm leading-6 text-zinc-400">Cada operación requiere un motivo y queda en el historial.</p><MovementFields key={product.version} formAction={action} product={product} requestKey={requestKey} state={state} values={values} /><ActionFeedback state={state} /></Card>;
 }
 
-function MovementFields({ formAction, product, requestKey, state, values }: { formAction: (payload: FormData) => void; product: InventoryDetailProduct; requestKey: string; state: ShopActionState; values?: Record<string, string> }) { return <form action={formAction} className="mt-6 grid min-w-0 gap-4 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full [&_textarea]:min-w-0 [&_textarea]:w-full"><input type="hidden" name="productId" value={product.id} /><input type="hidden" name="version" value={product.version} /><RequestKey initialKey={requestKey} state={state} /><Field label="Tipo" htmlFor="movement-kind"><Select id="movement-kind" name="kind" defaultValue={values?.kind ?? "RECEIPT"}><option value="RECEIPT">Entrada de mercadería</option><option value="REPAIR">Consumo en reparación</option><option value="ADJUSTMENT">Ajuste por conteo</option></Select></Field><Field label="Cantidad" hint="en ajuste es el nuevo físico" htmlFor="movement-quantity"><TextInput id="movement-quantity" name="quantity" defaultValue={values?.quantity ?? ""} inputMode="numeric" required /></Field><Field label="Motivo" htmlFor="movement-reason"><Textarea id="movement-reason" name="reason" defaultValue={values?.reason ?? ""} placeholder="Ej. Ingreso de proveedor, orden 142" required /></Field><Field label="Referencia" hint="opcional" htmlFor="movement-reference"><TextInput id="movement-reference" name="reference" defaultValue={values?.reference ?? ""} placeholder="Factura, orden o remito" /></Field><SubmitButton label="Registrar movimiento" /></form>; }
+function MovementFields({ formAction, product, requestKey, state, values }: { formAction: (payload: FormData) => void; product: InventoryDetailProduct; requestKey: string; state: ShopActionState; values?: Record<string, string> }) { return <form action={formAction} className="mt-6 grid min-w-0 gap-4 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full [&_textarea]:min-w-0 [&_textarea]:w-full"><input type="hidden" name="productId" value={product.id} /><input type="hidden" name="version" value={product.version} /><RequestKey initialKey={requestKey} state={state} /><Field label="Tipo" htmlFor="movement-kind"><Select id="movement-kind" name="kind" defaultValue={values?.kind ?? "RECEIPT"}><option value="RECEIPT">Entrada de mercadería</option><option value="REPAIR">Consumo en reparación</option><option value="ADJUSTMENT">Ajuste por conteo</option></Select></Field><Field label="Cantidad" hint="en ajuste es el nuevo físico" htmlFor="movement-quantity"><TextInput id="movement-quantity" name="quantity" defaultValue={values?.quantity ?? ""} inputMode="numeric" required /></Field><Field label="Motivo" htmlFor="movement-reason"><Textarea id="movement-reason" name="reason" defaultValue={values?.reason ?? ""} placeholder="Ej. Ingreso de proveedor, orden 142" required /></Field><Field label="Referencia" hint="opcional" htmlFor="movement-reference"><TextInput id="movement-reference" name="reference" defaultValue={values?.reference ?? ""} placeholder="Factura, orden o remito" /></Field><SubmitButton className="mt-2 justify-self-start" pendingLabel="Guardando…">Registrar movimiento</SubmitButton></form>; }
 
 function RequestKey({ initialKey, state }: { initialKey: string; state: ShopActionState }) { return <input type="hidden" name="requestKey" value={state.status === "error" ? state.values?.requestKey ?? initialKey : initialKey} />; }
-function SubmitButton({ label, pendingLabel = "Guardando…" }: { label: string; pendingLabel?: string }) { const { pending } = useFormStatus(); return <Button className="mt-2 justify-self-start" disabled={pending} type="submit">{pending ? pendingLabel : label}</Button>; }
 function ActionFeedback({ state, successHref, successLabel }: { state: ShopActionState; successHref?: string; successLabel?: string }) { if (state.status === "idle") return null; return <Alert className="mt-5" tone={state.status === "success" ? "success" : "danger"}>{state.message}{successHref && successLabel ? <Link className="ml-2 font-bold underline" href={successHref}>{successLabel}</Link> : null}</Alert>; }
 function Metric({ label, value, note, alert = false }: { label: string; value: number; note: string; alert?: boolean }) { return <Card className={alert ? "border-apple-400/40" : ""}><p className="text-sm text-zinc-400">{label}</p><p className={alert ? "mt-3 text-4xl font-black text-apple-300" : "mt-3 text-4xl font-black text-white"}>{number(value)}</p><p className="mt-2 text-xs text-zinc-500">{note}</p></Card>; }
 function InventoryRow({ product }: { product: InventoryListProduct }) { const available = product.stock - product.reservedStock; const low = available <= product.minimumStock; return <Link className="grid min-w-0 gap-3 px-6 py-5 transition hover:bg-white/[0.035] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center" href={`/internal/shop/inventory/${product.id}`}><div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.location ? ` · ${product.location}` : ""}</p><p className="mt-2 text-sm font-semibold text-zinc-300">{formatArs(product.priceCents)}</p></div><div className="text-left sm:text-right"><p className={low ? "font-black text-apple-300" : "font-black text-white"}>{number(available)} disp.</p><p className="mt-1 text-xs text-zinc-500">Físico {number(product.stock)} · Reservado {number(product.reservedStock)}</p></div><StatusChip active={product.isActive} low={low} /></Link>; }

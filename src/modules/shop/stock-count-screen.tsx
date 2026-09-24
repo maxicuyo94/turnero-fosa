@@ -1,9 +1,11 @@
 "use client";
 
+import Form from "next/form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useFormStatus } from "react-dom";
-import { Alert, Button, Card, EmptyState, Field, PageHeading, Select, TextInput, Textarea } from "@/src/components/ui";
+import { useTransition } from "react";
+import { Alert, Card, Spinner, EmptyState, Field, PageHeading, Select, TextInput, Textarea } from "@/src/components/ui";
+import { LinkPendingSpinner, SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import {
   applyStockCountAction,
@@ -42,7 +44,7 @@ export function StockCountsScreen({ counts, locations, error, signedInUserName, 
           <form action={openStockCountAction} className="mt-6 grid gap-4 [&_input]:w-full [&_select]:w-full">
             <Field label="Qué contar" htmlFor="count-location"><Select id="count-location" name="location" defaultValue=""><option value="">Todo el inventario</option>{locations.map((location) => <option key={location} value={location}>{location}</option>)}</Select></Field>
             <Field label="Nombre" hint="opcional" htmlFor="count-title"><TextInput id="count-title" name="title" placeholder="Ej. Conteo de fin de mes" /></Field>
-            <SubmitButton label="Empezar conteo" pendingLabel="Preparando…" />
+            <SubmitButton className="justify-self-start" pendingLabel="Preparando…">Empezar conteo</SubmitButton>
           </form>
         </Card>
         <Card padding="none" className="overflow-hidden" aria-label="Conteos recientes">
@@ -85,7 +87,7 @@ export function StockCountScreen({ count, rows, focus, inScope, view, notice, er
       {!open ? <Alert className="mt-6" tone="info">{count.status === "APPLIED" ? "Aplicado" : "Cancelado"} {count.closedAt ? formatDate(count.closedAt) : ""}{count.closedBy ? ` por ${count.closedBy}` : ""}{count.closeReason ? `: ${count.closeReason}` : ""}.</Alert> : null}
       {open ? <CountScanner countId={count.id} focus={focus} inScope={inScope} view={view} /> : null}
       <nav aria-label="Filtrar líneas" className="mt-8 flex min-w-0 gap-2 overflow-x-auto whitespace-nowrap">
-        {views.map((item) => <Link aria-current={item.value === view ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-bold ${item.value === view ? "border-apple-400/60 bg-apple-400/10 text-white" : "border-white/10 text-zinc-400 hover:text-white"}`} href={item.value === "all" ? `/internal/shop/counts/${count.id}` : `/internal/shop/counts/${count.id}?view=${item.value}`} key={item.value}>{item.label} · {item.total}</Link>)}
+        {views.map((item) => <Link aria-current={item.value === view ? "page" : undefined} className={`rounded-full border px-4 py-2 text-sm font-bold ${item.value === view ? "border-apple-400/60 bg-apple-400/10 text-white" : "border-white/10 text-zinc-400 hover:text-white"}`} href={item.value === "all" ? `/internal/shop/counts/${count.id}` : `/internal/shop/counts/${count.id}?view=${item.value}`} key={item.value}>{item.label} · {item.total}<LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" /></Link>)}
       </nav>
       <Card padding="none" className="mt-4 overflow-hidden" aria-label="Líneas del conteo">
         {visible.length ? <ul className="divide-y divide-white/10">{visible.map((row) => <CountLine countId={count.id} key={row.product.id} open={open} row={row} view={view} />)}</ul> : <EmptyState className="m-6">No hay repuestos en esta vista.</EmptyState>}
@@ -97,16 +99,18 @@ export function StockCountScreen({ count, rows, focus, inScope, view, notice, er
 
 function CountScanner({ countId, focus, inScope, view }: { countId: string; focus?: StockCountRow; inScope: boolean; view: CountView }) {
   const router = useRouter();
+  const [searching, startSearch] = useTransition();
   return (
     <Card className="mt-8" aria-label="Contar un repuesto">
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
         <div className="min-w-0">
           <h2 className="text-2xl font-black text-white">Contar</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-400">Escaneá o escribí el código y cargá cuántas unidades hay físicamente, incluidas las reservadas. Volver a escanear reemplaza la cantidad, no la suma.</p>
-          <form className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end" method="get">
+          <Form action="" className="mt-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-end">
             <Field className="min-w-0 flex-1" label="Código o SKU" htmlFor="count-code"><TextInput autoComplete="off" autoFocus={!focus} className="w-full min-w-0" enterKeyHint="search" id="count-code" name="code" required /></Field>
-            <Button className="justify-self-start" type="submit" variant="ghost">Buscar</Button>
-          </form>
+            <SubmitButton className="justify-self-start" variant="ghost">Buscar</SubmitButton>
+          </Form>
+          {searching ? <ScanSearching /> : null}
           {focus ? (
             <form action={recordCountedQuantityAction} className="mt-6 rounded-2xl border border-apple-400/40 bg-apple-400/[0.06] p-5" key={focus.product.id}>
               <input name="countId" type="hidden" value={countId} />
@@ -118,12 +122,12 @@ function CountScanner({ countId, focus, inScope, view }: { countId: string; focu
               <p className="mt-3 text-sm text-zinc-400">Registrado {number(focus.expectedStock)} · Reservado {number(focus.product.reservedStock)}{focus.countedQuantity !== null ? ` · Ya contado: ${number(focus.countedQuantity)}` : ""}</p>
               <div className="mt-4 flex items-end gap-3">
                 <Field className="w-36" label="Unidades contadas" htmlFor="focus-quantity"><TextInput autoFocus className="w-full" defaultValue={focus.countedQuantity ?? ""} id="focus-quantity" inputMode="numeric" name="quantity" required /></Field>
-                <SubmitButton label="Guardar" />
+                <SubmitButton className="justify-self-start" pendingLabel="Guardando…">Guardar</SubmitButton>
               </div>
             </form>
           ) : null}
         </div>
-        <BarcodeScanner onDetected={(code) => router.push(`/internal/shop/counts/${countId}?${new URLSearchParams({ code, ...(view === "all" ? {} : { view }) })}`)} />
+        <BarcodeScanner onDetected={(code) => startSearch(() => router.push(`/internal/shop/counts/${countId}?${new URLSearchParams({ code, ...(view === "all" ? {} : { view }) })}`))} />
       </div>
     </Card>
   );
@@ -143,12 +147,12 @@ function CountLine({ countId, row, open, view }: { countId: string; row: StockCo
       {open ? (
         <div className="flex flex-wrap items-end gap-2">
           {row.issue === "moved" ? (
-            <form action={recountStockCountLineAction}><input name="countId" type="hidden" value={countId} /><input name="productId" type="hidden" value={row.product.id} /><input name="view" type="hidden" value={view} /><SubmitButton label="Recontar" variant="ghost" /></form>
+            <form action={recountStockCountLineAction}><input name="countId" type="hidden" value={countId} /><input name="productId" type="hidden" value={row.product.id} /><input name="view" type="hidden" value={view} /><SubmitButton className="justify-self-start" variant="ghost" pendingLabel="Guardando…">Recontar</SubmitButton></form>
           ) : (
             <form action={recordCountedQuantityAction} className="flex items-end gap-2">
               <input name="countId" type="hidden" value={countId} /><input name="productId" type="hidden" value={row.product.id} /><input name="view" type="hidden" value={view} />
               <TextInput aria-label={`Unidades contadas de ${row.product.name}`} className="w-24" defaultValue={row.countedQuantity ?? ""} density="sm" inputMode="numeric" key={row.countedQuantity ?? "none"} name="quantity" placeholder="—" />
-              <SubmitButton label="Guardar" variant="ghost" />
+              <SubmitButton className="justify-self-start" variant="ghost" pendingLabel="Guardando…">Guardar</SubmitButton>
             </form>
           )}
         </div>
@@ -168,7 +172,7 @@ function CloseCount({ countId, counted, differences, review }: { countId: string
         <form action={applyStockCountAction} className="mt-5 grid gap-4 [&_textarea]:w-full">
           <input name="countId" type="hidden" value={countId} />
           <Field label="Motivo del ajuste" htmlFor="apply-reason"><Textarea id="apply-reason" name="reason" placeholder="Ej. Conteo mensual del depósito" required /></Field>
-          <SubmitButton disabled={blocked} label="Aplicar ajustes" pendingLabel="Aplicando…" />
+          <SubmitButton className="justify-self-start" disabled={blocked} pendingLabel="Aplicando…">Aplicar ajustes</SubmitButton>
         </form>
       </Card>
       <Card aria-label="Cancelar conteo">
@@ -177,16 +181,16 @@ function CloseCount({ countId, counted, differences, review }: { countId: string
         <form action={cancelStockCountAction} className="mt-5 grid gap-4 [&_input]:w-full">
           <input name="countId" type="hidden" value={countId} />
           <Field label="Motivo" htmlFor="cancel-reason"><TextInput id="cancel-reason" name="reason" required /></Field>
-          <SubmitButton label="Cancelar conteo" pendingLabel="Cancelando…" variant="ghost" />
+          <SubmitButton className="justify-self-start" pendingLabel="Cancelando…" variant="ghost">Cancelar conteo</SubmitButton>
         </form>
       </Card>
     </section>
   );
 }
 
-function SubmitButton({ label, pendingLabel = "Guardando…", disabled = false, variant }: { label: string; pendingLabel?: string; disabled?: boolean; variant?: "ghost" }) {
-  const { pending } = useFormStatus();
-  return <Button className="justify-self-start" disabled={disabled || pending} type="submit" variant={variant}>{pending ? pendingLabel : label}</Button>;
+
+function ScanSearching() {
+  return <p className="mt-3 flex items-center gap-2 text-sm font-bold text-apple-300" role="status"><Spinner />Buscando el código…</p>;
 }
 
 function StatusChip({ status }: { status: CountStatus }) {

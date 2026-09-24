@@ -13,6 +13,7 @@ export { RouteCard, type RouteCardProps } from "./route-card";
 export { Select, type SelectProps } from "./select";
 export { SiteHeader, type SiteHeaderProps, type SiteHeaderSection } from "./site-header";
 export { SlotOption, type SlotOptionProps } from "./slot-option";
+export { Spinner, type SpinnerProps } from "./spinner";
 export {
   StatusBadge,
   appointmentStatusLabels,
