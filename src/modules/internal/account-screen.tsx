@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { Alert, Button, Card, Field, PageHeading, PageShell, SiteHeader, TextInput } from "@/src/components/ui";
-import { signOutAction } from "@/app/(internal)/internal/actions";
+import { Alert, Button, Card, Field, PageHeading, TextInput } from "@/src/components/ui";
 import { changePasswordAction } from "@/app/(internal)/internal/account/actions";
+import { InternalShell } from "@/src/modules/internal/internal-shell";
 
 export type AccountActionState = {
   status: "idle" | "success" | "error";
@@ -18,20 +17,20 @@ const initialState: AccountActionState = { status: "idle" };
 export function InternalAccountScreen({
   user,
   minPasswordLength,
+  canManageWorkshop,
 }: {
   user: { name: string | null; username: string | null; email: string };
   minPasswordLength: number;
+  canManageWorkshop?: boolean;
 }) {
   const [state, action] = useActionState(changePasswordAction, initialState);
   const displayName = user.name ?? user.username ?? user.email;
   const invalid = (field: NonNullable<AccountActionState["field"]>) => state.status === "error" && state.field === field;
 
   return (
-    <>
-      <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={signOutAction} userName={displayName} />
-      <PageShell width="sm">
-        <Link className="text-sm font-bold text-zinc-400 hover:text-white" href="/internal">← Volver al panel</Link>
-        <PageHeading className="mt-7" eyebrow="Acceso interno" title="Mi cuenta" description={`Usuario ${user.username ?? user.email}`} />
+    <InternalShell active="account" canManageWorkshop={canManageWorkshop} signedInUserName={displayName}>
+      <div className="mx-auto w-full max-w-md">
+        <PageHeading eyebrow="Acceso interno" title="Mi cuenta" description={`Usuario ${user.username ?? user.email}`} />
 
         <Card className="mt-8" aria-label="Cambiar contraseña">
           <h2 className="text-2xl font-black text-white">Cambiar contraseña</h2>
@@ -56,8 +55,8 @@ export function InternalAccountScreen({
             <Alert className="mt-5" tone={state.status === "success" ? "success" : "danger"}>{state.message}</Alert>
           ) : null}
         </Card>
-      </PageShell>
-    </>
+      </div>
+    </InternalShell>
   );
 }
 

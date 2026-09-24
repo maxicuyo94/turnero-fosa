@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
-import { requireStaff } from "@/src/lib/staff-access";
+import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { normalizeScannedCode } from "@/src/modules/shop/inventory-code";
 import { InventoryScreen, type InventoryListProduct } from "@/src/modules/shop/inventory-screen";
@@ -53,7 +53,7 @@ export default async function InventoryPage({ searchParams }: { searchParams?: P
   const products = filters.status === "low"
     ? rows.filter((product) => product.stock - product.reservedStock <= product.minimumStock)
     : rows;
-  return <InventoryScreen categories={categoryRows.map((row) => row.category)} createRequestKey={randomUUID()} filters={filters} initialBarcode={normalizeScannedCode(raw?.barcode) ?? undefined} locations={locationRows.flatMap((row) => row.location ? [row.location] : [])} products={products as InventoryListProduct[]} signedInUserName={staff.displayName} />;
+  return <InventoryScreen categories={categoryRows.map((row) => row.category)} createRequestKey={randomUUID()} filters={filters} initialBarcode={normalizeScannedCode(raw?.barcode) ?? undefined} locations={locationRows.flatMap((row) => row.location ? [row.location] : [])} products={products as InventoryListProduct[]} canManageWorkshop={hasRole(staff, "ADMIN")} signedInUserName={staff.displayName} />;
 }
 
 function clean(value: string | undefined, maximum: number) { return typeof value === "string" ? value.trim().slice(0, maximum) : ""; }
