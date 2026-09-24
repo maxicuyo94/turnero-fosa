@@ -17,7 +17,7 @@ certificar el estado remoto ni constituye una auditoría exhaustiva.
 | Capacidad | Estado | Evidencia / pendiente |
 | --- | --- | --- |
 | Reserva pública, consulta por código, disponibilidad y capacidad | Implementado y publicado | `src/modules/booking/`, `src/modules/availability/` |
-| Agenda protegida, estados, horarios, descansos y feriados | Implementado y publicado | `src/modules/internal/`; queda cerrar evidencia pendiente de aceptación de feriados |
+| Agenda protegida, estados, horarios, descansos y feriados | Implementado y publicado | `src/modules/internal/`; feriados importados y excepciones verificados en Preview el 2026-09-24 |
 | Reprogramación interna, duración e historial de intervalos | Implementado y publicado | [Cambio OpenSpec](changes/safe-appointment-rescheduling/tasks.md); pendiente seguimiento de logs de email |
 | Base de señas con Mercado Pago y webhook firmado | Código publicado; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); compra sandbox completa en Preview el 2026-09-23 (`BGJ294X52X`); falta programar los cron, observar la confirmación por webhook y la configuración productiva |
 | Correcciones de reintentos vencidos, pagos fallidos, enlaces manipulados y zona horaria | Publicadas en `e15ebe8` | `tests/payments-prisma.test.ts`, `tests/availability.test.ts`, `e2e/foundation.spec.ts` |
