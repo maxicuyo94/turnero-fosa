@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { notFound } from "next/navigation";
-import { requireStaff } from "@/src/lib/staff-access";
+import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
-import { signOutAction } from "@/app/(internal)/internal/actions";
 import { mergeVehiclesAction, saveVehicleAction } from "@/app/(internal)/internal/vehicles/actions";
 import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import { getVehicleRecord, listDuplicateVehicleGroups } from "@/src/modules/vehicles/service";
@@ -36,8 +35,8 @@ export default async function VehicleRecordPage({
       feedback={(await searchParams)?.feedback ?? null}
       mergeAction={mergeVehiclesAction}
       mergeRequestKey={randomUUID()}
-      onSignOut={signOutAction}
       saveAction={saveVehicleAction}
+      canManageWorkshop={hasRole(staff, "ADMIN")}
       signedInUserName={staff.displayName}
       vehicle={vehicle}
       vehicleTypes={vehicleTypes.map((vehicleType) => ({ id: vehicleType.id, name: vehicleType.name }))}

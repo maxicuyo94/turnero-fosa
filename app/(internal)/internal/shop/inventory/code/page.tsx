@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireStaff } from "@/src/lib/staff-access";
+import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { db } from "@/src/lib/db";
 import { findSimilarInventoryCodes, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
 import { InventoryCodeScreen } from "@/src/modules/shop/inventory-screen";
@@ -42,6 +42,7 @@ export default async function InventoryCodePage({ searchParams }: { searchParams
       linkQuery={linkQuery}
       matches={resolution.status === "ambiguous" ? resolution.products : []}
       similar={similar}
+      canManageWorkshop={hasRole(staff, "ADMIN")}
       signedInUserName={staff.displayName}
     />
   );
