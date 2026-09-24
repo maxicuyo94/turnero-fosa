@@ -140,7 +140,8 @@ affect new reservations and preserve existing appointment intervals.
   (`depositExpirationMinutes`) ends. One external reference per attempt doubles as the
   `X-Idempotency-Key`, and concurrent starts share a single stored checkout link.
 - **Settlement:** the signed webhook (`/api/mercado-pago/webhook`) is the primary signal.
-  Test credentials never send webhooks, and one can be lost, so the return page and the
+  `TEST-` sandbox credentials never send webhooks (a test seller's `APP_USR-` ones do), and one
+  can be lost, so the return page and the
   expiry sweep also read the payment from Mercado Pago. Browser data is never trusted:
   every path re-reads the payment and checks reference, amount, currency and live mode.
 - **Expiry sweep:** `GET /api/cron/deposits` with `Authorization: Bearer $CRON_SECRET`
@@ -197,21 +198,34 @@ the result:
 | `FUND` / `SECU` / `EXPI` / `CALL` | Rejected: insufficient funds / bad CVV / bad expiry / needs authorization |
 
 **Run.**
-1. Book on the deployment. Preview has Vercel Deployment Protection, so scripts send the
-   `x-vercel-protection-bypass` header instead of logging in.
-2. In an incognito window, log in to Mercado Pago as the **buyer**, open the checkout link
-   and pay.
+1. Book on the branch URL, https://turnero-fosa-git-preview-maxicuyo94s-projects.vercel.app/booking,
+   not on a `turnero-fosa-<hash>-…` deployment URL: environment variables are fixed per deployment,
+   so an older one may lack the Mercado Pago credentials and say that online payment is off.
+   Preview has Vercel Deployment Protection: people log in to Vercel, scripts send the
+   `x-vercel-protection-bypass` header.
+2. In a Chrome or Edge incognito window (Brave's Shields block the checkout's reCAPTCHA and
+   fraud script), log in to Mercado Pago as the **buyer**, open the checkout link and pay.
 3. Check the results:
-   - `/booking/payment?reference=…` shows the outcome.
+   - `/booking/payment?reference=…` shows the outcome, and `/booking/status?code=…` the appointment.
    - The `DepositPaymentAttempt` is `APPROVED`, with `providerPaymentId` and `lastNotificationAt` set.
    - The appointment is confirmed, and `AppointmentStatusHistory` records the change.
    - `EmailLog` has the confirmation email.
-   - `vercel logs` shows `POST /api/mercado-pago/webhook` returning 200.
+   - `vercel logs` shows `POST /api/mercado-pago/webhook` returning 200. On the Hobby plan Vercel
+     keeps runtime logs for one hour only, so check them right after paying.
 4. Edge cases:
    - `OTHE` keeps the hold until it expires.
    - An unpaid hold is released after `depositExpirationMinutes` (30 by default). The release
      needs the sweep, which requires `CRON_SECRET`.
    - A refund made from the seller's panel clears the paid-cancellation warning.
+
+**Pitfalls seen while testing.**
+- A retried payment reuses the appointment's checkout until it expires, so each new scenario
+  needs a new booking.
+- "Una de las partes … es de prueba" means a real party is involved: paying as a guest, a real
+  Mercado Libre session in the browser, or the seller account used as the buyer.
+- If "Pagar" stays disabled with a saved card, choose "Modificar" and enter the card as new.
+- Emails from preview come from Resend's `onboarding@resend.dev`, which only delivers to the
+  Resend account owner; bookings made with other addresses leave their emails `FAILED`.
 
 Lowering capacity preserves existing appointments. Both internal sections display
 a persistent warning with links to every future interval above capacity, including
@@ -264,7 +278,7 @@ Units are now generic vehicles with a configurable type catalog, and a booking r
 and the unit already on record instead of creating a new pair every time. See
 [Vehicles and unit history](#vehicles-and-unit-history).
 
-Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. Live payment activation and end-to-end sandbox purchase acceptance remain pending in the roadmap.
+Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. A sandbox purchase approved on preview confirmed its appointment on 2026-09-23 (through the return page and sweep; confirming by webhook right after payment is still to be observed). Live payment activation remains pending in the roadmap.
 
 Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, and public online rescheduling. Internal inventory is now in local DEV as described above.
 
@@ -356,8 +370,8 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
   and the migrations apply, which makes the failure read like a build problem when it is not. A
   feature branch gets a working preview only if its own copies are added, or the filter is dropped.
 - The `MERCADO_PAGO_*` variables exist only for Preview, scoped to the `preview` Git branch (sandbox credentials). Production has none, so live collection stays off until they are added there.
-- `CRON_SECRET` is not configured in any environment yet, so `/api/cron/deposits` and `/api/cron/emails` answer 503 until it is added and a scheduler calls them.
-- Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent (queued emails then end as `FAILED`). Production email delivery remains pending until the workshop has a verified domain configured in Resend.
+- `CRON_SECRET` exists in Production and in Preview (scoped to the `preview` branch), with different values kept in `PRODUCTION.local.md` and `PREVIEW.local.md`. Calls without it get 401. No scheduler calls `/api/cron/deposits` and `/api/cron/emails` yet; on the Hobby plan that needs an external one.
+- Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent (queued emails then end as `FAILED`). Until the workshop verifies a domain in Resend, the sender is `onboarding@resend.dev`, which only delivers to the Resend account owner.
 - Every date and time is computed in the workshop's zone (`America/Argentina/Buenos_Aires`) through [src/lib/workshop-date.ts](src/lib/workshop-date.ts); nothing else hardcodes an offset or zone.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
