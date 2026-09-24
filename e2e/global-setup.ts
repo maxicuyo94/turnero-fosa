@@ -22,9 +22,12 @@ const internalRoutes = [
   "/internal/shop",
   "/internal/shop/inventory",
   "/internal/shop/inventory/code",
+  "/internal/shop/inventory/labels",
+  "/internal/shop/counts",
   "/internal/vehicles",
   // Las rutas dinámicas se compilan aunque el id no exista.
   "/internal/shop/inventory/e2e-warmup",
+  "/internal/shop/counts/e2e-warmup",
   "/internal/vehicles/e2e-warmup",
 ];
 

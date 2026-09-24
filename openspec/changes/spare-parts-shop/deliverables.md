@@ -35,6 +35,13 @@ Escaneo con alternativa manual, etiquetas internas imprimibles, conteos completo
 
 **Avance (18 de septiembre de 2026):** escaneo terminado en `preview`. Búsqueda por código en inventario con cámara, texto o lector USB; código desconocido ofrece alta precargada o vinculación a un repuesto sin código; coincidencias múltiples se muestran sin elegir. El área interna es instalable como PWA. Pendientes: etiquetas imprimibles y sesiones de conteo.
 
+**Avance (24 de septiembre de 2026):** etiquetas y conteos implementados en local, sin publicar.
+
+- Etiquetas: `/internal/shop/inventory/labels`, desde la ficha o desde el listado con sus filtros, con 1 a 20 copias por repuesto. Miden 60 × 30 mm. Los SKU de hasta 20 caracteres salen en Code 128, que también lee un lector USB, y los más largos (como los automáticos `REP-…`) en QR. Los SKU con acentos se imprimen sin código. Una prueba decodifica los códigos generados con el mismo zxing del escáner.
+- Conteos: `/internal/shop/counts`. El conteo es completo o por ubicación y toma como base el stock y la cantidad de movimientos de cada repuesto. Contar reemplaza el valor en lugar de sumarlo, y dejarlo vacío lo vuelve a "sin contar". Un repuesto que aparece fuera del alcance se suma al conteo. Si un repuesto se movió durante el conteo, aunque el stock vuelva al mismo número, o si lo contado no cubre sus reservas, el conteo no se puede aplicar hasta recontarlo. Aplicar registra un `ADJUSTMENT` por diferencia en una única transacción, con motivo y responsable. La clave `stock-count:<conteo>:<repuesto>` evita ajustar dos veces.
+- Migración aditiva `20260924120000_stock_counts`. Pruebas: `tests/label-code.test.ts`, `tests/stock-count-prisma.test.ts` (PostgreSQL, incluye dos aplicaciones simultáneas) y `e2e/stock-count.spec.ts` en escritorio y móvil.
+- Pendiente: probar la cámara y la impresión con el hardware real del taller y verificar en Preview.
+
 ## E3 — Cuenta de cliente y turnos propios
 
 **Resultado:** registro/acceso y portal con próximos turnos/historial, datos y motos; autorización explícita separada del personal.
