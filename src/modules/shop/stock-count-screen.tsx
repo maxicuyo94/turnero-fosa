@@ -163,7 +163,7 @@ function CloseCount({ countId, counted, differences, review }: { countId: string
     <section className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <Card aria-label="Aplicar conteo">
         <h2 className="text-2xl font-black text-white">Aplicar conteo</h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-400">{differences === 0 ? "No hay diferencias: aplicar solo cierra el conteo." : `Se registra un ajuste por cada uno de los ${differences} repuestos con diferencia.`} Los repuestos sin contar no se tocan.</p>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">{differences === 0 ? "No hay diferencias: aplicar solo cierra el conteo." : differences === 1 ? "Se registra un ajuste para el repuesto con diferencia." : `Se registra un ajuste por cada uno de los ${differences} repuestos con diferencia.`} Los repuestos sin contar no se tocan.</p>
         {review ? <p className="mt-2 text-sm text-red-300">Resolvé los {review} repuestos para revisar antes de aplicar.</p> : null}
         <form action={applyStockCountAction} className="mt-5 grid gap-4 [&_textarea]:w-full">
           <input name="countId" type="hidden" value={countId} />
