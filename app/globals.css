@@ -13,3 +13,15 @@ html {
 body {
   min-height: 100%;
 }
+
+/* Printed pages (inventory labels) go on white paper, without the dark surface. */
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  @page {
+    margin: 5mm;
+  }
+}

@@ -16,6 +16,7 @@ import {
 import { BarcodeScanner } from "@/src/modules/shop/barcode-scanner";
 import { shopInitialActionState, type ShopActionState } from "@/src/modules/shop/inventory-action-state";
 import type { InventoryCodeMatch } from "@/src/modules/shop/inventory-code-service";
+import { inventoryFilterQuery, type InventoryFilters } from "@/src/modules/shop/inventory-filters";
 import { InternalBackLink, InternalShell, InternalSubNav } from "@/src/modules/internal/internal-shell";
 
 export type InventoryListProduct = {
@@ -115,13 +116,14 @@ export function InventoryScreen({
   products: InventoryListProduct[];
   categories: string[];
   locations: string[];
-  filters: { q: string; status: string; category: string; location: string };
+  filters: InventoryFilters;
   createRequestKey: string;
   /** Codigo leido que no existia; precarga el alta de un repuesto nuevo. */
   initialBarcode?: string;
   signedInUserName?: string | null;
   canManageWorkshop?: boolean;
 }) {
+  const filterQuery = inventoryFilterQuery(filters);
   return (
     <ShopShell active="inventory" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <PageHeading eyebrow="Taller · stock" title="Repuestos" description="Buscá por nombre, SKU o código de barras. Las cantidades se actualizan desde cada ficha." action={<a className="rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href="#nuevo">Nuevo repuesto</a>} />
@@ -136,7 +138,7 @@ export function InventoryScreen({
         </form>
       </Card>
       <Card padding="none" className="mt-6 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-5"><div><h2 className="font-bold text-white">Listado</h2><p className="mt-1 text-sm text-zinc-500">{products.length} {products.length === 1 ? "resultado" : "resultados"}</p></div></div>
+        <div className="flex items-center justify-between gap-4 px-6 py-5"><div><h2 className="font-bold text-white">Listado</h2><p className="mt-1 text-sm text-zinc-500">{products.length} {products.length === 1 ? "resultado" : "resultados"}</p></div>{products.length ? <Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href={`/internal/shop/inventory/labels${filterQuery ? `?${filterQuery}` : ""}`}>Imprimir etiquetas</Link> : null}</div>
         {products.length ? <div className="divide-y divide-white/10">{products.map((product) => <InventoryRow key={product.id} product={product} />)}</div> : <EmptyState className="m-6">No encontramos repuestos con esos filtros.</EmptyState>}
       </Card>
       <ExcelImportCard />
@@ -205,7 +207,7 @@ export function InventoryProductScreen({ product, history, historyLimit, movemen
   return (
     <ShopShell active="inventory" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <InternalBackLink href="/internal/shop/inventory">Volver a inventario</InternalBackLink>
-      <div className="mt-7 flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div className="min-w-0"><p className="break-all font-mono text-xs font-bold tracking-[0.18em] text-apple-300">{product.sku}</p><h1 className="mt-2 break-words text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">{product.name}</h1><p className="mt-3 break-words text-zinc-400">{product.category}{product.brand ? ` · ${product.brand}` : ""}{product.location ? ` · ${product.location}` : ""}</p></div><StatusChip active={product.isActive} /></div>
+      <div className="mt-7 flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div className="min-w-0"><p className="break-all font-mono text-xs font-bold tracking-[0.18em] text-apple-300">{product.sku}</p><h1 className="mt-2 break-words text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">{product.name}</h1><p className="mt-3 break-words text-zinc-400">{product.category}{product.brand ? ` · ${product.brand}` : ""}{product.location ? ` · ${product.location}` : ""}</p></div><div className="flex items-center gap-4"><Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href={`/internal/shop/inventory/labels?id=${encodeURIComponent(product.id)}`}>Imprimir etiqueta</Link><StatusChip active={product.isActive} /></div></div>
       {notice ? <Alert className="mt-6" tone="success">{notice}</Alert> : null}
       <section className="mt-8 grid gap-4 sm:grid-cols-3" aria-label="Stock actual"><Metric label="Físico" value={product.stock} note="Unidades en taller" /><Metric label="Reservado" value={product.reservedStock} note="Para pedidos futuros" /><Metric label="Disponible" value={available} note={`Mínimo: ${product.minimumStock}`} alert={available <= product.minimumStock} /></section>
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
@@ -285,13 +287,14 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
   );
 }
 
-function ShopShell({ active, children, signedInUserName, canManageWorkshop }: { active: "summary" | "inventory"; children: ReactNode; signedInUserName?: string | null; canManageWorkshop?: boolean }) {
+export function ShopShell({ active, children, signedInUserName, canManageWorkshop }: { active: "summary" | "inventory" | "counts"; children: ReactNode; signedInUserName?: string | null; canManageWorkshop?: boolean }) {
   return (
     <InternalShell active="shop" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <InternalSubNav
         items={[
           { label: "Resumen", href: "/internal/shop", active: active === "summary" },
           { label: "Inventario", href: "/internal/shop/inventory", active: active === "inventory" },
+          { label: "Conteos", href: "/internal/shop/counts", active: active === "counts" },
         ]}
         label="Secciones de repuestos"
       />
