@@ -141,8 +141,9 @@ Cierre 2026-09-24: se vaciaron los datos operativos de producción y Preview (so
 datos de prueba), así que no quedaron duplicados. La migración
 `20260924150000_unique_vehicle_plate` agrega el índice único parcial y corta con un
 mensaje claro si encuentra patentes repetidas. La fusión de unidades existía solo para
-limpiar esos duplicados: se quitó, junto con la tabla `VehicleMerge`. Queda pendiente
-un camino para corregir una patente mal cargada, que hoy no se puede editar.
+limpiar esos duplicados: se quitó, junto con la tabla `VehicleMerge`. Una patente mal
+cargada se corrige desde la ficha (`20260924180000_vehicle_plate_changes`), con historial. Por eso
+la unidad ya no deriva su id de la patente: el índice único cubre la reserva simultánea.
 
 - **Prioridad:** P2. **Evidencia:** limitación conocida, asumida al entregar
   `generic-vehicle-history`.

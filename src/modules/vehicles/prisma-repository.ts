@@ -1,5 +1,7 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import type {
+  PlateChangeInput,
+  PlateChangeOutcome,
   VehicleHistoryRepository,
   VehicleRecord,
   VehicleSummary,
@@ -45,6 +47,7 @@ export class PrismaVehicleRepository implements VehicleHistoryRepository {
         customer: true,
         appointments: { include: { service: true }, orderBy: { startAt: "desc" } },
         ownerHistory: { orderBy: { changedAt: "desc" } },
+        plateChanges: { include: { changedBy: true }, orderBy: { changedAt: "desc" } },
       },
     });
     if (!vehicle) return null;
@@ -91,6 +94,40 @@ export class PrismaVehicleRepository implements VehicleHistoryRepository {
         reason: entry.reason,
         changedAt: entry.changedAt,
       })),
+      plateChanges: vehicle.plateChanges.map((change) => ({
+        id: change.id,
+        previousPlate: change.previousPlate,
+        newPlate: change.newPlate,
+        changedByName: change.changedBy?.name ?? change.changedBy?.username ?? null,
+        changedAt: change.changedAt,
+      })),
     };
+  }
+
+  /** One transaction: the conflict check, the new plate and its history row, or nothing. */
+  async changePlate(input: PlateChangeInput): Promise<PlateChangeOutcome> {
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const vehicle = await tx.vehicle.findUnique({ where: { id: input.vehicleId }, select: { licensePlate: true, plateNormalized: true } });
+        if (!vehicle) return { status: "MISSING" as const };
+        if (vehicle.plateNormalized === input.plateNormalized && vehicle.licensePlate === input.licensePlate) return { status: "UNCHANGED" as const };
+        if (input.plateNormalized) {
+          const holder = await tx.vehicle.findFirst({ where: { plateNormalized: input.plateNormalized, id: { not: input.vehicleId } }, select: { id: true } });
+          if (holder) return { status: "TAKEN" as const, otherVehicleId: holder.id };
+        }
+        await tx.vehicle.update({ where: { id: input.vehicleId }, data: { licensePlate: input.licensePlate, plateNormalized: input.plateNormalized } });
+        await tx.vehiclePlateChange.create({
+          data: { vehicleId: input.vehicleId, previousPlate: vehicle.licensePlate, newPlate: input.licensePlate, changedById: input.changedById },
+        });
+        return { status: "CHANGED" as const };
+      });
+    } catch (error) {
+      // A booking took the plate between the check and the write: the unique index has the last word.
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002" && input.plateNormalized) {
+        const holder = await this.prisma.vehicle.findFirst({ where: { plateNormalized: input.plateNormalized }, select: { id: true } });
+        if (holder) return { status: "TAKEN", otherVehicleId: holder.id };
+      }
+      throw error;
+    }
   }
 }

@@ -32,15 +32,15 @@ export function normalizePhone(phone: string | null | undefined): string | null 
 }
 
 /**
- * Derives a record's id from its identity key, which is what keeps two simultaneous bookings from
- * each creating the same unit.
+ * Derives a customer's id from their identity key, which is what keeps two simultaneous bookings
+ * from each creating the same person.
  *
  * The booking transaction runs at SERIALIZABLE and takes its snapshot before it waits on the
  * capacity advisory lock, so a booking that queues behind another can still read a database without
- * the unit the first one just committed, find nothing and insert a second row. There is no unique
- * index on the plate to stop it — production still holds one row per booking, so the plate cannot be
- * unique yet. Deriving the id from the key turns that silent duplicate into a primary key collision,
- * which the repository already retries on a fresh snapshot, and the retry then finds the row.
+ * the customer the first one just committed, find nothing and insert a second row. Deriving the id
+ * from the key turns that silent duplicate into a primary key collision, which the repository already
+ * retries on a fresh snapshot, and the retry then finds the row. Units no longer need this: their
+ * plate has a unique index, and it can be corrected, which a derived id would contradict.
  */
 export function identityDerivedId(prefix: string, identityKey: string): string {
   return `${prefix}_${createHash("sha256").update(identityKey).digest("hex").slice(0, 24)}`;
