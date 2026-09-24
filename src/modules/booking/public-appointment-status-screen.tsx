@@ -1,7 +1,7 @@
+import Form from "next/form";
 import Link from "next/link";
 import {
   Alert,
-  Button,
   Card,
   CodeDisplay,
   DetailList,
@@ -12,6 +12,7 @@ import {
   StatusBadge,
   TextInput,
 } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime, workshopTime } from "@/src/lib/workshop-date";
 import type { PublicAppointmentStatusResult } from "@/src/modules/booking/service";
 
@@ -35,7 +36,7 @@ export function PublicAppointmentStatusScreen({
         />
 
         <Card className="mt-8" padding="sm">
-          <form
+          <Form
             action="/booking/status"
             className="flex flex-col gap-3 sm:flex-row sm:items-end"
           >
@@ -50,10 +51,10 @@ export function PublicAppointmentStatusScreen({
                 required
               />
             </Field>
-            <Button size="lg" type="submit">
+            <SubmitButton size="lg">
               Consultar
-            </Button>
-          </form>
+            </SubmitButton>
+          </Form>
         </Card>
 
         {result?.accepted ? <AppointmentSummary appointment={result.appointment} /> : null}

@@ -1,5 +1,6 @@
 import { cancelAppointmentAction } from "@/app/(public)/booking/actions";
-import { Alert, Button, Card, PageHeading, PageShell, type AlertTone } from "@/src/components/ui";
+import { Alert, Card, PageHeading, PageShell, type AlertTone } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 
 const cancellationOutcomes: Record<string, { tone: AlertTone; message: string } | undefined> = {
   cancelled: { tone: "success", message: "Tu turno fue cancelado." },
@@ -36,9 +37,9 @@ export default async function CancellationPage({ searchParams }: CancellationPag
           <form action={cancelAppointmentAction}>
             <input type="hidden" name="appointmentId" value={appointmentId} />
             <input type="hidden" name="token" value={token} />
-            <Button size="lg" type="submit">
+            <SubmitButton size="lg">
               Confirmar cancelación
-            </Button>
+            </SubmitButton>
           </form>
         </Card>
       ) : null}

@@ -4,7 +4,8 @@ import {
   saveDateExceptionAction,
   updateWeeklyScheduleAction,
 } from "@/app/(internal)/internal/actions";
-import { Button, Card, Chip, EmptyState, Field, TextInput } from "@/src/components/ui";
+import { Card, Chip, EmptyState, Field, TextInput } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopCalendarDate } from "@/src/lib/workshop-date";
 import type { InternalWeeklyScheduleRecord } from "@/src/modules/settings/maintenance";
 import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
@@ -95,9 +96,9 @@ export function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: strin
           );
         })}
 
-        <Button className="mt-1 w-fit" size="md" type="submit">
+        <SubmitButton className="mt-1 w-fit" size="md">
           Guardar horarios
-        </Button>
+        </SubmitButton>
       </form>
     </Card>
   );
@@ -133,9 +134,9 @@ export function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: str
                 <form action={deleteDateExceptionAction}>
                   <input name="agendaDate" type="hidden" value={agendaDate} />
                   <input name="exceptionDate" type="hidden" value={exception.date} />
-                  <Button aria-label={`Eliminar la excepción del ${exception.date}`} type="submit" variant="ghost">
+                  <SubmitButton aria-label={`Eliminar la excepción del ${exception.date}`} variant="ghost">
                     Eliminar
-                  </Button>
+                  </SubmitButton>
                 </form>
               </span>
             </div>
@@ -162,9 +163,9 @@ export function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: str
             <TextInput density="sm" name="closesAt" type="time" />
           </Field>
         </div>
-        <Button className="w-fit" size="md" type="submit">
+        <SubmitButton className="w-fit" size="md">
           Guardar excepción
-        </Button>
+        </SubmitButton>
       </form>
 
       <form action={importHolidaysAction} className="mt-6 flex flex-col gap-3 border-t border-white/5 pt-6 sm:flex-row sm:items-end">
@@ -172,9 +173,9 @@ export function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: str
         <Field hint="(feriados nacionales de Argentina)" label="Año">
           <TextInput defaultValue={agendaDate.slice(0, 4)} density="sm" max={2100} min={2000} name="year" type="number" />
         </Field>
-        <Button size="md" type="submit" variant="ghost">
+        <SubmitButton size="md" variant="ghost">
           Importar feriados
-        </Button>
+        </SubmitButton>
       </form>
     </Card>
   );

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   Alert,
-  Button,
   Card,
   Field,
   PageHeading,
@@ -11,6 +10,7 @@ import {
   SiteHeader,
   TextInput,
 } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { TooManyLoginAttemptsError, auth, isInternalSession, signIn } from "@/src/lib/auth";
 
 type InternalLoginPageProps = {
@@ -45,9 +45,9 @@ export default async function InternalLoginPage({ searchParams }: InternalLoginP
             ) : error === "locked" ? (
               <Alert tone="danger">Demasiados intentos fallidos. Esperá 15 minutos y volvé a intentar.</Alert>
             ) : null}
-            <Button size="md" type="submit">
+            <SubmitButton size="md">
               Ingresar
-            </Button>
+            </SubmitButton>
           </form>
         </Card>
       </PageShell>

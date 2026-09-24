@@ -1,5 +1,7 @@
+import Form from "next/form";
 import Link from "next/link";
 import { EmptyState } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { labelCodeFor, type LabelCode } from "@/src/modules/shop/label-code";
 import { PrintButton } from "@/src/modules/shop/print-button";
 
@@ -25,14 +27,14 @@ export function InventoryLabelsScreen({ products, copies, backHref, truncated, c
           {truncated ? <p className="mt-2 text-sm text-apple-300">Se muestran los primeros {MAX_LABEL_PRODUCTS} repuestos. Filtrá el listado para imprimir el resto.</p> : null}
           {unreadable ? <p className="mt-2 text-sm text-red-300">{unreadable} {unreadable === 1 ? "repuesto tiene" : "repuestos tienen"} un SKU con acentos o ñ: se imprime sin código. Cambiá el SKU en la ficha para poder escanearlo.</p> : null}
         </div>
-        <form className="flex items-end gap-3" method="get">
+        <Form action="" className="flex items-end gap-3">
           {[...new URLSearchParams(copiesQuery)].map(([name, value]) => <input key={`${name}-${value}`} name={name} type="hidden" value={value} />)}
           <label className="text-sm text-zinc-300">Copias por repuesto
             <input className="mt-1 block w-24 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-white" defaultValue={copies} max={MAX_LABEL_COPIES} min={1} name="copies" type="number" />
           </label>
-          <button className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-bold text-white hover:bg-white/[0.08]" type="submit">Aplicar</button>
+          <SubmitButton size="md" variant="ghost">Aplicar</SubmitButton>
           <PrintButton disabled={!labels.length} />
-        </form>
+        </Form>
       </div>
       {labels.length ? (
         <ol aria-label="Etiquetas" className="mx-auto mt-8 flex max-w-5xl flex-wrap gap-2 print:mt-0 print:max-w-none print:gap-0">

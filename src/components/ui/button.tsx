@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "./cn";
+import { Spinner } from "./spinner";
 
 export type ButtonVariant = "primary" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -10,6 +11,8 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: ButtonSize;
   /** Stretch to the container width on narrow screens. */
   fullWidth?: boolean;
+  /** Waiting on the server: shows a spinner, disables the button and marks it busy. */
+  pending?: boolean;
   children: ReactNode;
 };
 
@@ -35,20 +38,26 @@ export function Button({
   className,
   children,
   type = "button",
+  pending = false,
+  disabled,
   ...rest
 }: ButtonProps) {
   return (
     <button
+      aria-busy={pending || undefined}
       className={cn(
-        "font-black transition disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center gap-2 font-black transition disabled:cursor-not-allowed disabled:opacity-60",
+        pending && "disabled:cursor-wait",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth && "w-full sm:w-fit",
         className,
       )}
+      disabled={disabled || pending}
       type={type}
       {...rest}
     >
+      {pending ? <Spinner /> : null}
       {children}
     </button>
   );

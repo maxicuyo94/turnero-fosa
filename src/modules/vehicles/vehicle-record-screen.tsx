@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Alert,
-  Button,
   Card,
   EmptyState,
   Field,
@@ -10,6 +9,7 @@ import {
   TextInput,
   Textarea,
 } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import { InternalBackLink, InternalShell } from "@/src/modules/internal/internal-shell";
 import type { VehicleRecord } from "@/src/modules/vehicles/service";
@@ -154,7 +154,7 @@ export function VehicleRecordScreen({
             <Textarea defaultValue={vehicle.notes ?? ""} maxLength={1000} name="notes" />
           </Field>
           <div className="md:col-span-2">
-            <Button size="sm" type="submit" variant="ghost">Guardar ficha</Button>
+            <SubmitButton size="sm" variant="ghost">Guardar ficha</SubmitButton>
           </div>
         </form>
       </Card>
@@ -170,7 +170,7 @@ export function VehicleRecordScreen({
           <Field className="min-w-[12rem] flex-1" label="Patente">
             <TextInput autoCapitalize="characters" defaultValue={vehicle.licensePlate ?? ""} maxLength={20} name="licensePlate" placeholder="Sin patente" />
           </Field>
-          <Button size="sm" type="submit" variant="ghost">Corregir patente</Button>
+          <SubmitButton size="sm" variant="ghost">Corregir patente</SubmitButton>
         </form>
       </Card>
     </InternalShell>

@@ -63,7 +63,7 @@ export function InternalAccountScreen({
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <Button className="mt-2 justify-self-start" disabled={pending} size="md" type="submit">
+    <Button className="mt-2 justify-self-start" pending={pending} size="md" type="submit">
       {pending ? "Guardando…" : "Cambiar contraseña"}
     </Button>
   );

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PageShell, SiteHeader } from "@/src/components/ui";
+import { LinkPendingSpinner } from "@/src/components/pending";
 import { signOutAction } from "@/app/(internal)/internal/actions";
 
 export type InternalNavSection = "agenda" | "settings" | "vehicles" | "shop" | "account";
@@ -58,6 +59,7 @@ export function InternalSubNav({ label, items }: { label: string; items: { label
           key={item.href}
         >
           {item.label}
+          <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
         </Link>
       ))}
     </nav>
@@ -69,6 +71,7 @@ export function InternalBackLink({ href, children }: { href: string; children: s
   return (
     <Link className="text-sm font-bold text-zinc-400 hover:text-white" href={href}>
       ← {children}
+      <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
     </Link>
   );
 }
@@ -83,6 +86,7 @@ function InternalNavLink({ active, href, children }: { active: boolean; href: st
       href={href}
     >
       {children}
+      <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
     </Link>
   );
 }

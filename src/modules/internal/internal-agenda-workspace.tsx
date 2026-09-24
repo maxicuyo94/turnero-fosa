@@ -1,5 +1,6 @@
 "use client";
 
+import Form from "next/form";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
@@ -11,6 +12,7 @@ import {
   StatusBadge,
   TextInput,
 } from "@/src/components/ui";
+import { LinkPendingSpinner, SubmitButton } from "@/src/components/pending";
 import { cn } from "@/src/components/ui/cn";
 import { capitalizeLabel, formatWorkshopCalendarDate, workshopTime } from "@/src/lib/workshop-date";
 import {
@@ -130,13 +132,13 @@ export function InternalAgendaWorkspace({
                 <ViewButton active={mode === "day"} onClick={() => setMode("day")}>Día</ViewButton>
                 <ViewButton active={mode === "week"} onClick={() => setMode("week")}>Semana</ViewButton>
               </div>
-              <form action="/internal" className="flex items-end gap-2">
+              <Form action="/internal" className="flex items-end gap-2">
                 <Field label="Ir a la fecha">
                   <TextInput defaultValue={agenda.date} density="sm" name="date" type="date" />
                 </Field>
                 {mode === "week" ? <input name="view" type="hidden" value="week" /> : null}
-                <Button type="submit">Ver</Button>
-              </form>
+                <SubmitButton>Ver</SubmitButton>
+              </Form>
             </div>
           </div>
 
@@ -245,6 +247,7 @@ function AgendaDateNavigation({ date, today, view }: { date: string; today: stri
     <nav aria-label="Navegar fechas" className="flex rounded-xl border border-white/10 bg-black/20 p-1">
       <Link aria-label={`${unit} anterior`} className={linkClass} href={agendaHref({ date: adjacentAgendaDate(date, view, -1), view })}>
         ‹ Anterior
+        <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
       </Link>
       <Link
         aria-current={showsToday ? "date" : undefined}
@@ -252,9 +255,11 @@ function AgendaDateNavigation({ date, today, view }: { date: string; today: stri
         href={agendaHref({ date: today, view })}
       >
         Hoy
+        <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
       </Link>
       <Link aria-label={`${unit} siguiente`} className={linkClass} href={agendaHref({ date: adjacentAgendaDate(date, view, 1), view })}>
         Siguiente ›
+        <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
       </Link>
     </nav>
   );
