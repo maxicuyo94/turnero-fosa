@@ -16,7 +16,10 @@
 - [x] 3.2 Add checkout link and safe retry by public booking code.
 - [x] 3.3 Add internal deposit settings.
 - [x] 3.4 Configure test credentials and validate sandbox preference creation.
-- [ ] 3.5 Complete a Mercado Pago test purchase and verify appointment reconciliation.
+- [x] 3.5 Complete a Mercado Pago test purchase and verify appointment reconciliation.
+  Done 2026-09-23 on preview: an `APRO` payment by the test buyer confirmed appointment
+  `BGJ294X52X` after the live-mode fix (`ab57587`). Confirmation by webhook right after paying
+  is still to be observed in `vercel logs`.
 
 ## 4. Verification and rollout
 
