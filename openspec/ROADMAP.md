@@ -1,6 +1,6 @@
 # Roadmap — Turnero Taller Express
 
-Actualizado: **2026-09-21**. Base revisada: `a702f30` en `main`.
+Actualizado: **2026-09-24**. Base revisada: `ca19321` en `main`.
 
 Este documento ordena el trabajo futuro. El detalle de errores, riesgos y pruebas
 pendientes está en [BACKLOG.md](BACKLOG.md). Las prioridades son propuestas; no
@@ -19,11 +19,12 @@ certificar el estado remoto ni constituye una auditoría exhaustiva.
 | Reserva pública, consulta por código, disponibilidad y capacidad | Implementado y publicado | `src/modules/booking/`, `src/modules/availability/` |
 | Agenda protegida, estados, horarios, descansos y feriados | Implementado y publicado | `src/modules/internal/`; queda cerrar evidencia pendiente de aceptación de feriados |
 | Reprogramación interna, duración e historial de intervalos | Implementado y publicado | [Cambio OpenSpec](changes/safe-appointment-rescheduling/tasks.md); pendiente seguimiento de logs de email |
-| Base de señas con Mercado Pago y webhook firmado | Código publicado; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); falta compra sandbox completa y configuración productiva |
+| Base de señas con Mercado Pago y webhook firmado | Código publicado; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); compra sandbox completa en Preview el 2026-09-23 (`BGJ294X52X`); falta programar los cron, observar la confirmación por webhook y la configuración productiva |
 | Correcciones de reintentos vencidos, pagos fallidos, enlaces manipulados y zona horaria | Publicadas en `e15ebe8` | `tests/payments-prisma.test.ts`, `tests/availability.test.ts`, `e2e/foundation.spec.ts` |
-| Email de creación, cambio de estado y reprogramación | Implementado; operación por verificar | Confirmar remitente/dominio productivo y entrega real; aún sin cola durable ni recordatorios |
-| Inventario interno y escaneo de códigos | Publicado en producción el 2026-09-18 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); faltan etiquetas y sesiones de conteo (E2) |
-| Unidad genérica con historial, reutilización y fusión | En revisión, sin publicar | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md) y PR #18; falta verificar en Preview y la unicidad de patente |
+| Email de creación, cambio de estado y reprogramación | Implementado con outbox y reintentos (`98851c1`) | Programar `/api/cron/emails`; confirmar remitente/dominio productivo y entrega real; sin recordatorios |
+| Roles de personal ADMIN/STAFF | Publicado (`98851c1`) | Configuración queda para ADMIN; falta el rol de mecánico y permisos por operación |
+| Inventario interno y escaneo de códigos | Publicado en producción el 2026-09-18 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); etiquetas y conteos (E2) implementados el 2026-09-24, pendientes de Preview |
+| Unidad genérica con historial, reutilización y fusión | Publicado (`3cbdc2b`) | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md); falta verificar una fusión en Preview y la unicidad de patente (VEH-001) |
 
 Publicar el código de pagos no habilita Mercado Pago automáticamente. En la
 verificación del 2026-09-09 no había credenciales de Mercado Pago en producción y
@@ -54,8 +55,7 @@ Objetivo: reducir pasos para atender y administrar turnos.
 
 - ~~Navegación anterior/hoy/siguiente para día y semana.~~ Hecho el 2026-09-19: la
   vista elegida viaja en la URL (`?view=week`) y sobrevive a recargas y redirects.
-- ~~Historial por unidad.~~ Entregado en el cambio `generic-vehicle-history`, todavía
-  sin publicar: la reserva reutiliza cliente y unidad en lugar de crearlos de nuevo,
+- ~~Historial por unidad.~~ Entregado en el cambio `generic-vehicle-history` (`3cbdc2b`): la reserva reutiliza cliente y unidad en lugar de crearlos de nuevo,
   y el panel muestra la ficha con sus turnos, cambios de dueño y fusiones. Antes de
   producción falta verificar una fusión real en Preview y, con los duplicados ya
   fusionados, la migración de unicidad parcial de la patente.
@@ -101,7 +101,7 @@ incluyendo recuperaciones ante fallos; nunca tomar la URL de retorno como aproba
 - Visualización de puestos/carriles para motos simultáneas y huecos de ocupación.
 - Indicadores de turnos, cancelaciones, ausencias, demanda por servicio,
   utilización y clientes recurrentes; acordar definiciones y límites de fecha.
-- Roles de administrador, recepción y mecánico, con permisos por operación.
+- Rol de mecánico y permisos por operación (ADMIN/STAFF ya existen).
 - Auditoría de modificaciones, monitoreo de errores, health checks, límites de
   solicitudes y ejercicios de restauración de backups.
 - Auditoría actualizada de dependencias y revisión de las actualizaciones automáticas.
