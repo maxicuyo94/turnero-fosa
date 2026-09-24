@@ -200,8 +200,8 @@ PAY-003).
 - Verificar restauración de backup y recuperación ante indisponibilidad de Neon.
   El primer despliegue de preview del 2026-09-09 falló con P1001; el reintento fue
   correcto. Eso no demuestra por sí solo la causa ni garantiza recuperación automática.
-- Cerrar evidencia de aceptación de feriados y monitoreo de emails todavía
-  pendientes en las tareas OpenSpec, sin marcar verificaciones no realizadas.
+- Cerrar la evidencia de monitoreo de emails pendiente en las tareas OpenSpec, sin marcar
+  verificaciones no realizadas. La aceptación de feriados se cerró el 2026-09-24 en Preview.
 
 ## Corregidos y publicados el 2026-09-09
 

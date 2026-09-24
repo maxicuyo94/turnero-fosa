@@ -19,4 +19,8 @@
 ## 4. Verification
 
 - [x] 4.1 Run migrations and the quality suite against Docker PostgreSQL.
-- [ ] 4.2 Verify imported holidays and manual overrides in Vercel Preview before production rollout.
+- [x] 4.2 Verify imported holidays and manual overrides in Vercel Preview before production rollout.
+      Done 2026-09-24 on Preview (`6c43bdf`): the import loaded the 19 national holidays of 2026 as
+      closed and `Importado`. Public booking showed no slots on Monday 2026-10-12 (holiday) and 14 slots on
+      Monday 2026-10-05. A manual "opens exceptionally" override for 2026-10-12, 09:00–13:00, turned the
+      holiday into 7 slots from 09:00 to 12:00 for a 60-minute service.
