@@ -1,8 +1,6 @@
-import { db } from "@/src/lib/db";
-import { appointmentRepository, settleOverdueDepositsAfterResponse, workshopSettingsRepository } from "@/src/lib/composition";
+import { appointmentRepository, deposits, settleOverdueDepositsAfterResponse, workshopSettingsRepository } from "@/src/lib/composition";
 import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { workshopDate } from "@/src/lib/workshop-date";
-import { listPaidUnconfirmedDeposits } from "@/src/modules/payments/prisma-repository";
 import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import {
   InternalAgendaScreen,
@@ -42,7 +40,7 @@ export default async function InternalPage({
     workshop.listVehicleTypes(),
     workshop.getWeeklySchedule(),
     workshop.listDateExceptions(exceptionRange(date)),
-    listPaidUnconfirmedDeposits(db),
+    deposits.listPaidUnconfirmedDeposits(),
   ]);
   const agenda = weekAgendas.find((item) => item.date === date) ?? { date, appointments: [] };
   const capacityConflicts = await appointments.getCapacityConflicts(settings.capacity);

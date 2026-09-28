@@ -1,16 +1,16 @@
 "use server";
 
-import { db } from "@/src/lib/db";
+import { staffAccount } from "@/src/lib/composition";
 import { formString } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
-import { AccountError, changeInternalPassword } from "@/src/modules/internal/account-service";
+import { AccountError } from "@/src/modules/internal/account-service";
 import type { AccountActionState } from "@/src/modules/internal/account-screen";
 
 export async function changePasswordAction(_previous: AccountActionState, formData: FormData): Promise<AccountActionState> {
   const { userId } = await requireStaff();
 
   try {
-    await changeInternalPassword(db, userId, {
+    await staffAccount.changeInternalPassword(userId, {
       currentPassword: formString(formData, "currentPassword"),
       newPassword: formString(formData, "newPassword"),
       confirmPassword: formString(formData, "confirmPassword"),

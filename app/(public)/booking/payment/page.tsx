@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { db } from "@/src/lib/db";
 import { Alert, Card, PageHeading, PageShell, SiteHeader } from "@/src/components/ui";
-import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
-import { getDepositReconciler, reconcileReturnedPayment } from "@/src/modules/payments/reconciliation";
+import { depositPaymentRepository, reconcileReturnedDeposit } from "@/src/lib/composition";
 
 export default async function PaymentReturnPage({
   searchParams,
@@ -13,7 +11,7 @@ export default async function PaymentReturnPage({
   const reference = first(params.reference) ?? first(params.external_reference) ?? "";
   await reconcileOnReturn(first(params.payment_id) ?? first(params.collection_id), reference);
   const attempt = reference
-    ? await new PrismaDepositPaymentRepository(db).getPublicAttempt(reference)
+    ? await depositPaymentRepository().getPublicAttempt(reference)
     : null;
 
   return (
@@ -54,11 +52,7 @@ export default async function PaymentReturnPage({
  */
 async function reconcileOnReturn(paymentId: string | undefined, reference: string): Promise<void> {
   try {
-    if (paymentId && paymentId !== "null") {
-      await reconcileReturnedPayment(db, paymentId);
-    } else if (reference) {
-      await (await getDepositReconciler(db))?.(reference);
-    }
+    await reconcileReturnedDeposit({ paymentId: paymentId && paymentId !== "null" ? paymentId : undefined, reference });
   } catch (error) {
     console.error("payment return reconciliation failed", error);
   }

@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const settleOverdueDeposits = vi.fn(async () => 2);
-vi.mock("@/src/lib/db", () => ({ db: {} }));
-vi.mock("@/src/modules/payments/reconciliation", () => ({ settleOverdueDeposits }));
+vi.mock("@/src/lib/composition", () => ({ deposits: { settleOverdueDeposits } }));
 
 const { GET } = await import("@/app/api/cron/deposits/route");
 

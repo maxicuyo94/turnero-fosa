@@ -12,6 +12,11 @@ export class AccountError extends Error {
   }
 }
 
+/** What the account page shows about the signed-in user, or null if the account is gone. */
+export function findStaffProfile(prisma: Pick<PrismaClient, "user">, userId: string) {
+  return prisma.user.findUnique({ where: { id: userId }, select: { name: true, username: true, email: true } });
+}
+
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Ingresá tu contraseña actual."),
   newPassword: z.string()

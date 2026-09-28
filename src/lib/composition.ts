@@ -1,20 +1,109 @@
 import { after } from "next/server";
+import type { PrismaClient } from "@prisma/client";
 import { db } from "@/src/lib/db";
+import type { MercadoPagoEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
 import { PrismaEmailDeliveryRepository } from "@/src/modules/notifications/prisma-repository";
 import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapter";
 import { deliverPendingEmails, type EmailDeliverySummary, type NotificationPort } from "@/src/modules/notifications/service";
-import { MercadoPagoAdapter } from "@/src/modules/payments/mercado-pago-adapter";
-import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
-import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
+import { MercadoPagoAdapter, expectedPaymentLiveMode } from "@/src/modules/payments/mercado-pago-adapter";
+import { PrismaDepositPaymentRepository, listPaidUnconfirmedDeposits } from "@/src/modules/payments/prisma-repository";
+import { getDepositReconciler, reconcileReturnedPayment, settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
+import { processMercadoPagoPayment } from "@/src/modules/payments/service";
+import { businessSettingsSchema } from "@/src/modules/settings/business-settings";
 import { PrismaWorkshopSettingsRepository } from "@/src/modules/settings/prisma-repository";
 import { getWorkshopNotificationEnv, getWorkshopPaymentEnv } from "@/src/modules/settings/runtime-settings";
+import { findWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
+import { findStaffProfile, changeInternalPassword } from "@/src/modules/internal/account-service";
+import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
+import {
+  createInventoryProduct,
+  importInventoryProducts,
+  recordInventoryMovement,
+  updateInventoryProduct,
+} from "@/src/modules/shop/inventory-service";
+import { findSimilarInventoryCodes, linkInventoryBarcode, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
+import {
+  findInventoryProductDetail,
+  getShopDashboard,
+  listBarcodeLinkCandidates,
+  listInventoryLocations,
+  listInventoryProducts,
+  listLabelProducts,
+} from "@/src/modules/shop/inventory-queries";
+import {
+  applyStockCount,
+  cancelStockCount,
+  movementCounts,
+  openStockCount,
+  recordCountedQuantity,
+  recountStockCountLine,
+} from "@/src/modules/shop/stock-count-service";
+import { findStockCountDetail, findStockCountProduct, listStockCounts } from "@/src/modules/shop/stock-count-queries";
 
 /**
  * Composition root: the one place that wires modules to Prisma and to the outside providers.
- * Pages, actions and route handlers ask for what they need here instead of assembling adapters.
+ * Pages, actions and route handlers ask for what they need here instead of assembling adapters,
+ * and never import the Prisma client themselves.
  */
+
+type BoundToDb<Operations> = {
+  [Name in keyof Operations]: Operations[Name] extends (prisma: PrismaClient, ...args: infer Args) => infer Result
+    ? (...args: Args) => Result
+    : never;
+};
+
+/**
+ * Modules without a repository port (the shop, the account) take the Prisma client as their first
+ * argument; this hands them to the app with the client already applied.
+ */
+function bindDb<Operations extends Record<string, (prisma: PrismaClient, ...args: never[]) => unknown>>(
+  operations: Operations,
+): BoundToDb<Operations> {
+  return Object.fromEntries(
+    Object.entries(operations).map(([name, operation]) => [name, (...args: never[]) => operation(db, ...args)]),
+  ) as BoundToDb<Operations>;
+}
+
+export const inventory = bindDb({
+  createInventoryProduct,
+  importInventoryProducts,
+  updateInventoryProduct,
+  recordInventoryMovement,
+  linkInventoryBarcode,
+  resolveInventoryCode,
+  findSimilarInventoryCodes,
+  getShopDashboard,
+  listInventoryProducts,
+  listInventoryLocations,
+  findInventoryProductDetail,
+  listLabelProducts,
+  listBarcodeLinkCandidates,
+});
+
+export const stockCounts = bindDb({
+  openStockCount,
+  recordCountedQuantity,
+  recountStockCountLine,
+  applyStockCount,
+  cancelStockCount,
+  movementCounts,
+  listStockCounts,
+  findStockCountDetail,
+  findStockCountProduct,
+});
+
+export const staffAccount = bindDb({ findStaffProfile, changeInternalPassword });
+
+export function vehicleRepository(): PrismaVehicleRepository {
+  return new PrismaVehicleRepository(db);
+}
+
+/** Public contact details shown in the footer; defaults while the workshop has not filled them. */
+export async function workshopContactSettings() {
+  return businessSettingsSchema.parse((await findWorkshopSettingsRow(db)) ?? {});
+}
 
 export function bookingRepository(): PrismaBookingRepository {
   return new PrismaBookingRepository(db, { beforeBooking: () => settleOverdueDeposits(db) });
@@ -36,6 +125,28 @@ export function depositPaymentRepository(): PrismaDepositPaymentRepository {
 export async function depositCheckout(): Promise<{ repository: PrismaDepositPaymentRepository; port: MercadoPagoAdapter } | null> {
   const env = await getWorkshopPaymentEnv(db);
   return env ? { repository: depositPaymentRepository(), port: new MercadoPagoAdapter(env) } : null;
+}
+
+export const deposits = bindDb({ listPaidUnconfirmedDeposits, settleOverdueDeposits });
+
+/** Applies a Mercado Pago payment notification; the payment itself is always re-read from the API. */
+export function processMercadoPagoNotification(env: MercadoPagoEnv, paymentId: string): Promise<unknown> {
+  return processMercadoPagoPayment(depositPaymentRepository(), new MercadoPagoAdapter(env), {
+    paymentId,
+    expectedLiveMode: expectedPaymentLiveMode(env),
+  });
+}
+
+/**
+ * Settles what the customer comes back with: the payment id when Mercado Pago sends one, otherwise
+ * the checkout reference. Does nothing while payments are not configured.
+ */
+export async function reconcileReturnedDeposit(input: { paymentId?: string; reference: string }): Promise<void> {
+  if (input.paymentId) {
+    await reconcileReturnedPayment(db, input.paymentId);
+  } else if (input.reference) {
+    await (await getDepositReconciler(db))?.(input.reference);
+  }
 }
 
 const deliveryDisabledPort: NotificationPort = {

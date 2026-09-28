@@ -5,15 +5,8 @@ import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { formValues } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
-import { db } from "@/src/lib/db";
-import {
-  InventoryError,
-  createInventoryProduct,
-  importInventoryProducts,
-  recordInventoryMovement,
-  updateInventoryProduct,
-} from "@/src/modules/shop/inventory-service";
-import { linkInventoryBarcode } from "@/src/modules/shop/inventory-code-service";
+import { inventory } from "@/src/lib/composition";
+import { InventoryError } from "@/src/modules/shop/inventory-service";
 import { InventoryExcelError, parseInventoryExcel } from "@/src/modules/shop/inventory-excel";
 import type { ShopActionState } from "@/src/modules/shop/inventory-action-state";
 
@@ -24,7 +17,7 @@ export async function createInventoryProductAction(
   const { userId: actorId } = await requireStaff();
   const values = formValues(formData);
   try {
-    const product = await createInventoryProduct(db, {
+    const product = await inventory.createInventoryProduct({
       sku: values.sku,
       barcode: values.barcode,
       name: values.name,
@@ -56,7 +49,7 @@ export async function importInventoryExcelAction(
     const file = formData.get("file");
     if (!(file instanceof File)) return { status: "error", message: "Seleccioná un archivo Excel para importar." };
     const products = await parseInventoryExcel(file);
-    const result = await importInventoryProducts(db, products, actorId);
+    const result = await inventory.importInventoryProducts(products, actorId);
     revalidatePath("/internal/shop");
     revalidatePath("/internal/shop/inventory");
     return {
@@ -77,7 +70,7 @@ export async function updateInventoryProductAction(
   await requireStaff();
   const values = formValues(formData);
   try {
-    const product = await updateInventoryProduct(db, {
+    const product = await inventory.updateInventoryProduct({
       id: values.id,
       version: values.version,
       sku: values.sku,
@@ -108,7 +101,7 @@ export async function recordInventoryMovementAction(
   const { userId: actorId } = await requireStaff();
   const values = formValues(formData);
   try {
-    const product = await recordInventoryMovement(db, {
+    const product = await inventory.recordInventoryMovement({
       productId: values.productId,
       kind: values.kind,
       quantity: values.quantity,
@@ -131,7 +124,7 @@ export async function linkInventoryBarcodeAction(formData: FormData) {
   const values = formValues(formData);
   let productId: string;
   try {
-    productId = (await linkInventoryBarcode(db, values)).id;
+    productId = (await inventory.linkInventoryBarcode(values)).id;
   } catch (error) {
     const message = actionFailure(error, values).message ?? "No se pudo vincular el código.";
     redirect(`/internal/shop/inventory/code?${new URLSearchParams({ value: values.barcode ?? "", error: message })}`);

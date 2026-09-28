@@ -2,16 +2,15 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { db } from "@/src/lib/db";
+import { vehicleRepository } from "@/src/lib/composition";
 import { formString } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
-import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import { correctVehiclePlate, updateVehicleDetails } from "@/src/modules/vehicles/service";
 
 export async function saveVehicleAction(formData: FormData) {
   await requireStaff();
   const vehicleId = formString(formData, "vehicleId");
-  const result = await updateVehicleDetails(new PrismaVehicleRepository(db), {
+  const result = await updateVehicleDetails(vehicleRepository(), {
     vehicleId,
     vehicleTypeId: formString(formData, "vehicleTypeId"),
     brand: formString(formData, "brand"),
@@ -29,7 +28,7 @@ export async function saveVehicleAction(formData: FormData) {
 export async function correctVehiclePlateAction(formData: FormData) {
   const { userId } = await requireStaff();
   const vehicleId = formString(formData, "vehicleId");
-  const result = await correctVehiclePlate(new PrismaVehicleRepository(db), {
+  const result = await correctVehiclePlate(vehicleRepository(), {
     vehicleId,
     licensePlate: formString(formData, "licensePlate"),
     changedById: userId,

@@ -2,10 +2,12 @@ import Link from "next/link";
 import { WorkshopContact } from "@/src/modules/settings/workshop-contact";
 import { Chip, PageHeading, PageShell, RouteCard, SiteHeader } from "@/src/components/ui";
 import { auth, getInternalSessionDisplayName } from "@/src/lib/auth";
+import { workshopContactSettings } from "@/src/lib/composition";
 
 export default async function HomePage() {
   const session = await auth();
   const userName = getInternalSessionDisplayName(session);
+  const contact = await workshopContactSettings();
 
   return (
     <>
@@ -43,7 +45,7 @@ export default async function HomePage() {
           <Chip>Sin cancelacion online</Chip>
         </div>
       </PageShell>
-      <WorkshopContact />
+      <WorkshopContact settings={contact} />
     </>
   );
 }

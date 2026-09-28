@@ -1,6 +1,5 @@
 import { hasRole, requireStaff } from "@/src/lib/staff-access";
-import { db } from "@/src/lib/db";
-import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
+import { vehicleRepository } from "@/src/lib/composition";
 import { searchVehicles } from "@/src/modules/vehicles/service";
 import { VehicleListScreen } from "@/src/modules/vehicles/vehicle-list-screen";
 
@@ -9,7 +8,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams?: Pr
 
   const params = await searchParams;
   const query = typeof params?.q === "string" ? params.q.trim().slice(0, 120) : "";
-  const vehicles = await searchVehicles(new PrismaVehicleRepository(db), { query });
+  const vehicles = await searchVehicles(vehicleRepository(), { query });
 
   return (
     <VehicleListScreen

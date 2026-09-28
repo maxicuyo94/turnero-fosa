@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { rejectUnauthorizedCron } from "@/src/lib/cron-auth";
-import { db } from "@/src/lib/db";
-import { settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
+import { deposits } from "@/src/lib/composition";
 
 /**
  * Periodic deposit sweep: reconciles overdue checkouts with Mercado Pago and releases the unpaid
@@ -12,6 +11,6 @@ export async function GET(request: Request) {
   const rejection = rejectUnauthorizedCron(request);
   if (rejection) return rejection;
 
-  const expired = await settleOverdueDeposits(db);
+  const expired = await deposits.settleOverdueDeposits();
   return NextResponse.json({ ok: true, expired });
 }

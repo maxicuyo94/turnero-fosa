@@ -5,21 +5,14 @@ import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { formString, formValues } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
-import { db } from "@/src/lib/db";
+import { stockCounts } from "@/src/lib/composition";
 import { InventoryError } from "@/src/modules/shop/inventory-service";
-import {
-  applyStockCount,
-  cancelStockCount,
-  openStockCount,
-  recordCountedQuantity,
-  recountStockCountLine,
-} from "@/src/modules/shop/stock-count-service";
 
 export async function openStockCountAction(formData: FormData) {
   const { userId } = await requireStaff();
   let countId: string;
   try {
-    countId = (await openStockCount(db, formValues(formData), userId)).id;
+    countId = (await stockCounts.openStockCount(formValues(formData), userId)).id;
   } catch (error) {
     redirect(`/internal/shop/counts?${new URLSearchParams({ error: failureMessage(error) })}`);
   }
@@ -30,20 +23,20 @@ export async function openStockCountAction(formData: FormData) {
 export async function recordCountedQuantityAction(formData: FormData) {
   const { userId } = await requireStaff();
   const values = formValues(formData);
-  await runOnCount(values.countId, formString(formData, "view"), () => recordCountedQuantity(db, values, userId), "Cantidad guardada.");
+  await runOnCount(values.countId, formString(formData, "view"), () => stockCounts.recordCountedQuantity(values, userId), "Cantidad guardada.");
 }
 
 export async function recountStockCountLineAction(formData: FormData) {
   await requireStaff();
   const values = formValues(formData);
-  await runOnCount(values.countId, formString(formData, "view"), () => recountStockCountLine(db, values), "Base actualizada: contalo de nuevo.");
+  await runOnCount(values.countId, formString(formData, "view"), () => stockCounts.recountStockCountLine(values), "Base actualizada: contalo de nuevo.");
 }
 
 export async function applyStockCountAction(formData: FormData) {
   const { userId } = await requireStaff();
   const values = formValues(formData);
   await runOnCount(values.countId, "", async () => {
-    await applyStockCount(db, values, userId);
+    await stockCounts.applyStockCount(values, userId);
     revalidatePath("/internal/shop");
     revalidatePath("/internal/shop/inventory");
   }, "Conteo aplicado. Los ajustes quedaron en el historial de cada repuesto.");
@@ -52,7 +45,7 @@ export async function applyStockCountAction(formData: FormData) {
 export async function cancelStockCountAction(formData: FormData) {
   const { userId } = await requireStaff();
   const values = formValues(formData);
-  await runOnCount(values.countId, "", () => cancelStockCount(db, values, userId), "Conteo cancelado. El stock no cambió.");
+  await runOnCount(values.countId, "", () => stockCounts.cancelStockCount(values, userId), "Conteo cancelado. El stock no cambió.");
 }
 
 /** Ejecuta la operacion y vuelve al conteo con el resultado; la pagina relee todo de la base. */

@@ -1,8 +1,7 @@
 import { notFound } from "next/navigation";
 import { hasRole, requireStaff } from "@/src/lib/staff-access";
-import { db } from "@/src/lib/db";
+import { vehicleRepository } from "@/src/lib/composition";
 import { correctVehiclePlateAction, saveVehicleAction } from "@/app/(internal)/internal/vehicles/actions";
-import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import { getVehicleRecord } from "@/src/modules/vehicles/service";
 import { VehicleRecordScreen } from "@/src/modules/vehicles/vehicle-record-screen";
 
@@ -16,12 +15,12 @@ export default async function VehicleRecordPage({
   const staff = await requireStaff();
 
   const { id } = await params;
-  const repository = new PrismaVehicleRepository(db);
+  const repository = vehicleRepository();
   const vehicle = await getVehicleRecord(repository, { vehicleId: id });
   if (!vehicle) notFound();
   const search = await searchParams;
 
-  const vehicleTypes = await db.vehicleType.findMany({ where: { isActive: true }, orderBy: [{ displayOrder: "asc" }, { name: "asc" }] });
+  const vehicleTypes = await repository.listActiveVehicleTypes();
 
   return (
     <VehicleRecordScreen
@@ -32,7 +31,7 @@ export default async function VehicleRecordPage({
       canManageWorkshop={hasRole(staff, "ADMIN")}
       signedInUserName={staff.displayName}
       vehicle={vehicle}
-      vehicleTypes={vehicleTypes.map((vehicleType) => ({ id: vehicleType.id, name: vehicleType.name }))}
+      vehicleTypes={vehicleTypes}
     />
   );
 }

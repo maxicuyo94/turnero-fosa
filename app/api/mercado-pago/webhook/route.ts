@@ -1,10 +1,8 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { db } from "@/src/lib/db";
+import { processMercadoPagoNotification } from "@/src/lib/composition";
 import { getMercadoPagoEnv } from "@/src/lib/env";
-import { MercadoPagoAdapter, expectedPaymentLiveMode, validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pago-adapter";
-import { PrismaDepositPaymentRepository } from "@/src/modules/payments/prisma-repository";
-import { processMercadoPagoPayment } from "@/src/modules/payments/service";
+import { validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pago-adapter";
 
 export async function POST(request: Request) {
   const env = getMercadoPagoEnv();
@@ -44,10 +42,6 @@ export async function POST(request: Request) {
   const type = body?.type ?? url.searchParams.get("type");
   if (type !== "payment" || !dataId) return NextResponse.json({ received: true });
 
-  await processMercadoPagoPayment(
-    new PrismaDepositPaymentRepository(db),
-    new MercadoPagoAdapter(env),
-    { paymentId: dataId, expectedLiveMode: expectedPaymentLiveMode(env) },
-  );
+  await processMercadoPagoNotification(env, dataId);
   return NextResponse.json({ received: true });
 }

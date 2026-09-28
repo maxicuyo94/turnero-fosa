@@ -39,6 +39,15 @@ export class PrismaVehicleRepository implements VehicleHistoryRepository {
     return this.prisma.vehicle.update({ where: { id: vehicleId }, data });
   }
 
+  /** Types offered when editing a vehicle. */
+  async listActiveVehicleTypes(): Promise<{ id: string; name: string }[]> {
+    return this.prisma.vehicleType.findMany({
+      where: { isActive: true },
+      orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true },
+    });
+  }
+
   async findVehicleRecord(vehicleId: string): Promise<VehicleRecord | null> {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },

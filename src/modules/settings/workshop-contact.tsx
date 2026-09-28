@@ -1,10 +1,6 @@
-import { db } from "@/src/lib/db";
-import { businessSettingsSchema } from "@/src/modules/settings/business-settings";
-import { findWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
+import type { BusinessSettings } from "@/src/modules/settings/business-settings";
 
-export async function WorkshopContact() {
-  const stored = await findWorkshopSettingsRow(db);
-  const settings = businessSettingsSchema.parse(stored ?? {});
+export function WorkshopContact({ settings }: { settings: BusinessSettings }) {
   if (!settings.publicPhone && !settings.whatsappNumber && !settings.publicAppUrl && !settings.depositRefundPolicy) return null;
   return <footer className="mx-auto w-full max-w-6xl px-5 py-8 text-sm text-zinc-300">
     <h2 className="mb-3 text-lg font-bold text-white">Contacto del taller</h2>
