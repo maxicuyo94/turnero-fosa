@@ -1,8 +1,7 @@
 # Roadmap — Turnero Taller Express
 
-Actualizado: **2026-09-29**. Base revisada: `e10dd03` en las ramas locales
-`main` y `preview`. La mejora del detalle del turno se publicó y migró en Preview;
-Producción no se modificó en esta entrega.
+Actualizado: **2026-09-29**. La mejora del detalle del turno se publicó desde
+`43d5847` y se migró en Preview y Producción. Las rutas públicas respondieron 200.
 
 Este documento ordena el trabajo futuro. El detalle de errores, riesgos y pruebas
 pendientes está en [BACKLOG.md](BACKLOG.md). Las prioridades son propuestas; no
@@ -59,14 +58,14 @@ Objetivo: reducir pasos para atender y administrar turnos.
   patente es única y la fusión de duplicados se quitó.
 - ~~Corrección validada de una patente mal cargada.~~ Hecho el 2026-09-24: la ficha tiene "Corregir patente", rechaza la de otra unidad y registra cada cambio.
 - ~~Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.~~ Publicados
-  en Preview el 2026-09-29; los enlaces usan el número guardado sin inventar prefijos.
+  en Preview y Producción el 2026-09-29; los enlaces usan el número guardado sin inventar prefijos.
 - ~~Edición validada de nombre, teléfono, email y notas del turno, con trazabilidad.~~
-  Publicada en Preview el 2026-09-29. El contacto se comparte entre turnos del
+  Publicada en Preview y Producción el 2026-09-29. El contacto se comparte entre turnos del
   cliente; las notas pertenecen al turno. Cada campo modificado registra valor
   anterior/nuevo y personal responsable. La migración
   `20260929120000_appointment_detail_history`, las pruebas con PostgreSQL y el
   recorrido de navegador en escritorio y móvil pasaron en un entorno aislado.
-  La migración se aplicó en Preview; Producción queda pendiente. Ver [cambio OpenSpec](changes/daily-appointment-details/tasks.md).
+  La migración se aplicó en ambos entornos. Ver [cambio OpenSpec](changes/daily-appointment-details/tasks.md).
 - La edición de datos de la unidad sigue en su ficha; considerar un acceso más
   directo desde la agenda si el taller lo necesita.
 - Mostrar historial de estados junto al historial de intervalos ya disponible, y

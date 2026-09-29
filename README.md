@@ -286,13 +286,13 @@ and the unit already on record instead of creating a new pair every time. See
 
 Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. A Mercado Pago test purchase approved on Preview confirmed its appointment on 2026-09-23 through the return page and sweep. The signed-notification acceptance is recorded in the payment tasks; observing immediate confirmation by webhook in runtime logs remains a separate check. Live payment activation remains pending in the roadmap.
 
-Published in Preview on 2026-09-29: the appointment drawer can copy the public code,
+Published in Preview and Production on 2026-09-29: the appointment drawer can copy the public code,
 call or open WhatsApp using the stored phone, and correct customer name, phone,
 email and appointment notes. Contact changes affect all appointments of that
 customer; notes affect only the selected appointment. Field changes record their
-previous and new values, staff member and time. Preview applied the additive
+previous and new values, staff member and time. Both environments applied the additive
 `20260929120000_appointment_detail_history` migration. PostgreSQL tests and the
-desktop/mobile browser flow passed locally; production rollout remains separate;
+desktop/mobile browser flow passed locally; the published public routes returned 200;
 see [daily appointment details](openspec/changes/daily-appointment-details/tasks.md).
 
 Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, and public online rescheduling. E1 is published and E2 has been verified in Preview, as described above.
