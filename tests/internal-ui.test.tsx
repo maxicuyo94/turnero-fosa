@@ -5,6 +5,7 @@ import { vi } from "vitest";
 vi.mock("@/app/(internal)/internal/actions", () => ({
   signOutAction: async () => undefined,
   updateAppointmentStatusAction: async () => undefined,
+  updateAppointmentDetailsAction: async () => undefined,
   rescheduleAppointmentAction: async () => undefined,
   previewAppointmentAvailabilityAction: async () => ({
     accepted: true,
@@ -26,7 +27,9 @@ import { InternalAgendaScreen } from "@/src/modules/internal/internal-agenda-scr
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 describe("InternalAgendaScreen", () => {
-  it("renders the daily appointment agenda with status controls", () => {
+  it("renders the daily appointment agenda with contact actions and editing", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     render(
       <InternalAgendaScreen
         agenda={{
@@ -40,12 +43,17 @@ describe("InternalAgendaScreen", () => {
               customerName: "Ada Lovelace",
               customerPhone: "+5491112345678",
               customerEmail: "ada@example.com",
+              customerUpdatedAt: new Date("2026-07-01T09:00:00-03:00"),
+              customerDetailVersion: 0,
               vehicleId: "veh-test",
               vehicleLabel: "Honda XR ABC123",
               startAt: new Date("2026-07-06T09:00:00-03:00"),
               endAt: new Date("2026-07-06T09:30:00-03:00"),
               status: "PENDING_CONFIRMATION",
               notes: "Customer prefers morning.",
+              updatedAt: new Date("2026-07-01T09:00:00-03:00"),
+              detailVersion: 0,
+              detailHistory: [],
               intervalHistory: [],
             },
           ],
@@ -60,6 +68,15 @@ describe("InternalAgendaScreen", () => {
     expect(screen.getByRole("dialog", { name: "Detalle del turno" })).toBeInTheDocument();
     expect(screen.getByText("Código público")).toBeInTheDocument();
     expect(screen.getByText("ABCD234567")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copiar código" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Copiar código" }));
+    expect(await screen.findByText("Código copiado")).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith("ABCD234567");
+    expect(screen.getByRole("link", { name: "Llamar" })).toHaveAttribute("href", "tel:+5491112345678");
+    expect(screen.getByRole("link", { name: "Abrir WhatsApp" })).toHaveAttribute("href", "https://wa.me/5491112345678");
+    expect(screen.getByRole("textbox", { name: "Nombre del cliente" })).toHaveValue("Ada Lovelace");
+    expect(screen.getByRole("textbox", { name: "Notas del turno" })).toHaveValue("Customer prefers morning.");
+    expect(screen.getByRole("button", { name: "Guardar contacto y notas" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Actualizar estado" })).toBeInTheDocument();
     expect(screen.getByLabelText("Nueva fecha")).toHaveValue("2026-07-06");
     expect(screen.getByLabelText(/Horario disponible/)).toHaveValue("09:00");
@@ -87,12 +104,17 @@ describe("InternalAgendaScreen", () => {
             customerName: "Turno Finalizado",
             customerPhone: "+5491112345678",
             customerEmail: null,
+            customerUpdatedAt: new Date("2026-07-01T09:00:00-03:00"),
+            customerDetailVersion: 0,
             vehicleId: "veh-test",
             vehicleLabel: "Honda XR",
             startAt: new Date("2026-07-06T09:00:00-03:00"),
             endAt: new Date("2026-07-06T09:30:00-03:00"),
             status: "COMPLETED",
             notes: null,
+            updatedAt: new Date("2026-07-01T09:00:00-03:00"),
+            detailVersion: 0,
+            detailHistory: [],
             intervalHistory: [],
           }],
         }}
@@ -115,12 +137,17 @@ describe("InternalAgendaScreen", () => {
       customerName: "Grace Hopper",
       customerPhone: "+5491198765432",
       customerEmail: "grace@example.com",
+      customerUpdatedAt: new Date("2026-07-01T09:00:00-03:00"),
+      customerDetailVersion: 0,
       vehicleId: "veh-test",
       vehicleLabel: "Yamaha MT DEF456",
       startAt: new Date("2026-07-07T10:00:00-03:00"),
       endAt: new Date("2026-07-07T11:00:00-03:00"),
       status: "CONFIRMED" as const,
       notes: null,
+      updatedAt: new Date("2026-07-01T09:00:00-03:00"),
+      detailVersion: 0,
+      detailHistory: [],
       intervalHistory: [],
     };
     render(

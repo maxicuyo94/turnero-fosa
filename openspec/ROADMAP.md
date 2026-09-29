@@ -1,6 +1,7 @@
 # Roadmap — Turnero Taller Express
 
-Actualizado: **2026-09-24**. Base revisada: `ca19321` en `main`.
+Actualizado: **2026-09-29**. Base revisada: `e10dd03` en las ramas locales
+`main` y `preview`. El estado del despliegue remoto no se verificó en esta revisión.
 
 Este documento ordena el trabajo futuro. El detalle de errores, riesgos y pruebas
 pendientes está en [BACKLOG.md](BACKLOG.md). Las prioridades son propuestas; no
@@ -19,35 +20,32 @@ certificar el estado remoto ni constituye una auditoría exhaustiva.
 | Reserva pública, consulta por código, disponibilidad y capacidad | Implementado y publicado | `src/modules/booking/`, `src/modules/availability/` |
 | Agenda protegida, estados, horarios, descansos y feriados | Implementado y publicado | `src/modules/internal/`; feriados importados y excepciones verificados en Preview el 2026-09-24 |
 | Reprogramación interna, duración e historial de intervalos | Implementado y publicado | [Cambio OpenSpec](changes/safe-appointment-rescheduling/tasks.md); pendiente seguimiento de logs de email |
-| Base de señas con Mercado Pago y webhook firmado | Código publicado; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); compra sandbox completa en Preview el 2026-09-23 (`BGJ294X52X`); falta programar los cron, observar la confirmación por webhook y la configuración productiva |
+| Base de señas con Mercado Pago y webhook firmado | Integración probada en Preview; activación comercial pendiente | [Tareas de pagos](changes/mercado-pago-deposits/tasks.md); compra de prueba aprobada y turno confirmado el 2026-09-23 (`BGJ294X52X`), con aceptación de notificación firmada registrada. Observar confirmación inmediata por webhook en logs es una comprobación adicional, no una compra de prueba pendiente |
 | Correcciones de reintentos vencidos, pagos fallidos, enlaces manipulados y zona horaria | Publicadas en `e15ebe8` | `tests/payments-prisma.test.ts`, `tests/availability.test.ts`, `e2e/foundation.spec.ts` |
-| Email de creación, cambio de estado y reprogramación | Implementado con outbox y reintentos (`98851c1`) | Programar `/api/cron/emails`; confirmar remitente/dominio productivo y entrega real; sin recordatorios |
+| Email de creación, cambio de estado y reprogramación | Implementado con outbox y reintentos (`98851c1`) | Confirmar remitente/dominio productivo y entrega real; hacer visible el estado de entrega. Programar `/api/cron/emails` es de baja prioridad hoy |
 | Roles de personal ADMIN/STAFF | Publicado (`98851c1`) | Configuración queda para ADMIN; falta el rol de mecánico y permisos por operación |
-| Inventario interno y escaneo de códigos | Publicado en producción el 2026-09-18 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); etiquetas y conteos (E2) implementados el 2026-09-24, pendientes de Preview |
+| Inventario interno y escaneo de códigos | E1 publicado en producción; E2 verificado en Preview el 2026-09-24 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); el usuario confirmó el 2026-09-29 que se realizó la prueba con hardware del taller, sin registrar aquí dispositivos ni resultados detallados |
 | Unidad genérica con historial y reutilización | Publicado (`3cbdc2b`); patente única el 2026-09-24 | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md); la fusión se quitó (VEH-001); la patente se corrige desde la ficha con historial |
 
 Publicar el código de pagos no habilita Mercado Pago automáticamente. En la
 verificación del 2026-09-09 no había credenciales de Mercado Pago en producción y
 el formulario público no exigía seña. Revisar la configuración antes de activarla.
 
-## Próximo bloque — Estabilidad
+## Estabilidad — estado actual
 
-Objetivo: evitar estados inconsistentes y rechazar entradas inválidas antes de
-consultar o modificar la base.
+Las transiciones atómicas y la validación estricta de fechas y horas quedaron
+cerradas como [ERR-001 y ERR-002](BACKLOG.md). El inicio idempotente y la
+reconciliación de pagos tienen cobertura en código y PostgreSQL ([PAY-001 y
+PAY-002](BACKLOG.md)); la compra aprobada en Preview confirma el recorrido principal
+con Mercado Pago. Las pruebas específicas de doble clic real y respuestas del
+proveedor fuera de orden no están registradas como aceptación independiente.
 
-| Orden | Trabajo | Prioridad | Criterio de salida |
-| --- | --- | --- | --- |
-| 1 | Transiciones de estado atómicas, incluyendo cancelación pública | P1 · [ERR-001](BACKLOG.md#err-001--cambios-de-estado-concurrentes) | Dos operaciones incompatibles no pueden aprobarse sobre un estado obsoleto; historial coherente en PostgreSQL |
-| 2 | Fechas reales y horas válidas en páginas, acciones y esquemas | P1 · [ERR-002](BACKLOG.md#err-002--fechas-y-horas-invalidas) | `2026-02-31`, `25:00` y una fecha malformada producen feedback controlado, sin persistencia ni excepción sin manejar |
-| 3 | Inicio de pago idempotente bajo concurrencia | P1 antes de cobrar · [PAY-001](BACKLOG.md#pay-001--inicio-de-pago-concurrente) | Doble clic/reintento paralelo devuelve el mismo intento y no crea dos checkouts cobrables |
-| 4 | Orden de actualizaciones de pago y reconciliación | P1 antes de cobrar · [PAY-002](BACKLOG.md#pay-002--actualizaciones-de-pago-fuera-de-orden) | Una respuesta vieja no rebaja un pago aprobado; reembolsos y contracargos conservan su significado |
-| 5 | Vencimiento sin depender de visitas a reservas | P2 · [PAY-003](BACKLOG.md#pay-003--vencimiento-dependiente-del-trafico) | Los turnos vencen dentro de un intervalo acordado aunque nadie abra `/booking` |
-
-Actualización 2026-09-18: ERR-001 y ERR-002 quedaron cerrados; PAY-001, PAY-002 y
-PAY-003 tienen avances registrados en el backlog y pendientes operativos (sandbox y
-programación del cron). Los demás pueden avanzar
-en cambios independientes, pero PAY-001 y PAY-002 deben resolverse antes de exigir
-señas. No se corrigieron estos puntos durante la actualización documental.
+Los endpoints periódicos de señas y correo están implementados, pero todavía no
+tienen programador. [PAY-003](BACKLOG.md#pay-003--vencimiento-dependiente-del-trafico)
+queda como mejora operativa de **baja prioridad hoy**: la reserva reconcilia antes de
+escribir, la disponibilidad considera libres las retenciones vencidas y algunas
+páginas disparan barridos después de responder. Revaluar la frecuencia requerida si
+se activan señas obligatorias o se acuerdan plazos de entrega de correo.
 
 ## Siguiente bloque — Operación diaria
 
@@ -59,8 +57,17 @@ Objetivo: reducir pasos para atender y administrar turnos.
   y el panel muestra la ficha con sus turnos y cambios de dueño. Desde el 2026-09-24 la
   patente es única y la fusión de duplicados se quitó.
 - ~~Corrección validada de una patente mal cargada.~~ Hecho el 2026-09-24: la ficha tiene "Corregir patente", rechaza la de otra unidad y registra cada cambio.
-- Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.
-- Edición validada de contacto, moto y notas, con trazabilidad.
+- ~~Accesos para copiar código, llamar y abrir WhatsApp desde el detalle.~~ Implementados
+  localmente el 2026-09-29; los enlaces usan el número guardado sin inventar prefijos.
+- ~~Edición validada de nombre, teléfono, email y notas del turno, con trazabilidad.~~
+  Implementada localmente el 2026-09-29. El contacto se comparte entre turnos del
+  cliente; las notas pertenecen al turno. Cada campo modificado registra valor
+  anterior/nuevo y personal responsable. La migración
+  `20260929120000_appointment_detail_history`, las pruebas con PostgreSQL y el
+  recorrido de navegador en escritorio y móvil pasaron en un entorno aislado.
+  Falta aplicar la migración al publicar. Ver [cambio OpenSpec](changes/daily-appointment-details/tasks.md).
+- La edición de datos de la unidad sigue en su ficha; considerar un acceso más
+  directo desde la agenda si el taller lo necesita.
 - Mostrar historial de estados junto al historial de intervalos ya disponible, y
   sumarlo también a la ficha de la unidad, que hoy lista turnos pero no sus cambios de estado.
 - Vista móvil compacta de agenda: evaluar lista o tres días.
@@ -79,14 +86,16 @@ Se puede trabajar por separado en ambos frentes.
 **Comunicaciones**
 
 - Verificar dominio/remitente de Resend y entrega real de los eventos existentes.
-- Guardar eventos de email en una outbox transaccional y enviarlos con un worker.
-- Agregar reintentos, estados de entrega visibles y recordatorios configurables.
+- Mostrar al taller los estados de entrega del outbox ya implementado.
+- Evaluar recordatorios configurables y programación periódica cuando la operación lo requiera.
 - Definir proveedor, consentimiento, plantillas y costos antes de automatizar WhatsApp.
 
 **Señas**
 
-- Resolver PAY-001/PAY-002/PAY-003 y ejecutar una compra sandbox completa.
-- Probar aprobación, rechazo, expiración, notificación duplicada y pago tardío.
+- Conservar como aceptación la compra de prueba aprobada y el turno confirmado en Preview.
+- Completar, cuando se prepare la activación comercial, la evidencia de los casos
+  específicos aún no registrados: doble clic real, respuestas fuera de orden,
+  rechazo, expiración, notificación duplicada y pago tardío.
 - Incorporar consulta/reconciliación operativa, devolución y contracargo.
 - Definir qué hace el taller ante un pago acreditado con turno cancelado.
 - Configurar credenciales y webhook de producción; activar la política en una
@@ -106,8 +115,9 @@ incluyendo recuperaciones ante fallos; nunca tomar la URL de retorno como aproba
   solicitudes y ejercicios de restauración de backups.
 - Auditoría actualizada de dependencias y revisión de las actualizaciones automáticas.
 
-Inventario, sucursales, historia mecánica completa, pagos adicionales y
-reprogramación pública quedan fuera del alcance inmediato, hasta definir su necesidad.
+Las siguientes entregas del shop (cuenta de cliente, mostrador, presupuestos y
+tienda pública), sucursales, historia mecánica completa, pagos adicionales y
+reprogramación pública requieren planificación o decisiones del taller.
 
 ## Decisiones pendientes del taller
 

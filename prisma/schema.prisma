@@ -145,6 +145,7 @@ model Service {
 
 model Customer {
   id           String        @id @default(cuid())
+  detailVersion Int          @default(0)
   fullName     String
   phone        String
   /// Identity key: digits of phone. Indexed so a returning customer is matched by lookup, not by
@@ -155,6 +156,7 @@ model Customer {
   updatedAt    DateTime      @updatedAt
   vehicles     Vehicle[]
   appointments Appointment[]
+  detailChanges AppointmentDetailChange[]
 
   @@index([phone])
   @@index([phoneNormalized])
@@ -234,6 +236,7 @@ model VehicleOwnerHistory {
 
 model Appointment {
   id                    String                     @id @default(cuid())
+  detailVersion         Int                        @default(0)
   publicCode            String                     @unique @default(dbgenerated("generate_appointment_public_code()"))
   serviceId             String
   customerId            String
@@ -251,6 +254,7 @@ model Appointment {
   vehicle               Vehicle                    @relation(fields: [vehicleId], references: [id])
   statusHistory         AppointmentStatusHistory[]
   intervalHistory       AppointmentIntervalHistory[]
+  detailChanges         AppointmentDetailChange[]
   emailLogs             EmailLog[]
   paymentAttempts       DepositPaymentAttempt[]
 
@@ -313,6 +317,31 @@ model AppointmentStatusHistory {
   @@index([appointmentId, changedAt])
 }
 
+enum AppointmentDetailField {
+  CUSTOMER_NAME
+  CUSTOMER_PHONE
+  CUSTOMER_EMAIL
+  APPOINTMENT_NOTES
+}
+
+/// Staff corrections to shared customer contact details and notes on a specific appointment.
+model AppointmentDetailChange {
+  id            String                 @id @default(cuid())
+  customerId    String
+  appointmentId String?
+  field         AppointmentDetailField
+  previousValue String?
+  newValue      String?
+  changedById   String?
+  changedAt     DateTime               @default(now())
+  customer      Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  appointment   Appointment?           @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  changedBy     User?                  @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([customerId, changedAt])
+  @@index([appointmentId, changedAt])
+}
+
 model User {
   id            String                     @id @default(cuid())
   name          String?
@@ -329,6 +358,7 @@ model User {
   sessions      Session[]
   statusChanges AppointmentStatusHistory[]
   intervalChanges AppointmentIntervalHistory[]
+  detailChanges AppointmentDetailChange[]
   inventoryMovements InventoryMovement[]
   plateChanges    VehiclePlateChange[]
   stockCountsOpened StockCount[] @relation("StockCountOpenedBy")

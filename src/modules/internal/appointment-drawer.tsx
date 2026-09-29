@@ -5,9 +5,10 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   previewAppointmentAvailabilityAction,
   rescheduleAppointmentAction,
+  updateAppointmentDetailsAction,
   updateAppointmentStatusAction,
 } from "@/app/(internal)/internal/actions";
-import { Button, Field, Select, Spinner, StatusBadge, TextInput } from "@/src/components/ui";
+import { Button, Field, Select, Spinner, StatusBadge, Textarea, TextInput } from "@/src/components/ui";
 import { SubmitButton } from "@/src/components/pending";
 import { capitalizeLabel, formatWorkshopDateTime, workshopDate, workshopTime } from "@/src/lib/workshop-date";
 import type { AgendaView } from "@/src/modules/appointments/agenda-navigation";
@@ -17,6 +18,7 @@ import {
   statusLabel,
   type InternalAppointmentRecord,
 } from "@/src/modules/appointments/operations";
+import { contactLinks } from "@/src/modules/internal/contact-links";
 
 /** Side panel for one appointment: details, status change, rescheduling and its interval history. */
 export function AppointmentDrawer({
@@ -42,6 +44,7 @@ export function AppointmentDrawer({
     { startTime: currentStartTime, endTime: formatInputTime(appointment.endAt), remainingCapacity: 1 },
   ]);
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+  const [copyMessage, setCopyMessage] = useState<string | null>(null);
   const [isPreviewPending, startPreviewTransition] = useTransition();
   const previewRequest = useRef(0);
 
@@ -85,6 +88,7 @@ export function AppointmentDrawer({
   }, [refreshAvailability]);
 
   const selectedSlot = availableSlots.find((slot) => slot.startTime === startTime);
+  const links = contactLinks(appointment.customerPhone);
 
   return (
     <div aria-label="Detalle del turno" aria-modal="true" className="fixed inset-0 z-50 flex justify-end" role="dialog">
@@ -123,6 +127,63 @@ export function AppointmentDrawer({
           </div>
           <Detail className="sm:col-span-2" label="Notas" value={appointment.notes || "Sin notas"} />
         </dl>
+
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Acciones del turno">
+          <Button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(appointment.publicCode);
+                setCopyMessage("Código copiado");
+              } catch {
+                setCopyMessage("No se pudo copiar el código");
+              }
+            }}
+            type="button"
+            variant="ghost"
+          >Copiar código</Button>
+          {links ? (
+            <>
+              <a className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-black text-zinc-300 hover:text-white" href={links.call}>Llamar</a>
+              <a className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-black text-zinc-300 hover:text-white" href={links.whatsapp} rel="noopener noreferrer" target="_blank">Abrir WhatsApp</a>
+            </>
+          ) : null}
+        </div>
+        {copyMessage ? <p className="mt-2 text-xs text-zinc-300" role="status">{copyMessage}</p> : null}
+
+        <form action={updateAppointmentDetailsAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+          <h3 className="text-sm font-black text-white">Corregir contacto y notas</h3>
+          <p className="mt-1 text-xs text-zinc-500">El contacto pertenece al cliente y se actualizará en todos sus turnos. Las notas pertenecen solo a este turno. Para WhatsApp, guardá el teléfono con código de país.</p>
+          <input name="appointmentId" type="hidden" value={appointment.id} />
+          <input name="date" type="hidden" value={agendaDate} />
+          <input name="view" type="hidden" value={agendaView} />
+          <input name="expectedCustomerUpdatedAt" type="hidden" value={appointment.customerUpdatedAt.toISOString()} />
+          <input name="expectedAppointmentUpdatedAt" type="hidden" value={appointment.updatedAt.toISOString()} />
+          <input name="expectedCustomerDetailVersion" type="hidden" value={appointment.customerDetailVersion} />
+          <input name="expectedAppointmentDetailVersion" type="hidden" value={appointment.detailVersion} />
+          <div className="mt-4 grid gap-4">
+            <Field label="Nombre del cliente"><TextInput defaultValue={appointment.customerName} maxLength={120} name="fullName" required /></Field>
+            <Field label="Teléfono del cliente"><TextInput defaultValue={appointment.customerPhone} inputMode="tel" maxLength={40} name="phone" required type="tel" /></Field>
+            <Field label="Email del cliente"><TextInput defaultValue={appointment.customerEmail ?? ""} maxLength={254} name="email" type="email" /></Field>
+            <Field label="Notas del turno"><Textarea defaultValue={appointment.notes ?? ""} maxLength={2000} name="notes" /></Field>
+          </div>
+          <SubmitButton className="mt-4" size="md">Guardar contacto y notas</SubmitButton>
+        </form>
+
+        {appointment.detailHistory.length > 0 ? (
+          <section className="mt-4 rounded-2xl border border-white/10 p-5">
+            <h3 className="text-sm font-black text-white">Historial de contacto y notas</h3>
+            <ol className="mt-4 grid gap-4">
+              {appointment.detailHistory.map((item) => (
+                <li className="border-l-2 border-apple-400/30 pl-3 text-xs text-zinc-400" key={item.id}>
+                  <p className="font-bold text-zinc-200">{detailFieldLabel(item.field)}</p>
+                  <p className="mt-1 break-words">{item.previousValue || "Sin dato"} → {item.newValue || "Sin dato"}</p>
+                  <p className="mt-1">{item.changedByName ?? "Usuario eliminado"} · {formatDateTime(item.changedAt)}</p>
+                  {item.sourceAppointmentCode && item.sourceAppointmentCode !== appointment.publicCode ? <p className="mt-1">Desde turno {item.sourceAppointmentCode}</p> : null}
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
 
         <form action={updateAppointmentStatusAction} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
           <input name="appointmentId" type="hidden" value={appointment.id} />
@@ -233,6 +294,15 @@ function formatDateTime(date: Date): string {
 
 function formatInterval(startAt: Date, endAt: Date): string {
   return `${formatInputDate(startAt)} ${formatTime(startAt)}–${formatTime(endAt)}`;
+}
+
+function detailFieldLabel(field: InternalAppointmentRecord["detailHistory"][number]["field"]): string {
+  return {
+    CUSTOMER_NAME: "Nombre del cliente",
+    CUSTOMER_PHONE: "Teléfono del cliente",
+    CUSTOMER_EMAIL: "Email del cliente",
+    APPOINTMENT_NOTES: "Notas del turno",
+  }[field];
 }
 
 /** The current status first, so the select opens on it, then the transitions it allows. */

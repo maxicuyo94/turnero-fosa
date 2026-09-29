@@ -39,7 +39,9 @@ export function normalizePhone(phone: string | null | undefined): string | null 
  * capacity advisory lock, so a booking that queues behind another can still read a database without
  * the customer the first one just committed, find nothing and insert a second row. Deriving the id
  * from the key turns that silent duplicate into a primary key collision, which the repository already
- * retries on a fresh snapshot, and the retry then finds the row. Units no longer need this: their
+ * retries on a fresh snapshot, and the retry then finds the row. If staff later correct the phone,
+ * the original derived id remains occupied; new bookings for that old phone choose a deterministic
+ * alternative id with the same collision-and-retry protection. Units no longer need this: their
  * plate has a unique index, and it can be corrected, which a derived id would contradict.
  */
 export function identityDerivedId(prefix: string, identityKey: string): string {

@@ -213,6 +213,50 @@ test("internal user changes an appointment status", async ({ page }) => {
   }).toBe("IN_PROGRESS");
 });
 
+test("internal user copies the code and corrects contact details with history", async ({ page, context }) => {
+  test.slow();
+  const appointmentId = await seedInternalE2EAppointment();
+  const original = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId }, select: { publicCode: true } });
+
+  await ensureE2EAdminUser();
+  await page.goto("/internal/login");
+  await page.getByLabel("Usuario").fill(requiredEnv("ADMIN_USERNAME"));
+  await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
+  await page.getByRole("button", { name: "Ingresar" }).click();
+  await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
+  await page.goto(`/internal?date=${internalE2EDate}`);
+  await expect(page.getByText("Internal E2E Rider")).toBeVisible();
+  await page.getByRole("button", { name: /Internal E2E Rider/ }).click();
+
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copiar código" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Código copiado" })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(original.publicCode);
+  await expect(page.getByRole("link", { name: "Llamar" })).toHaveAttribute("href", "tel:+5491199999999");
+  await expect(page.getByRole("link", { name: "Abrir WhatsApp" })).toHaveAttribute("href", "https://wa.me/5491199999999");
+
+  await page.getByLabel("Nombre del cliente").fill("Internal E2E Corregido");
+  await page.getByLabel("Teléfono del cliente").fill("+54 9 11 8888-7777");
+  await page.getByLabel("Email del cliente").fill("e2e-contact@example.invalid");
+  await page.getByLabel("Notas del turno").fill("Llamar antes de recibir la moto.");
+  await page.getByRole("button", { name: "Guardar contacto y notas" }).click();
+
+  await expect(page.getByText("Actualizamos el contacto y las notas. Los cambios quedaron en el historial.")).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: /Internal E2E Corregido/ }).click();
+  await expect(page.getByRole("link", { name: "Llamar" })).toHaveAttribute("href", "tel:+5491188887777");
+  await expect(page.getByRole("link", { name: "Abrir WhatsApp" })).toHaveAttribute("href", "https://wa.me/5491188887777");
+  await expect(page.getByRole("heading", { name: "Historial de contacto y notas" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "Sin dato → Llamar antes de recibir la moto." })).toBeVisible();
+
+  const updated = await prisma.appointment.findUniqueOrThrow({
+    where: { id: appointmentId },
+    include: { customer: true, detailChanges: true },
+  });
+  expect(updated.customer).toMatchObject({ fullName: "Internal E2E Corregido", phone: "+54 9 11 8888-7777", phoneNormalized: "5491188887777", email: "e2e-contact@example.invalid" });
+  expect(updated.notes).toBe("Llamar antes de recibir la moto.");
+  expect(updated.detailChanges).toHaveLength(4);
+});
+
 test("booking ignores injected payment and cancellation links and displays the stored checkout", async ({ page }) => {
   const appointmentId = await seedInternalE2EAppointment();
   const appointment = await prisma.appointment.update({ where: { id: appointmentId }, data: { status: "PENDING_CONFIRMATION" } });

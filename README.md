@@ -5,7 +5,9 @@ This repository contains the Taller de motos Express appointment scheduler MVP: 
 ## Shop development — incremental delivery
 
 The shop is being built in [independently verifiable deliveries](openspec/changes/spare-parts-shop/deliverables.md).
-Current scope is **E1: internal inventory**, verified in local DEV. The authorized deployment target is Vercel Preview on the `preview` branch; production publication is outside this delivery.
+E1 (internal inventory and Excel import) was published in production. E2 (scanning,
+labels and stock counts) is implemented and was verified in Preview on 2026-09-24.
+Customer accounts, counter sales, quotes, storefront, checkout and shipping are later deliveries.
 
 - `/internal/shop`: inventory totals, availability, low-stock alerts and recent products.
 - `/internal/shop/inventory`: search/filter and create products with SKU, optional barcode, ARS price, physical location and opening stock.
@@ -17,9 +19,10 @@ Optimistic versions protect concurrent edits; repeated operation keys do not cre
 The additive migration `20260915150000_shop_inventory` creates independent tables and does not change appointments.
 Do not reseed an existing database to apply this delivery; use its migration.
 
-The first delivery accepts barcode text and a manual physical-count adjustment. Camera scanning, count sessions,
-labels, customer accounts, point of sale, quotes, storefront, checkout and shipping belong to later deliveries.
-The catalog starts empty; add actual products from the panel. Production publication is outside the current authorization.
+Camera scanning, printable labels and stock-count sessions are available in E2.
+The catalog starts empty; add actual products from the panel. The user confirmed on
+2026-09-29 that the workshop hardware test was performed; device details and results
+were not recorded in this repository.
 
 ### Import inventory from Excel
 
@@ -45,12 +48,13 @@ The inventory database tests guard against production/non-allowlisted targets an
 
 ## Roadmap and known issues
 
-- [Product roadmap](openspec/ROADMAP.md): delivered capabilities, priorities, future changes, and release criteria. Updated 2026-09-11.
+- [Product roadmap](openspec/ROADMAP.md): delivered capabilities, priorities, future changes, and release criteria.
 - [Errors and risks backlog](openspec/BACKLOG.md): reproduction evidence, investigation status, and acceptance criteria.
 
-The latest verified production release recorded here is `e15ebe8` (2026-09-09).
-Internal rescheduling and the deposit integration code are delivered; enabling
-live Mercado Pago collection remains a separate pending rollout.
+The deposit integration was tested in Preview with an approved Mercado Pago test
+purchase on 2026-09-23; the appointment was confirmed. Live collection remains a
+separate rollout and is not implied by that test. The historical release evidence
+for `e15ebe8` (2026-09-09) does not certify the current deployment.
 
 ## Quick path
 
@@ -146,10 +150,12 @@ affect new reservations and preserve existing appointment intervals.
   every path re-reads the payment and checks reference, amount, currency and live mode.
 - **Expiry sweep:** `GET /api/cron/deposits` with `Authorization: Bearer $CRON_SECRET`
   reconciles overdue checkouts, then releases unpaid reservations. If Mercado Pago cannot
-  answer, the reservation is kept for the next run. Schedule it every 5–10 minutes
-  (Vercel Cron on a Pro plan, or an external scheduler); Hobby plans only allow daily
-  crons. As a backstop, the booking page and the internal agenda start the sweep **after**
-  responding, so neither waits on Mercado Pago. Public availability already treats a lapsed
+  answer, the reservation is kept for the next run. If expiration must run within a
+  strict interval without visits, schedule it every 5–10 minutes (Vercel Cron on a
+  Pro plan, or an external scheduler); Hobby plans only allow daily crons.
+  Scheduling is a lower-priority improvement today. As a backstop, the booking page
+  and internal agenda start the sweep **after** responding, so neither waits on
+  Mercado Pago. Public availability already treats a lapsed
   hold as free; a booking settles overdue holds before its transaction, so the capacity check
   there sees their final state. Sweeps within one instance share a single run.
 - **Refunds** are issued manually in the Mercado Pago panel. The refund webhook clears the
@@ -278,9 +284,18 @@ Units are now generic vehicles with a configurable type catalog, and a booking r
 and the unit already on record instead of creating a new pair every time. See
 [Vehicles and unit history](#vehicles-and-unit-history).
 
-Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. A sandbox purchase approved on preview confirmed its appointment on 2026-09-23 (through the return page and sweep; confirming by webhook right after payment is still to be observed). Live payment activation remains pending in the roadmap.
+Also delivered: internal rescheduling with interval history, configurable deposits, hosted Mercado Pago checkout, signed payment webhooks, and reservation expiration. A Mercado Pago test purchase approved on Preview confirmed its appointment on 2026-09-23 through the return page and sweep. The signed-notification acceptance is recorded in the payment tasks; observing immediate confirmation by webhook in runtime logs remains a separate check. Live payment activation remains pending in the roadmap.
 
-Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, and public online rescheduling. Internal inventory is now in local DEV as described above.
+Local feature ready for deployment (2026-09-29): the appointment drawer can copy the public code,
+call or open WhatsApp using the stored phone, and correct customer name, phone,
+email and appointment notes. Contact changes affect all appointments of that
+customer; notes affect only the selected appointment. Field changes record their
+previous and new values, staff member and time. This requires the additive
+`20260929120000_appointment_detail_history` migration when deployed. The migration,
+PostgreSQL tests and desktop/mobile browser flow passed in an isolated environment;
+see [daily appointment details](openspec/changes/daily-appointment-details/tasks.md).
+
+Intentionally deferred: automatic WhatsApp, contact/social persistence, age capture, advanced reports, full mechanical history, multi-branch support, and public online rescheduling. E1 is published and E2 has been verified in Preview, as described above.
 
 ## Vehicles and unit history
 
@@ -300,25 +315,14 @@ Chassis number, engine number, colour and vehicle notes are internal: public boo
 them. The only field it adds is the vehicle type, and the selector stays hidden while a single type
 is configured.
 
-The plate has no unique index yet. Every booking made before this change created its own customer
-and vehicle, so production still holds duplicates and a unique constraint would fail the migration.
-Until they are merged, a vehicle created for a plate takes an id derived from that plate, which turns
-two simultaneous bookings into a primary key collision the booking transaction retries, instead of a
-silent duplicate. Duplicates are merged by hand from the panel, never automatically.
-
-**Interno → Unidades** searches by plate, brand, model or customer, and reports every plate loaded on
-more than one unit. A unit's record shows its appointments newest first, its ownership changes and the
-merges it absorbed, and the appointment detail in the agenda links to it. The record edits type, brand,
-model, year, chassis and engine number, colour and notes; the plate is shown disabled.
-
-A merge moves every appointment of the duplicate onto the surviving unit, fills only the fields the
-survivor is missing, records the operation in `VehicleMerge` and deletes the source — one transaction,
-and a resubmitted form is a no-op because the request key is unique. It cannot be undone from the
-panel, so it always takes an explicit confirmation.
-
-Apply the `20260921120000_generic_vehicle` and `20260921160000_vehicle_merge` migrations to existing databases; it renames the table and
-backfills, so no appointment loses its unit. Reverting needs the inverse migration: the previous code
-queries `Motorcycle` and would fail against the renamed table.
+The normalized plate has a partial unique index since migration
+`20260924150000_unique_vehicle_plate`. The earlier duplicate-merge feature was
+removed after the test data was cleared. **Interno → Unidades** searches by plate,
+brand, model or customer and shows the unit's appointments and ownership changes.
+Staff can correct a plate from the unit record; a plate held by another unit is
+rejected and each accepted correction is recorded in `VehiclePlateChange`.
+The record also edits type, brand, model, year, chassis and engine number, colour
+and notes. Apply existing migrations with `prisma migrate deploy`, not by reseeding.
 
 ## Taller Express Defaults
 
@@ -350,7 +354,12 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 
 ## Next implementation slice
 
-The proposed next slice is atomic status transitions and strict date/time validation, followed by payment concurrency and reconciliation before live collection. See the [roadmap](openspec/ROADMAP.md) for the delivery order and the [backlog](openspec/BACKLOG.md) for evidence and closure criteria.
+Atomic status transitions and strict date/time validation are complete. Mercado Pago
+has an approved test purchase in Preview, and payment concurrency and reconciliation
+have code and PostgreSQL coverage. The next product work is tracked in the
+[roadmap](openspec/ROADMAP.md); the [backlog](openspec/BACKLOG.md) separates remaining
+edge-case evidence and live activation from completed testing. Scheduling the deposit
+and email cron endpoints is a lower-priority operational improvement for now.
 
 ## Security maintenance
 
@@ -370,7 +379,7 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
   and the migrations apply, which makes the failure read like a build problem when it is not. A
   feature branch gets a working preview only if its own copies are added, or the filter is dropped.
 - The `MERCADO_PAGO_*` variables exist only for Preview, scoped to the `preview` Git branch (sandbox credentials). Production has none, so live collection stays off until they are added there.
-- `CRON_SECRET` exists in Production and in Preview (scoped to the `preview` branch), with different values kept in `PRODUCTION.local.md` and `PREVIEW.local.md`. Calls without it get 401. No scheduler calls `/api/cron/deposits` and `/api/cron/emails` yet; on the Hobby plan that needs an external one.
+- `CRON_SECRET` exists in Production and in Preview (scoped to the `preview` branch), with different values kept in `PRODUCTION.local.md` and `PREVIEW.local.md`. Calls without it get 401. No scheduler calls `/api/cron/deposits` and `/api/cron/emails` yet; this is a lower-priority operational improvement today because request-triggered delivery and reconciliation provide a backstop. Reassess its priority if mandatory deposits or delivery deadlines are introduced.
 - Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent (queued emails then end as `FAILED`). Until the workshop verifies a domain in Resend, the sender is `onboarding@resend.dev`, which only delivers to the Resend account owner.
 - Every date and time is computed in the workshop's zone (`America/Argentina/Buenos_Aires`) through [src/lib/workshop-date.ts](src/lib/workshop-date.ts); nothing else hardcodes an offset or zone.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.

@@ -1,13 +1,13 @@
 # Backlog de errores y riesgos
 
-Revisión: **2026-09-24**, código `ca19321` en `main` (incluye `generic-vehicle-history`,
-el outbox de emails y los roles de personal).
+Revisión: **2026-09-29**, código `e10dd03` en las ramas locales `main` y `preview`.
+Esta revisión documental no verifica el despliegue remoto.
 
 | Ítem | Estado |
 | --- | --- |
 | ERR-001, ERR-002 | Cerrados; se conservan como referencia |
-| PAY-001, PAY-002 | Mitigados en código; falta evidencia contra el sandbox |
-| PAY-003 | Endpoints listos; falta programar los cron |
+| PAY-001, PAY-002 | Mitigados en código y PostgreSQL; el recorrido principal de Mercado Pago fue probado en Preview. Falta evidencia separada de algunos casos extremos |
+| PAY-003 | Endpoints listos; programar los cron es de baja prioridad hoy |
 | VEH-001 | Cerrado: patente única desde `20260924150000_unique_vehicle_plate` |
 | VEH-002 | Asumido, sin corrección |
 | OPS-001 | Outbox implementado; falta remitente productivo y visibilidad de entrega |
@@ -15,7 +15,8 @@ el outbox de emails y los roles de personal).
 Orden de trabajo: [ROADMAP.md](ROADMAP.md).
 
 P1: priorizar antes de ampliar uso o activar el flujo afectado. P2: siguiente
-iteración. Una reproducción en memoria demuestra el comportamiento del servicio,
+iteración. P3: mejora operativa de baja prioridad hoy. Una reproducción en memoria
+demuestra el comportamiento del servicio,
 pero no acredita por sí sola un incidente en PostgreSQL o en producción.
 
 ## ERR-001 — Cambios de estado concurrentes
@@ -74,20 +75,21 @@ reproducción nueva.
 Avance 2026-09-18 (`fix/mercado-pago`): `createAttempt` vuelve a buscar el intento
 vigente bajo el bloqueo del turno, `markPreferenceCreated` solo guarda el primer
 checkout y la preferencia usa la referencia externa como `X-Idempotency-Key`. Probado
-con dos inicios simultáneos en memoria y en PostgreSQL. Pendiente: doble clic real
-contra el sandbox.
+con dos inicios simultáneos en memoria y en PostgreSQL. La compra aprobada en Preview
+prueba el recorrido principal con Mercado Pago; un doble clic real contra el
+proveedor no figura como prueba separada.
 
-- **Prioridad:** P1 antes de activar señas. **Evidencia:** reproducido en memoria;
-  pendiente confirmar concurrencia con PostgreSQL y sandbox.
-- **Reproducción:** dos `initiateAppointmentDeposit` simultáneos, sin intento
+- **Prioridad:** revisar el caso extremo al preparar señas obligatorias.
+  **Evidencia:** concurrencia probada en memoria y PostgreSQL; compra aprobada en Preview.
+- **Reproducción histórica:** dos `initiateAppointmentDeposit` simultáneos, sin intento
   reusable visible al comienzo, generan dos intentos y dos preferencias.
-- **Origen:** [servicio de pagos](../src/modules/payments/service.ts) busca el
+- **Origen histórico:** [servicio de pagos](../src/modules/payments/service.ts) buscaba el
   intento antes de crearlo. [createAttempt](../src/modules/payments/prisma-repository.ts)
-  bloquea el turno y comprueba su estado, pero no vuelve a buscar un intento
-  vigente dentro de ese bloqueo. La llamada externa tampoco se serializa.
-- **Cierre:** reservar/reutilizar de forma atómica el inicio de checkout y coordinar
-  la creación de preferencia. Probar doble clic, dos sesiones y fallo de red
-  después de la respuesta del proveedor. No deben quedar dos enlaces cobrables.
+  bloqueaba el turno y comprobaba su estado, pero no volvía a buscar un intento vigente
+  dentro de ese bloqueo. La llamada externa tampoco se serializaba.
+- **Criterio de regresión:** el inicio reutiliza un intento atómicamente y la
+  preferencia conserva su clave idempotente. Un doble clic, dos sesiones o un fallo
+  de red después de la respuesta del proveedor no deben dejar dos enlaces cobrables.
 
 ## PAY-002 — Actualizaciones de pago fuera de orden
 
@@ -95,40 +97,41 @@ Avance 2026-09-18 (`ee0e378`): un intento aprobado solo pasa a reembolso o
 contracargo, que son finales; `markAttemptError` no degrada pagos cobrados. La
 conciliación aplica todos los pagos de la referencia en orden cronológico.
 
-- **Prioridad:** P1 antes de activar señas. **Evidencia:** riesgo por inspección;
-  todavía no reproducido con solicitudes reales del proveedor.
-- **Escenario:** una consulta al proveedor obtiene `pending`, otra obtiene
+- **Prioridad:** revisar el caso extremo al preparar señas obligatorias.
+  **Evidencia:** mitigación en código y pruebas locales; la compra aprobada en Preview
+  no demuestra por sí sola el orden invertido de respuestas reales del proveedor.
+- **Escenario histórico:** una consulta al proveedor obtiene `pending`, otra obtiene
   `approved`; si la respuesta pendiente se persiste al final puede sobrescribir
   el intento aprobado aunque el turno ya esté confirmado.
-- **Origen:** [processMercadoPagoPayment](../src/modules/payments/service.ts)
-  consulta al proveedor antes de la transacción;
-  [applyProviderPayment](../src/modules/payments/prisma-repository.ts) asigna el
+- **Origen histórico:** [processMercadoPagoPayment](../src/modules/payments/service.ts)
+  consultaba al proveedor antes de la transacción;
+  [applyProviderPayment](../src/modules/payments/prisma-repository.ts) asignaba el
   estado recibido sin validar orden o transición. `markAttemptError` también
-  puede sustituir un estado previo por `ERROR`.
-- **Cierre:** definir transiciones/versionado y separar errores de procesamiento
-  del estado financiero; simular respuestas invertidas y notificaciones
-  duplicadas. Preservar reembolsos y contracargos válidos; no limitarse a ignorar
-  todas las actualizaciones posteriores a `APPROVED`.
+  podía sustituir un estado previo por `ERROR`.
+- **Criterio de regresión:** respuestas invertidas y notificaciones duplicadas
+  no rebajan un pago aprobado; los reembolsos y contracargos válidos conservan
+  su significado.
 
 ## PAY-003 — Vencimiento dependiente del trafico
 
 Avance 2026-09-18 (`fix/mercado-pago`): nuevo endpoint `/api/cron/deposits`
 protegido con `CRON_SECRET`; la agenda interna también ejecuta el barrido. Antes de
-cancelar se consulta a Mercado Pago por la referencia. Pendiente: programar el cron
-(Vercel Pro o programador externo) y monitorearlo.
+cancelar se consulta a Mercado Pago por la referencia. Queda disponible programar
+el cron (Vercel Pro o programador externo) y monitorearlo si la operación lo exige.
 
 Avance 2026-09-23: las páginas ya no esperan el barrido; lo disparan después de
 responder (`after()`), y los barridos de una misma instancia comparten una sola
 ejecución. La disponibilidad pública trata como libre una retención vencida, y la
 reserva liquida las vencidas antes de su transacción. `/api/cron/emails` reintenta
-el outbox de emails con el mismo `CRON_SECRET`: programarlo junto al de señas.
+el outbox de emails con el mismo `CRON_SECRET`.
 
-- **Prioridad:** P2, resolver antes de operar señas obligatorias.
+- **Prioridad:** P3, baja hoy; reevaluar si se exigen señas obligatorias o un plazo
+  estricto de liberación sin visitas.
 - **Evidencia:** limitación confirmada por inspección de los puntos de llamada.
-- **Origen:** `expireOverdueDepositReservations` solo se llama al listar turnos
-  desde el [repositorio público](../src/modules/booking/prisma-repository.ts),
-  fuera de su transacción de reserva. La agenda interna y consulta por código
-  no ejecutan esa limpieza; no hay un proceso periódico implementado.
+- **Límite actual:** hay barridos reactivos desde reservas y agenda, pero ningún
+  programador externo los ejecuta cuando no hay tráfico. La disponibilidad
+  pública ya considera libres las retenciones vencidas y la reserva concilia
+  antes de escribir.
 - **Impacto:** sin visitas a disponibilidad, un turno vencido puede seguir
   figurando pendiente; la liberación no ocurre necesariamente al cumplirse el plazo.
 - **Cierre:** trabajo periódico idempotente o una política de lectura consistente,
@@ -183,18 +186,20 @@ Avance 2026-09-23 (`98851c1`): los emails se encolan en `EmailLog` (`PENDING`) e
 misma escritura que crea, confirma o reprograma el turno y se entregan después de
 responder, con reintentos, antigüedad máxima de 24 h e `Idempotency-Key` de Resend.
 `/api/cron/emails` reintenta los pendientes, pero todavía no está programado (ver
-PAY-003).
+PAY-003). Programarlo es de baja prioridad hoy; la entrega tras la respuesta ya
+cubre el flujo habitual.
 
 - **Prioridad:** P2. **Evidencia:** capacidad incompleta por inspección.
-- **Pendiente:** programar el cron, mostrar al taller el estado de entrega de cada
-  email y validar remitente/dominio productivo con una entrega real.
+- **Pendiente:** mostrar al taller el estado de entrega de cada email y validar
+  remitente/dominio productivo con una entrega real. Programar el cron queda como
+  mejora operativa de baja prioridad hoy.
 - **Cierre:** una caída del proveedor no pierde eventos ni impide el registro del
   turno, y el taller ve qué emails no se entregaron.
 
 ## Verificaciones operativas pendientes
 
-- Revisar límites de solicitudes en login, consulta por código, reservas y
-  reintentos. No se detectó un limitador explícito en el código de la aplicación;
+- Revisar límites de solicitudes en consulta por código, reservas y reintentos.
+  El login ya tiene limitador por usuario e IP (`src/lib/login-throttle.ts`);
   revisar también las protecciones configuradas en infraestructura.
 - Actualizar auditoría de dependencias. No tratar el aviso histórico de `sharp`
   del README como el resultado de una auditoría actual.

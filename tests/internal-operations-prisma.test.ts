@@ -5,6 +5,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getEnv } from "@/src/lib/env";
 import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
+import { updateAppointmentDetails } from "@/src/modules/appointments/detail-edit";
 import { rescheduleInternalAppointment, updateInternalAppointmentStatus } from "@/src/modules/appointments/operations";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
@@ -17,6 +18,80 @@ describe("Prisma internal operations integration", () => {
   afterAll(async () => {
     await deleteInternalTestData();
     await prisma.$disconnect();
+  });
+
+  it("saves contact and notes with attributed field history and rejects a stale edit", async () => {
+    const appointmentId = await createInternalTestAppointment("it-internal-details");
+    const actor = await prisma.user.create({ data: { email: `internal-${randomUUID()}@example.com`, name: "Editor" } });
+    const before = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId }, include: { customer: true } });
+    const input = {
+      appointmentId,
+      expectedCustomerUpdatedAt: before.customer.updatedAt.toISOString(),
+      expectedAppointmentUpdatedAt: before.updatedAt.toISOString(),
+      expectedCustomerDetailVersion: before.customer.detailVersion,
+      expectedAppointmentDetailVersion: before.detailVersion,
+      fullName: "Cliente corregido",
+      phone: `+54911${Math.floor(Math.random() * 100_000_000).toString().padStart(8, "0")}`,
+      email: "corregido@example.com",
+      notes: "Revisar frenos delanteros",
+      changedById: actor.id,
+    };
+
+    expect(await updateAppointmentDetails(prisma, input)).toEqual({ status: "UPDATED" });
+    const stored = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId }, include: { customer: true, detailChanges: true } });
+    const history = await prisma.appointmentDetailChange.findMany({ where: { customerId: stored.customerId } });
+    expect(stored.customer).toMatchObject({ fullName: input.fullName, phone: input.phone, email: input.email, detailVersion: 1 });
+    expect(stored).toMatchObject({ notes: input.notes, detailVersion: 1 });
+    expect(history).toHaveLength(4);
+    expect(history.map((change) => change.field).sort()).toEqual(["APPOINTMENT_NOTES", "CUSTOMER_EMAIL", "CUSTOMER_NAME", "CUSTOMER_PHONE"]);
+    expect(history.every((change) => change.changedById === actor.id && change.appointmentId === appointmentId)).toBe(true);
+    expect(await updateAppointmentDetails(prisma, { ...input, notes: "Una edición vieja" })).toEqual({ status: "STALE" });
+    expect(await prisma.appointmentDetailChange.count({ where: { customerId: stored.customerId } })).toBe(4);
+  });
+
+  it("accepts only one of two simultaneous detail edits", async () => {
+    const appointmentId = await createInternalTestAppointment("it-internal-details-race");
+    const actor = await prisma.user.create({ data: { email: `internal-${randomUUID()}@example.com`, name: "Editor" } });
+    const before = await prisma.appointment.findUniqueOrThrow({ where: { id: appointmentId }, include: { customer: true } });
+    const input = {
+      appointmentId,
+      expectedCustomerUpdatedAt: before.customer.updatedAt.toISOString(),
+      expectedAppointmentUpdatedAt: before.updatedAt.toISOString(),
+      expectedCustomerDetailVersion: before.customer.detailVersion,
+      expectedAppointmentDetailVersion: before.detailVersion,
+      fullName: before.customer.fullName,
+      phone: before.customer.phone,
+      email: before.customer.email ?? "",
+      changedById: actor.id,
+    };
+    const results = await Promise.all([
+      updateAppointmentDetails(prisma, { ...input, notes: "Primera nota" }),
+      updateAppointmentDetails(prisma, { ...input, notes: "Segunda nota" }),
+    ]);
+    expect(results.map((result) => result.status).sort()).toEqual(["STALE", "UPDATED"]);
+    expect(await prisma.appointmentDetailChange.count({ where: { appointmentId } })).toBe(1);
+  });
+
+  it("does not assign one phone to two customers during simultaneous corrections", async () => {
+    const firstId = await createInternalTestAppointment("it-internal-phone-race-1");
+    const secondId = await createInternalTestAppointment("it-internal-phone-race-2");
+    const actor = await prisma.user.create({ data: { email: `internal-${randomUUID()}@example.com`, name: "Editor" } });
+    const appointments = await prisma.appointment.findMany({ where: { id: { in: [firstId, secondId] } }, include: { customer: true } });
+    const targetPhone = `+54911${Math.floor(Math.random() * 100_000_000).toString().padStart(8, "0")}`;
+    const results = await Promise.all(appointments.map((appointment) => updateAppointmentDetails(prisma, {
+      appointmentId: appointment.id,
+      expectedCustomerUpdatedAt: appointment.customer.updatedAt.toISOString(),
+      expectedAppointmentUpdatedAt: appointment.updatedAt.toISOString(),
+      expectedCustomerDetailVersion: appointment.customer.detailVersion,
+      expectedAppointmentDetailVersion: appointment.detailVersion,
+      fullName: appointment.customer.fullName,
+      phone: targetPhone,
+      email: appointment.customer.email ?? "",
+      notes: appointment.notes ?? "",
+      changedById: actor.id,
+    })));
+    expect(results.map((result) => result.status).sort()).toEqual(["PHONE_IN_USE", "UPDATED"]);
+    expect(await prisma.customer.count({ where: { phoneNormalized: targetPhone.replace(/\D/gu, "") } })).toBe(1);
   });
 
   it("updates appointment status and stores nullable system attribution in PostgreSQL status history", async () => {

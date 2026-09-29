@@ -5,7 +5,6 @@ import type { EmailNotificationDraft } from "@/src/modules/notifications/service
 import { getWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
 import { activeAppointmentStatuses } from "@/src/modules/appointments/schemas";
 import { findCapacityConflicts } from "@/src/modules/appointments/capacity-conflicts";
-import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import type {
   InternalAppointmentRecord,
   InternalOperationsRepository,
@@ -166,27 +165,11 @@ export class PrismaAppointmentRepository implements InternalOperationsRepository
 
 }
 
-function mapInternalAppointment(appointment: {
-  id: string;
-  publicCode: string;
-  service: { name: string; durationMinutes: number };
-  customer: { fullName: string; phone: string; email: string | null };
-  vehicle: { id: string; brand: string; model: string; licensePlate: string | null };
-  startAt: Date;
-  endAt: Date;
-  status: AppointmentStatus;
-  notes: string | null;
-  intervalHistory: Array<{
-    id: string;
-    previousStartAt: Date;
-    previousEndAt: Date;
-    newStartAt: Date;
-    newEndAt: Date;
-    changedAt: Date;
-    reason: string | null;
-    changedBy: { name: string | null; username: string | null; email: string } | null;
-  }>;
-}): InternalAppointmentRecord {
+function mapInternalAppointment(appointment: Prisma.AppointmentGetPayload<{ include: typeof appointmentInclude }>): InternalAppointmentRecord {
+  const detailHistory = [
+    ...appointment.customer.detailChanges,
+    ...appointment.detailChanges,
+  ].sort((a, b) => b.changedAt.getTime() - a.changedAt.getTime()).slice(0, 20);
   return {
     id: appointment.id,
     publicCode: appointment.publicCode,
@@ -195,12 +178,25 @@ function mapInternalAppointment(appointment: {
     customerName: appointment.customer.fullName,
     customerPhone: appointment.customer.phone,
     customerEmail: appointment.customer.email,
+    customerUpdatedAt: appointment.customer.updatedAt,
+    customerDetailVersion: appointment.customer.detailVersion,
     vehicleId: appointment.vehicle.id,
     vehicleLabel: [appointment.vehicle.brand, appointment.vehicle.model, appointment.vehicle.licensePlate].filter(Boolean).join(" "),
     startAt: appointment.startAt,
     endAt: appointment.endAt,
     status: appointment.status,
     notes: appointment.notes,
+    updatedAt: appointment.updatedAt,
+    detailVersion: appointment.detailVersion,
+    detailHistory: detailHistory.map((item) => ({
+      id: item.id,
+      field: item.field,
+      previousValue: item.previousValue,
+      newValue: item.newValue,
+      changedAt: item.changedAt,
+      changedByName: item.changedBy?.name ?? item.changedBy?.username ?? item.changedBy?.email ?? null,
+      sourceAppointmentCode: item.appointment?.publicCode ?? null,
+    })),
     intervalHistory: appointment.intervalHistory.map((item) => ({
       id: item.id,
       previousStartAt: item.previousStartAt,
@@ -216,10 +212,25 @@ function mapInternalAppointment(appointment: {
 
 const appointmentInclude = {
   service: true,
-  customer: true,
+  customer: {
+    include: {
+      detailChanges: {
+        where: { field: { in: ["CUSTOMER_NAME", "CUSTOMER_PHONE", "CUSTOMER_EMAIL"] } },
+        include: { changedBy: true, appointment: { select: { publicCode: true } } },
+        orderBy: { changedAt: "desc" as const },
+        take: 20,
+      },
+    },
+  },
   vehicle: true,
+  detailChanges: {
+    where: { field: "APPOINTMENT_NOTES" as const },
+    include: { changedBy: true, appointment: { select: { publicCode: true } } },
+    orderBy: { changedAt: "desc" as const },
+    take: 20,
+  },
   intervalHistory: { include: { changedBy: true }, orderBy: { changedAt: "desc" as const } },
-} as const;
+} satisfies Prisma.AppointmentInclude;
 
 function isRetryableTransactionError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";

@@ -4,6 +4,7 @@ import { db } from "@/src/lib/db";
 import type { MercadoPagoEnv } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
+import { updateAppointmentDetails } from "@/src/modules/appointments/detail-edit";
 import { PrismaEmailDeliveryRepository } from "@/src/modules/notifications/prisma-repository";
 import { ResendNotificationPort } from "@/src/modules/notifications/resend-adapter";
 import { deliverPendingEmails, type EmailDeliverySummary, type NotificationPort } from "@/src/modules/notifications/service";
@@ -95,6 +96,7 @@ export const stockCounts = bindDb({
 });
 
 export const staffAccount = bindDb({ findStaffProfile, changeInternalPassword });
+export const appointmentDetails = bindDb({ updateAppointmentDetails });
 
 export function vehicleRepository(): PrismaVehicleRepository {
   return new PrismaVehicleRepository(db);

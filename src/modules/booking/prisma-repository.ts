@@ -168,9 +168,23 @@ export class PrismaBookingRepository implements BookingRepository {
       : null;
 
     if (!existing) {
+      // A staff correction can move a customer away from a phone while leaving its original
+      // derived id in use. Keep deterministic alternatives so concurrent bookings of the old
+      // number still collide and retry instead of creating duplicate people.
+      let customerId: string | undefined;
+      if (phoneKey) {
+        for (let index = 0; index < 100; index += 1) {
+          const candidate = identityDerivedId(index === 0 ? "cus" : `cus${index}`, phoneKey);
+          if (!(await this.client.customer.findUnique({ where: { id: candidate }, select: { id: true } }))) {
+            customerId = candidate;
+            break;
+          }
+        }
+        if (!customerId) throw new Error("No available customer identity id for this phone.");
+      }
       return this.client.customer.create({
         data: {
-          ...(phoneKey ? { id: identityDerivedId("cus", phoneKey) } : {}),
+          ...(customerId ? { id: customerId } : {}),
           fullName: input.fullName,
           phone: input.phone,
           phoneNormalized: phoneKey,

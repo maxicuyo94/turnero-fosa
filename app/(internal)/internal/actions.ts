@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 import { signOut } from "@/src/lib/auth";
-import { appointmentRepository, deliverOutboxEmailsAfterResponse, workshopSettingsRepository } from "@/src/lib/composition";
+import { appointmentDetails, appointmentRepository, deliverOutboxEmailsAfterResponse, workshopSettingsRepository } from "@/src/lib/composition";
 import { formString } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
 import { appointmentStatusSchema } from "@/src/modules/appointments/schemas";
@@ -49,6 +49,38 @@ export async function updateAppointmentStatusAction(formData: FormData) {
     result.accepted ? "status-updated" : result.reason === "APPOINTMENT_NOT_FOUND" ? "appointment-not-found" : "status-invalid",
     view,
   ));
+}
+
+export async function updateAppointmentDetailsAction(formData: FormData) {
+  const { userId: changedById } = await requireStaff();
+  let feedback: InternalFeedbackCode;
+  try {
+    const result = await appointmentDetails.updateAppointmentDetails({
+      appointmentId: formString(formData, "appointmentId"),
+      expectedCustomerUpdatedAt: formString(formData, "expectedCustomerUpdatedAt"),
+      expectedAppointmentUpdatedAt: formString(formData, "expectedAppointmentUpdatedAt"),
+      expectedCustomerDetailVersion: formString(formData, "expectedCustomerDetailVersion"),
+      expectedAppointmentDetailVersion: formString(formData, "expectedAppointmentDetailVersion"),
+      fullName: formString(formData, "fullName"),
+      phone: formString(formData, "phone"),
+      email: formString(formData, "email"),
+      notes: formString(formData, "notes"),
+      changedById,
+    });
+    feedback = {
+      UPDATED: "details-updated",
+      UNCHANGED: "details-unchanged",
+      NOT_FOUND: "appointment-not-found",
+      STALE: "details-stale",
+      PHONE_IN_USE: "details-phone-in-use",
+      INVALID_PHONE: "details-invalid",
+    }[result.status] as InternalFeedbackCode;
+    if (result.status === "UPDATED") revalidatePath("/internal");
+  } catch (error) {
+    if (!(error instanceof ZodError)) throw error;
+    feedback = "details-invalid";
+  }
+  redirect(agendaUrl(formString(formData, "date"), feedback, parseAgendaView(formString(formData, "view"))));
 }
 
 export async function rescheduleAppointmentAction(formData: FormData) {

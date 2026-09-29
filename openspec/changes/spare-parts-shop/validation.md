@@ -1,5 +1,10 @@
 # Verificación de E1 — Inventario interno
 
+Actualización 2026-09-29: el usuario confirmó que se realizó la prueba de E2 con
+hardware real del taller. Las limitaciones históricas de emulación y teléfono que
+figuran abajo describen las verificaciones anteriores; no se registraron aquí los
+dispositivos ni los resultados detallados de la prueba posterior.
+
 ## E2 · Escaneo de códigos — 18 de septiembre de 2026
 
 - Lector con `barcode-detector`: usa `BarcodeDetector` nativo cuando existe y, si no

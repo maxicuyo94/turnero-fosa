@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AppointmentDetailField } from "@prisma/client";
 import { formatWorkshopDateTime, workshopDayBounds, workshopTime } from "@/src/lib/workshop-date";
 import { type AppointmentStatus, appointmentStatusSchema } from "@/src/modules/appointments/schemas";
 import {
@@ -28,12 +29,25 @@ export type InternalAppointmentRecord = {
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
+  customerUpdatedAt: Date;
+  customerDetailVersion: number;
   vehicleId: string;
   vehicleLabel: string;
   startAt: Date;
   endAt: Date;
   status: AppointmentStatus;
   notes: string | null;
+  updatedAt: Date;
+  detailVersion: number;
+  detailHistory: Array<{
+    id: string;
+    field: AppointmentDetailField;
+    previousValue: string | null;
+    newValue: string | null;
+    changedAt: Date;
+    changedByName: string | null;
+    sourceAppointmentCode: string | null;
+  }>;
   intervalHistory: InternalAppointmentIntervalHistory[];
 };
 

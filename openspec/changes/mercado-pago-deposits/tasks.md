@@ -35,5 +35,6 @@ is why 3.5 could not complete through the webhook alone), signature `ts` accepte
 seconds or milliseconds, and a `CRON_SECRET`-protected sweep endpoint.
 
 Release note (2026-09-09): code and migration published to production in `e15ebe8`.
-This does not complete 3.5 or 4.4: a full sandbox purchase and live collection
-activation remain pending. Track the remaining payment risks in [BACKLOG.md](../../BACKLOG.md).
+The full test purchase (3.5) was subsequently completed in Preview on 2026-09-23;
+production collection (4.4) remains a separate rollout. Track remaining edge-case
+evidence in [BACKLOG.md](../../BACKLOG.md).

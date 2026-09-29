@@ -8,6 +8,7 @@ import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository
 import { createPublicBooking } from "@/src/modules/booking/service";
 import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import { correctVehiclePlate } from "@/src/modules/vehicles/service";
+import { updateAppointmentDetails } from "@/src/modules/appointments/detail-edit";
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
 const now = new Date("2026-07-01T09:00:00-03:00");
@@ -128,6 +129,37 @@ describe("vehicle reuse across bookings", () => {
     expect(vehicle.vehicleType.name).toBe("Moto");
   });
 
+  it("can book the old phone after staff corrects a customer's number", async () => {
+    const bookings = new PrismaBookingRepository(prisma);
+    const oldPhone = `+54911${Math.floor(Math.random() * 100_000_000).toString().padStart(8, "0")}`;
+    const newPhone = `+54912${Math.floor(Math.random() * 100_000_000).toString().padStart(8, "0")}`;
+    const first = bookingInput({ key: "it-reuse-phone-1", startTime: "09:00", plate: uniquePlate() });
+    await createPublicBooking(bookings, { ...first, customer: { ...first.customer, phone: oldPhone } });
+    const original = await prisma.appointment.findUniqueOrThrow({ where: { idempotencyKey: "it-reuse-phone-1" }, include: { customer: true } });
+    const actor = await prisma.user.create({ data: { email: `it-reuse-editor-${randomUUID()}@example.com`, name: "Editor" } });
+
+    expect(await updateAppointmentDetails(prisma, {
+      appointmentId: original.id,
+      expectedCustomerUpdatedAt: original.customer.updatedAt.toISOString(),
+      expectedAppointmentUpdatedAt: original.updatedAt.toISOString(),
+      expectedCustomerDetailVersion: original.customer.detailVersion,
+      expectedAppointmentDetailVersion: original.detailVersion,
+      fullName: original.customer.fullName,
+      phone: newPhone,
+      email: original.customer.email ?? "",
+      notes: original.notes ?? "",
+      changedById: actor.id,
+    })).toEqual({ status: "UPDATED" });
+
+    const withOldPhone = bookingInput({ key: "it-reuse-phone-2", startTime: "10:00", plate: undefined });
+    const withNewPhone = bookingInput({ key: "it-reuse-phone-3", startTime: "11:00", plate: undefined });
+    expect((await createPublicBooking(bookings, { ...withOldPhone, customer: { ...withOldPhone.customer, phone: oldPhone } })).accepted).toBe(true);
+    expect((await createPublicBooking(bookings, { ...withNewPhone, customer: { ...withNewPhone.customer, phone: newPhone } })).accepted).toBe(true);
+    const later = await prisma.appointment.findMany({ where: { idempotencyKey: { in: ["it-reuse-phone-2", "it-reuse-phone-3"] } }, select: { idempotencyKey: true, customerId: true } });
+    expect(later.find((item) => item.idempotencyKey === "it-reuse-phone-2")?.customerId).not.toBe(original.customerId);
+    expect(later.find((item) => item.idempotencyKey === "it-reuse-phone-3")?.customerId).toBe(original.customerId);
+  });
+
   it("moves the unit to the new plate, records it, and lets the old plate book a new unit", async () => {
     const bookings = new PrismaBookingRepository(prisma);
     const wrong = uniquePlate();
@@ -224,4 +256,5 @@ async function deleteTestData() {
   await prisma.vehiclePlateChange.deleteMany({ where: { vehicleId: { in: vehicleIds } } });
   await prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } });
   await prisma.customer.deleteMany({ where: { id: { in: [...new Set(appointments.map((item) => item.customerId))] } } });
+  await prisma.user.deleteMany({ where: { email: { startsWith: "it-reuse-editor-" } } });
 }

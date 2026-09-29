@@ -41,7 +41,9 @@ Escaneo con alternativa manual, etiquetas internas imprimibles, conteos completo
 - Conteos: `/internal/shop/counts`. El conteo es completo o por ubicación y toma como base el stock y la cantidad de movimientos de cada repuesto. Contar reemplaza el valor en lugar de sumarlo, y dejarlo vacío lo vuelve a "sin contar". Un repuesto que aparece fuera del alcance se suma al conteo. Si un repuesto se movió durante el conteo, aunque el stock vuelva al mismo número, o si lo contado no cubre sus reservas, el conteo no se puede aplicar hasta recontarlo. Aplicar registra un `ADJUSTMENT` por diferencia en una única transacción, con motivo y responsable. La clave `stock-count:<conteo>:<repuesto>` evita ajustar dos veces.
 - Migración aditiva `20260924120000_stock_counts`. Pruebas: `tests/label-code.test.ts`, `tests/stock-count-prisma.test.ts` (PostgreSQL, incluye dos aplicaciones simultáneas) y `e2e/stock-count.spec.ts` en escritorio y móvil.
 - Verificado en Preview el 2026-09-24 (`6c43bdf`) con dos repuestos de prueba en la ubicación "Prueba E2". Las etiquetas salieron en QR (SKU automático) y en Code 128 (`FIL-PRUEBA-01`), y buscar cada código abrió su ficha. En el conteo, el filtro se cargó por código con 4 y la bujía desde su línea con 10. Al aplicarlo, el filtro pasó de 5 a 4 con un ajuste que registra conteo, motivo y usuario, y la bujía no cambió.
-- Pendiente: probar la cámara y la impresión con el hardware real del taller.
+- Actualización 2026-09-29: el usuario confirmó que se realizó la prueba con el
+  hardware real del taller. No se registraron en este documento los dispositivos,
+  resultados específicos ni incidencias de esa prueba.
 
 ## E3 — Cuenta de cliente y turnos propios
 
