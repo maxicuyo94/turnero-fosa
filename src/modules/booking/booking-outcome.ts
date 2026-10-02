@@ -13,6 +13,7 @@ export const bookingResultCodes = [
   "service-unavailable",
   "invalid",
   "invalid-duration",
+  "rate-limited",
 ] as const;
 export type BookingResultCode = (typeof bookingResultCodes)[number];
 
@@ -25,6 +26,7 @@ const failureMessages: Partial<Record<BookingResultCode, string>> = {
   "service-unavailable": "Elegí un servicio activo.",
   invalid: "Revisá los datos del cliente y del vehículo.",
   "invalid-duration": "Elegí una duración válida para el servicio.",
+  "rate-limited": "Recibimos demasiados pedidos desde tu conexión. Esperá un rato o comunicate con el taller.",
 };
 
 const paymentIssueMessages: Record<PaymentIssueCode, string> = {
@@ -97,7 +99,7 @@ export function describeBookingOutcome(
 
 function successMessage(result: BookingResultCode, status: AppointmentStatus, paymentFailed: boolean): string {
   if (result === "repeated") {
-    return "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.";
+    return "Este pedido de turno ya fue recibido. Si dejaste tu email, ahí tenés el código y los enlaces del turno.";
   }
   if (result === "payment-retry") {
     return paymentFailed

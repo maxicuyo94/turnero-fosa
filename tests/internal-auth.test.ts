@@ -7,7 +7,7 @@ vi.mock("next-auth", () => ({
 }));
 vi.mock("next-auth/providers/credentials", () => ({ default: (config: unknown) => config }));
 
-import { createPasswordHash, getInternalSessionUserId, isInternalSession, verifyPassword } from "@/src/lib/auth";
+import { createPasswordHash, getInternalSessionUserId, verifyPassword } from "@/src/lib/auth";
 
 describe("internal authentication boundary", () => {
   it("verifies an admin password against the stored hash", async () => {
@@ -15,13 +15,6 @@ describe("internal authentication boundary", () => {
 
     await expect(verifyPassword("correct horse battery staple", hash)).resolves.toBe(true);
     await expect(verifyPassword("wrong password", hash)).resolves.toBe(false);
-  });
-
-  it("accepts sessions with a stable internal user identity", () => {
-    expect(isInternalSession({ user: { id: "user_1", email: "admin@fosa.test" } })).toBe(true);
-    expect(isInternalSession({ user: { username: "admin" } })).toBe(true);
-    expect(isInternalSession({ user: { email: null } })).toBe(false);
-    expect(isInternalSession(null)).toBe(false);
   });
 
   it("extracts the authenticated internal user id when Auth.js exposes one", () => {

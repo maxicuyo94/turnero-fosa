@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { requireStaff } from "@/src/lib/staff-access";
 import { inventory } from "@/src/lib/composition";
-import { applyStockFilter, inventoryFilterQuery, parseInventoryFilters, type InventoryFilterSearch } from "@/src/modules/shop/inventory-filters";
+import { inventoryFilterQuery, parseInventoryFilters, type InventoryFilterSearch } from "@/src/modules/shop/inventory-filters";
 import { InventoryLabelsScreen, MAX_LABEL_COPIES, MAX_LABEL_PRODUCTS } from "@/src/modules/shop/inventory-labels";
 
 export const metadata: Metadata = { title: "Etiquetas de inventario" };
@@ -17,7 +17,6 @@ export default async function InventoryLabelsPage({ searchParams }: { searchPara
   const filters = parseInventoryFilters(raw);
   // Uno de mas para saber si la seleccion quedo recortada.
   const rows = await inventory.listLabelProducts({ id, filters }, MAX_LABEL_PRODUCTS + 1);
-  const products = id ? rows : applyStockFilter(filters, rows);
   const selection = id ? `id=${encodeURIComponent(id)}` : inventoryFilterQuery(filters);
 
   return (
@@ -25,7 +24,7 @@ export default async function InventoryLabelsPage({ searchParams }: { searchPara
       backHref={id ? `/internal/shop/inventory/${id}` : `/internal/shop/inventory${selection ? `?${selection}` : ""}`}
       copies={copiesFrom(first(raw.copies))}
       copiesQuery={selection}
-      products={products.slice(0, MAX_LABEL_PRODUCTS)}
+      products={rows.slice(0, MAX_LABEL_PRODUCTS)}
       truncated={rows.length > MAX_LABEL_PRODUCTS}
     />
   );

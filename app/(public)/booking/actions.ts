@@ -1,7 +1,15 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { bookingRepository, deliverOutboxEmailsAfterResponse, depositCheckout } from "@/src/lib/composition";
+import {
+  allowPublicBookingAttempt,
+  bookingRepository,
+  deliverOutboxEmailsAfterResponse,
+  depositCheckout,
+  publicAppOrigin,
+} from "@/src/lib/composition";
+import { clientIpFromHeaders } from "@/src/lib/rate-limit";
 import { formOptionalNumber, formOptionalString, formString } from "@/src/lib/form-data";
 import { getStaffMember } from "@/src/lib/staff-access";
 import { bookingOutcomeQuery, type BookingResultCode, type PaymentIssueCode } from "@/src/modules/booking/booking-outcome";
@@ -11,6 +19,13 @@ import { initiateAppointmentDeposit } from "@/src/modules/payments/service";
 export async function createAppointmentAction(formData: FormData) {
   // La duración total la define el servicio, salvo que reserve alguien del taller.
   const canEditDuration = (await getStaffMember()) !== null;
+  // Staff booking from the counter is never limited; anyone else has a budget per address.
+  if (!canEditDuration && !(await allowPublicBookingAttempt(clientIpFromHeaders(await headers())))) {
+    const query = bookingOutcomeQuery({ result: "rate-limited" });
+    query.set("serviceId", formString(formData, "serviceId"));
+    query.set("date", formString(formData, "date"));
+    redirect(`/booking?${query.toString()}`);
+  }
   const result = await createPublicBooking(bookingRepository(), {
     serviceId: formString(formData, "serviceId"),
     date: formString(formData, "date"),
@@ -29,6 +44,7 @@ export async function createAppointmentAction(formData: FormData) {
     },
     notes: formOptionalString(formData, "notes"),
     idempotencyKey: formString(formData, "idempotencyKey"),
+    publicOrigin: await publicAppOrigin(),
     now: new Date(),
   });
 

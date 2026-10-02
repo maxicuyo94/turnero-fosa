@@ -47,11 +47,13 @@ describe("business settings", () => {
 
   it("rejects invalid durations without persisting and saves valid durations", async () => {
     const updateServiceDuration = vi.fn(async () => ({ id: "service", name: "Motor", durationMinutes: 180, isActive: true, displayOrder: 1 }));
-    for (const durationMinutes of [0, -1, 1.5, "abc", 1441]) {
-      expect(await updateInternalServiceDuration({ updateServiceDuration }, { serviceId: "service", durationMinutes })).toMatchObject({ accepted: false });
+    const repository = { getWorkshopSettings: async () => ({ slotStepMinutes: 30 }), updateServiceDuration };
+    // 45 is valid minutes but off the 30-minute step: it would leave the service with no bookable slot.
+    for (const durationMinutes of [0, -1, 1.5, "abc", 1441, 45]) {
+      expect(await updateInternalServiceDuration(repository, { serviceId: "service", durationMinutes })).toMatchObject({ accepted: false });
     }
     expect(updateServiceDuration).not.toHaveBeenCalled();
-    await updateInternalServiceDuration({ updateServiceDuration }, { serviceId: "service", durationMinutes: "180" });
+    await updateInternalServiceDuration(repository, { serviceId: "service", durationMinutes: "180" });
     expect(updateServiceDuration).toHaveBeenCalledWith("service", 180);
   });
 

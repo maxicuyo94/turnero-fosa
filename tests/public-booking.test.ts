@@ -196,7 +196,7 @@ describe("createPublicBooking", () => {
     expect(first).toMatchObject({ accepted: true, appointment: { idempotencyKey: "repeat-key" } });
     expect(second).toMatchObject({
       accepted: true,
-      message: "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.",
+      message: "Este pedido de turno ya fue recibido. Si dejaste tu email, ahí tenés el código y los enlaces del turno.",
       appointment: { idempotencyKey: "repeat-key" },
     });
     expect(second.accepted ? second.cancellationToken : "unexpected").toBeNull();
@@ -216,7 +216,7 @@ describe("createPublicBooking", () => {
 
     expect(result).toMatchObject({
       accepted: true,
-      message: "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.",
+      message: "Este pedido de turno ya fue recibido. Si dejaste tu email, ahí tenés el código y los enlaces del turno.",
       appointment: { id: "appt_repeat", idempotencyKey: "repeat-key" },
     });
     expect(result.accepted ? result.cancellationToken : "unexpected").toBeNull();
@@ -327,6 +327,49 @@ describe("getPublicAppointmentStatus", () => {
 
     expect(result.accepted).toBe(true);
     expect(repository.queuedEmails[0]?.text).toContain(result.accepted ? result.appointment.publicCode : "unexpected");
+  });
+
+  it("puts the status and cancellation links in the confirmation email", async () => {
+    const repository = new InMemoryBookingRepository({
+      services: [service({ id: "oil", durationMinutes: 30 })],
+      settings: { ...workshopSeedConfig.settings, cancellationEnabled: true },
+    });
+
+    const result = await createPublicBooking(repository, { ...validBooking({ serviceId: "oil" }), publicOrigin: "https://turnos.example" });
+
+    expect(result.accepted).toBe(true);
+    const text = repository.queuedEmails[0]?.text ?? "";
+    const token = result.accepted ? result.cancellationToken : null;
+    expect(token).toBeTruthy();
+    expect(text).toContain(`https://turnos.example/booking/status?code=${result.accepted ? result.appointment.publicCode : ""}`);
+    expect(text).toContain(`https://turnos.example/booking/cancel?appointmentId=appt_1&token=${token}`);
+  });
+
+  it("leaves the cancellation link out when online cancellation is off", async () => {
+    const repository = new InMemoryBookingRepository({
+      services: [service({ id: "oil", durationMinutes: 30 })],
+      settings: { ...workshopSeedConfig.settings, cancellationEnabled: false },
+    });
+
+    await createPublicBooking(repository, { ...validBooking({ serviceId: "oil" }), publicOrigin: "https://turnos.example" });
+
+    expect(repository.queuedEmails[0]?.text).toContain("/booking/status?code=");
+    expect(repository.queuedEmails[0]?.text).not.toContain("/booking/cancel");
+  });
+
+  it("rejects oversized fields and phones without enough digits", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service({ id: "oil", durationMinutes: 30 })] });
+    const base = validBooking({ serviceId: "oil" });
+
+    for (const customer of [
+      { ...base.customer, fullName: "x".repeat(121) },
+      { ...base.customer, phone: "------" },
+    ]) {
+      expect(await createPublicBooking(repository, { ...base, customer })).toMatchObject({ accepted: false, reason: "VALIDATION_FAILED" });
+    }
+    expect(await createPublicBooking(repository, { ...base, vehicle: { ...base.vehicle, brand: "x".repeat(61) } }))
+      .toMatchObject({ accepted: false, reason: "VALIDATION_FAILED" });
+    expect(repository.createdAppointments).toHaveLength(0);
   });
 
   it("returns the same generic result for malformed and unknown codes", async () => {
@@ -452,7 +495,7 @@ class InMemoryBookingRepository implements BookingRepository {
     });
     this.appointments.push(created);
     this.createdAppointments.push(created);
-    if (input.notification) this.queuedEmails.push({ appointmentId: created.id, ...input.notification });
+    if (input.notification) this.queuedEmails.push({ appointmentId: created.id, ...input.notification(created) });
     return created;
   }
 

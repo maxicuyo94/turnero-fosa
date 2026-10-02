@@ -16,7 +16,6 @@ export const workshopSeedConfig: {
     maximumBookingWindowDays: 30,
     confirmationMode: "MANUAL",
     cancellationEnabled: false,
-    reschedulingEnabled: false,
     depositRequired: false,
     depositAmountCents: 500_000,
     depositExpirationMinutes: 30,

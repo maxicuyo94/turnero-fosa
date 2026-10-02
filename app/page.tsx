@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { WorkshopContact } from "@/src/modules/settings/workshop-contact";
 import { Chip, PageHeading, PageShell, RouteCard, SiteHeader } from "@/src/components/ui";
-import { auth, getInternalSessionDisplayName } from "@/src/lib/auth";
-import { workshopContactSettings } from "@/src/lib/composition";
+import { getStaffMember } from "@/src/lib/staff-access";
+import { publicBookingPolicy, workshopContactSettings } from "@/src/lib/composition";
 
 export default async function HomePage() {
-  const session = await auth();
-  const userName = getInternalSessionDisplayName(session);
-  const contact = await workshopContactSettings();
+  const [staff, contact, policy] = await Promise.all([getStaffMember(), workshopContactSettings(), publicBookingPolicy()]);
+  const userName = staff?.displayName ?? null;
 
   return (
     <>
@@ -41,8 +40,18 @@ export default async function HomePage() {
 
         <div className="mt-8 flex flex-wrap gap-3">
           <Chip>Turnos programados</Chip>
-          <Chip>Confirmacion automatica</Chip>
-          <Chip>Sin cancelacion online</Chip>
+          {policy ? (
+            <>
+              <Chip>
+                {policy.depositActive
+                  ? "Se confirma con seña"
+                  : policy.automaticConfirmation
+                    ? "Confirmación automática"
+                    : "Confirmación del taller"}
+              </Chip>
+              <Chip>{policy.cancellationEnabled ? "Cancelación online" : "Sin cancelación online"}</Chip>
+            </>
+          ) : null}
         </div>
       </PageShell>
       <WorkshopContact settings={contact} />

@@ -23,20 +23,6 @@ export type MercadoPagoEnv = {
   VERCEL_PROTECTION_BYPASS?: string;
 };
 
-export function getEnv(input: Record<string, string | undefined> = process.env): AppEnv {
-  const result = envSchema.safeParse(input);
-
-  if (!result.success) {
-    const details = result.error.issues
-      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
-      .join("; ");
-
-    throw new Error(`Invalid application configuration. ${details}`);
-  }
-
-  return result.data;
-}
-
 export function getDatabaseUrl(input: Record<string, string | undefined> = process.env): string {
   return envSchema.shape.DATABASE_URL.parse(input.DATABASE_URL);
 }
@@ -78,9 +64,7 @@ function isVercelPreview(input: Record<string, string | undefined>): boolean {
  * must send customers and Mercado Pago back to itself, never to the production domain that
  * NEXT_PUBLIC_APP_URL or the workshop settings hold.
  */
-function previewBranchOrigin(input: Record<string, string | undefined>): string | undefined {
+export function previewBranchOrigin(input: Record<string, string | undefined>): string | undefined {
   const branchUrl = input.VERCEL_BRANCH_URL?.trim();
   return isVercelPreview(input) && branchUrl ? `https://${branchUrl}` : undefined;
 }
-
-export const appEnvSchema = envSchema;

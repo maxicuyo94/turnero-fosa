@@ -6,6 +6,7 @@ import {
   type PlateChangeInput,
   type PlateChangeOutcome,
   type VehicleRepository,
+  type VehicleSearch,
   type VehicleSummary,
 } from "@/src/modules/vehicles/service";
 
@@ -29,6 +30,22 @@ describe("vehicle search", () => {
 
     expect(await idsOf(searchVehicles(repository, { query: "ab 123 cd" }))).toEqual(["v1"]);
     expect(await idsOf(searchVehicles(repository, { query: "AB-123-CD" }))).toEqual(["v1"]);
+  });
+
+  it("requires every typed word, across fields", async () => {
+    const repository = new InMemoryVehicleRepository([
+      summary({ id: "v1", brand: "Honda", model: "XR150", licensePlate: "AB123CD", ownerName: "Ana Perez" }),
+      summary({ id: "v2", brand: "Honda", model: "Wave", licensePlate: "XY987ZW", ownerName: "Beto Lopez" }),
+    ]);
+
+    expect(await idsOf(searchVehicles(repository, { query: "honda ana" }))).toEqual(["v1"]);
+    expect(await idsOf(searchVehicles(repository, { query: "honda" }))).toEqual(["v1", "v2"]);
+  });
+
+  it("asks the repository for at most one page of units", async () => {
+    const repository = new InMemoryVehicleRepository([]);
+    await searchVehicles(repository, { query: "" });
+    expect(repository.searches.at(-1)).toMatchObject({ terms: [], plateKey: null, limit: 200 });
   });
 
   it("returns every unit when nothing is typed", async () => {
@@ -180,8 +197,18 @@ class InMemoryVehicleRepository implements VehicleRepository {
 
   constructor(private vehicles: VehicleSummary[]) {}
 
-  async listVehicles() {
-    return this.vehicles;
+  searches: VehicleSearch[] = [];
+
+  /** Same rule as the Prisma query: an exact normalized plate, or every term in some field. */
+  async searchVehicles(search: VehicleSearch) {
+    this.searches.push(search);
+    if (search.terms.length === 0) return this.vehicles.slice(0, search.limit);
+    return this.vehicles.filter((vehicle) => {
+      if (search.plateKey && vehicle.plateNormalized === search.plateKey) return true;
+      const fields = [vehicle.brand, vehicle.model, vehicle.licensePlate ?? "", vehicle.ownerName, vehicle.ownerPhone]
+        .map((field) => field.toLocaleLowerCase("es-AR"));
+      return search.terms.every((term) => fields.some((field) => field.includes(term.toLocaleLowerCase("es-AR"))));
+    }).slice(0, search.limit);
   }
 
   async updateVehicle(vehicleId: string, data: Record<string, unknown>) {

@@ -36,6 +36,8 @@ export type InternalScheduleRepository = {
 };
 
 export type InternalWorkshopSettingsRecord = Partial<BusinessSettings> & {
+  confirmationMode?: "MANUAL" | "AUTOMATIC";
+  cancellationEnabled?: boolean;
   capacity: number;
   slotStepMinutes?: number;
   minimumNoticeMinutes: number;
@@ -61,6 +63,9 @@ export type InternalMaintenanceRepository = {
 };
 
 const settingsInputSchema = businessSettingsSchema.extend({
+  // Optional so a caller that does not show them leaves the stored policy untouched.
+  confirmationMode: z.enum(["MANUAL", "AUTOMATIC"]).optional(),
+  cancellationEnabled: z.boolean().optional(),
   capacity: z.coerce.number().int().min(1).max(20),
   minimumNoticeMinutes: z.coerce.number().int().min(0).max(10_080),
   maximumBookingWindowDays: z.coerce.number().int().min(1).max(365),
@@ -78,6 +83,8 @@ export async function updateInternalWorkshopSettings(
     accepted: true,
     settings: await repository.updateWorkshopSettings({
       ...businessSettingsSchema.parse(parsed),
+      ...(parsed.confirmationMode ? { confirmationMode: parsed.confirmationMode } : {}),
+      ...(parsed.cancellationEnabled === undefined ? {} : { cancellationEnabled: parsed.cancellationEnabled }),
       capacity: parsed.capacity,
       minimumNoticeMinutes: parsed.minimumNoticeMinutes,
       maximumBookingWindowDays: parsed.maximumBookingWindowDays,
@@ -198,12 +205,23 @@ export async function updateInternalServiceVisibility(
 
 export const serviceDurationSchema = z.coerce.number().int().min(1).max(1440);
 
+/**
+ * Bookings only start and last in whole slot steps, so a duration off the step would leave the
+ * service with no bookable time at all. It is rejected here instead.
+ */
 export async function updateInternalServiceDuration(
-  repository: { updateServiceDuration(serviceId: string, durationMinutes: number): Promise<InternalServiceRecord> },
+  repository: {
+    getWorkshopSettings(): Promise<Pick<InternalWorkshopSettingsRecord, "slotStepMinutes">>;
+    updateServiceDuration(serviceId: string, durationMinutes: number): Promise<InternalServiceRecord>;
+  },
   input: { serviceId: string; durationMinutes: unknown },
 ) {
   const parsed = serviceDurationSchema.safeParse(input.durationMinutes);
   if (!parsed.success) return rejection("La duración debe ser de 1 a 1440 minutos.");
+  const { slotStepMinutes } = await repository.getWorkshopSettings();
+  if (slotStepMinutes && parsed.data % slotStepMinutes !== 0) {
+    return rejection(`La duración debe ser múltiplo de ${slotStepMinutes} minutos.`);
+  }
   return { accepted: true as const, service: await repository.updateServiceDuration(input.serviceId, parsed.data) };
 }
 

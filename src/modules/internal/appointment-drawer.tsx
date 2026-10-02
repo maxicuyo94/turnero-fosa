@@ -116,6 +116,9 @@ export function AppointmentDrawer({
           <Detail className="sm:col-span-2" label="Código público" value={appointment.publicCode} />
           <Detail label="Teléfono" value={appointment.customerPhone} />
           <Detail label="Email" value={appointment.customerEmail ?? "No informado"} />
+          {appointment.contactEmail && appointment.contactEmail !== appointment.customerEmail ? (
+            <Detail className="sm:col-span-2" label="Email de la reserva (recibe los avisos)" value={appointment.contactEmail} />
+          ) : null}
           <div className="sm:col-span-2">
             <Detail label="Vehículo / patente" value={appointment.vehicleLabel} />
             <Link

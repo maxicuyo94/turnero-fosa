@@ -15,8 +15,17 @@ export type VehicleSummary = {
   lastVisitAt: Date | null;
 };
 
+/** Most units one search returns; the list asks to narrow the search beyond that. */
+export const VEHICLE_SEARCH_LIMIT = 200;
+
+/**
+ * A search as the database runs it: every term must appear in some searchable field (plate, brand,
+ * model, owner name or phone), or the normalized plate matches exactly. No terms lists the newest units.
+ */
+export type VehicleSearch = { terms: string[]; plateKey: string | null; limit: number };
+
 export type VehicleRepository = {
-  listVehicles(): Promise<VehicleSummary[]>;
+  searchVehicles(search: VehicleSearch): Promise<VehicleSummary[]>;
   updateVehicle(vehicleId: string, data: Record<string, unknown>): Promise<unknown>;
 };
 
@@ -27,24 +36,19 @@ function rejection(message: string): VehicleRejection {
 }
 
 /**
- * Searches across plate, brand, model and owner. The plate is compared on its normalized form too,
- * so staff can type what is printed on the unit instead of guessing how it was loaded.
+ * Searches across plate, brand, model and owner, in the database and up to `VEHICLE_SEARCH_LIMIT`
+ * units. The plate is compared on its normalized form too, so staff can type what is printed on the
+ * unit instead of guessing how it was loaded.
  */
 export async function searchVehicles(
   repository: VehicleRepository,
   input: { query?: string },
 ): Promise<VehicleSummary[]> {
-  const vehicles = await repository.listVehicles();
-  const query = (input.query ?? "").trim().toLocaleLowerCase("es-AR");
-  if (!query) return vehicles;
-
-  const plateQuery = normalizeLicensePlate(query);
-  return vehicles.filter((vehicle) => {
-    const haystack = [vehicle.brand, vehicle.model, vehicle.licensePlate ?? "", vehicle.ownerName, vehicle.ownerPhone]
-      .join(" ")
-      .toLocaleLowerCase("es-AR");
-    const plateMatches = plateQuery !== null && vehicle.plateNormalized === plateQuery;
-    return plateMatches || haystack.includes(query);
+  const query = (input.query ?? "").trim();
+  return repository.searchVehicles({
+    terms: query ? query.split(/\s+/u) : [],
+    plateKey: query ? normalizeLicensePlate(query) : null,
+    limit: VEHICLE_SEARCH_LIMIT,
   });
 }
 

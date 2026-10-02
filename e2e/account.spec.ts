@@ -36,7 +36,7 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
-test("el usuario interno cambia su contraseña y entra con la nueva", async ({ page }) => {
+test("el usuario interno cambia su contraseña, se cierran sus sesiones y entra con la nueva", async ({ page }) => {
   test.slow();
   await login(page, originalPassword);
   await page.getByRole("navigation", { name: "Secciones del panel" }).getByRole("link", { name: "Mi cuenta" }).click();
@@ -48,11 +48,11 @@ test("el usuario interno cambia su contraseña y entra con la nueva", async ({ p
   await expect(page.getByRole("alert").filter({ hasText: "La contraseña actual no es correcta." })).toBeVisible();
 
   await fillPasswordForm(page, originalPassword, newPassword, newPassword);
-  await expect(page.getByRole("status").filter({ hasText: "Contraseña actualizada" })).toBeVisible();
-  await expect(page.getByLabel("Contraseña actual")).toHaveValue("");
-
-  await page.getByRole("button", { name: "Salir" }).click();
+  // El cambio cierra todas las sesiones, esta incluida, y lleva al login con el aviso.
+  await expect(page.getByText("Cerramos todas las sesiones")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Acceso interno" })).toBeVisible();
+  await page.goto("/internal/account");
+  await expect(page).toHaveURL(/\/internal\/login/);
 
   await submitLogin(page, originalPassword);
   await expect(page.getByText("Usuario o contraseña incorrectos.")).toBeVisible();

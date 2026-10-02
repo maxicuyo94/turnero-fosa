@@ -175,46 +175,6 @@ export function canAcceptAppointment(input: {
   return { accepted: true, endAt };
 }
 
-export type AppointmentReservationRepository = {
-  findByIdempotencyKey(key: string): Promise<AppointmentReservationResult | null>;
-  withCapacityLock<T>(operation: (appointments: ExistingAppointment[]) => Promise<T>): Promise<T>;
-  save(input: { idempotencyKey: string; startAt: Date; endAt: Date }): Promise<Extract<AppointmentReservationResult, { accepted: true }>>;
-};
-
-export type AppointmentReservationResult =
-  | { accepted: true; appointment: { startAt: Date; endAt: Date } }
-  | { accepted: false; reason: "CAPACITY_EXHAUSTED" };
-
-export async function createAppointmentReservation(input: {
-  repository: AppointmentReservationRepository;
-  settings: Pick<WorkshopSettings, "capacity">;
-  input: { idempotencyKey: string; startAt: Date; serviceDurationMinutes: number };
-}): Promise<AppointmentReservationResult> {
-  const existing = await input.repository.findByIdempotencyKey(input.input.idempotencyKey);
-  if (existing) {
-    return existing;
-  }
-
-  return input.repository.withCapacityLock(async (appointments) => {
-    const capacity = canAcceptAppointment({
-      settings: input.settings,
-      startAt: input.input.startAt,
-      serviceDurationMinutes: input.input.serviceDurationMinutes,
-      appointments,
-    });
-
-    if (!capacity.accepted) {
-      return capacity;
-    }
-
-    return input.repository.save({
-      idempotencyKey: input.input.idempotencyKey,
-      startAt: input.input.startAt,
-      endAt: capacity.endAt,
-    });
-  });
-}
-
 function maximumConcurrentAppointments(appointments: ExistingAppointment[], startAt: Date, endAt: Date): number {
   const events = appointments
     .filter(

@@ -29,6 +29,8 @@ export type InternalAppointmentRecord = {
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
+  /** Email typed in the public booking of this appointment; notifications prefer it. */
+  contactEmail: string | null;
   customerUpdatedAt: Date;
   customerDetailVersion: number;
   vehicleId: string;
@@ -138,11 +140,6 @@ export function isTerminalStatus(status: AppointmentStatus): boolean {
   return validTransitions[status].length === 0;
 }
 
-export async function getInternalAgenda(repository: InternalOperationsRepository, input: { date: string }): Promise<InternalAgenda> {
-  const parsed = agendaInputSchema.parse(input);
-  return { date: parsed.date, appointments: await repository.listAppointmentsForDate(parsed.date) };
-}
-
 /** One agenda per date from a single query, instead of one query per day of the week. */
 export async function getInternalAgendas(
   repository: InternalOperationsRepository,
@@ -176,13 +173,14 @@ export async function updateInternalAppointmentStatus(
     };
   }
 
+  const recipient = notificationRecipient(appointment);
   const updated = await repository.updateAppointmentStatus({
     ...parsed,
     fromStatus: appointment.status,
-    notification: appointment.customerEmail
+    notification: recipient
       ? {
           event: "APPOINTMENT_STATUS_CHANGED",
-          recipient: appointment.customerEmail,
+          recipient,
           subject: "Actualización de tu turno",
           text: `Tu turno para ${appointment.serviceName} ahora está ${statusLabel(parsed.nextStatus)}.`,
         }
@@ -236,6 +234,7 @@ export async function rescheduleInternalAppointment(
       return { accepted: false as const, reason: validation.reason, message: intervalRejectionMessage(validation.reason) };
     }
 
+    const recipient = notificationRecipient(appointment);
     return {
       accepted: true as const,
       appointment: await tx.updateAppointmentInterval({
@@ -244,10 +243,10 @@ export async function rescheduleInternalAppointment(
         endAt: validation.endAt,
         changedById: parsed.changedById,
         reason: parsed.reason,
-        notification: appointment.customerEmail
+        notification: recipient
           ? {
               event: "APPOINTMENT_INTERVAL_CHANGED",
-              recipient: appointment.customerEmail,
+              recipient,
               subject: "Actualización de tu turno",
               text: `Tu turno para ${appointment.serviceName} fue reprogramado para ${formatDateTime(validation.startAt)} hasta ${formatTime(validation.endAt)}.`,
             }
@@ -313,6 +312,11 @@ export async function previewInternalAppointmentSlots(
       remainingCapacity: slot.remainingCapacity,
     })),
   };
+}
+
+/** Who hears about an appointment: whoever booked it, else the customer's email on record. */
+export function notificationRecipient(appointment: Pick<InternalAppointmentRecord, "contactEmail" | "customerEmail">): string | null {
+  return appointment.contactEmail ?? appointment.customerEmail;
 }
 
 export function statusLabel(status: AppointmentStatus): string {

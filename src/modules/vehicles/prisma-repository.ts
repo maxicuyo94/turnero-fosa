@@ -4,20 +4,41 @@ import type {
   PlateChangeOutcome,
   VehicleHistoryRepository,
   VehicleRecord,
+  VehicleSearch,
   VehicleSummary,
 } from "@/src/modules/vehicles/service";
 
 export class PrismaVehicleRepository implements VehicleHistoryRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async listVehicles(): Promise<VehicleSummary[]> {
+  async searchVehicles({ terms, plateKey, limit }: VehicleSearch): Promise<VehicleSummary[]> {
+    const contains = (term: string) => ({ contains: term, mode: "insensitive" as const });
+    const where: Prisma.VehicleWhereInput = terms.length === 0 ? {} : {
+      OR: [
+        ...(plateKey ? [{ plateNormalized: plateKey }] : []),
+        {
+          AND: terms.map((term) => ({
+            OR: [
+              { brand: contains(term) },
+              { model: contains(term) },
+              { licensePlate: contains(term) },
+              { customer: { fullName: contains(term) } },
+              { customer: { phone: contains(term) } },
+            ],
+          })),
+        },
+      ],
+    };
     const vehicles = await this.prisma.vehicle.findMany({
+      where,
       include: {
         vehicleType: true,
         customer: true,
-        appointments: { orderBy: { startAt: "desc" }, select: { startAt: true } },
+        appointments: { orderBy: { startAt: "desc" }, select: { startAt: true }, take: 1 },
+        _count: { select: { appointments: true } },
       },
       orderBy: [{ createdAt: "desc" }],
+      take: limit,
     });
 
     return vehicles.map((vehicle) => ({
@@ -30,7 +51,7 @@ export class PrismaVehicleRepository implements VehicleHistoryRepository {
       year: vehicle.year,
       ownerName: vehicle.customer.fullName,
       ownerPhone: vehicle.customer.phone,
-      appointmentCount: vehicle.appointments.length,
+      appointmentCount: vehicle._count.appointments,
       lastVisitAt: vehicle.appointments[0]?.startAt ?? null,
     }));
   }

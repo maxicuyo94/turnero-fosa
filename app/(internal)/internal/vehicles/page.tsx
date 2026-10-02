@@ -1,6 +1,6 @@
 import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { vehicleRepository } from "@/src/lib/composition";
-import { searchVehicles } from "@/src/modules/vehicles/service";
+import { VEHICLE_SEARCH_LIMIT, searchVehicles } from "@/src/modules/vehicles/service";
 import { VehicleListScreen } from "@/src/modules/vehicles/vehicle-list-screen";
 
 export default async function VehiclesPage({ searchParams }: { searchParams?: Promise<{ q?: string }> }) {
@@ -15,6 +15,7 @@ export default async function VehiclesPage({ searchParams }: { searchParams?: Pr
       query={query}
       canManageWorkshop={hasRole(staff, "ADMIN")}
       signedInUserName={staff.displayName}
+      truncated={vehicles.length >= VEHICLE_SEARCH_LIMIT}
       vehicles={vehicles}
     />
   );

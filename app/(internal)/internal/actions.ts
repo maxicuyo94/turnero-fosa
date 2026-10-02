@@ -148,6 +148,8 @@ export async function updateWorkshopSettingsAction(formData: FormData) {
       emailFrom: formString(formData, "emailFrom"),
       depositRefundPolicy: formString(formData, "depositRefundPolicy"),
       depositActivationDate: formString(formData, "depositActivationDate"),
+      confirmationMode: formString(formData, "confirmationMode") === "AUTOMATIC" ? "AUTOMATIC" : "MANUAL",
+      cancellationEnabled: formString(formData, "cancellationEnabled") === "true",
       capacity: formString(formData, "capacity"),
       minimumNoticeMinutes: formString(formData, "minimumNoticeMinutes"),
       maximumBookingWindowDays: formString(formData, "maximumBookingWindowDays"),

@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
-  users: new Map<string, { id: string; name: string | null; username: string | null; email: string; role: "ADMIN" | "STAFF" }>(),
+  users: new Map<string, { id: string; name: string | null; username: string | null; email: string; role: "ADMIN" | "STAFF"; sessionVersion: number }>(),
 }));
 
 vi.mock("@/src/lib/auth", () => ({
   auth: mocks.auth,
   getInternalSessionUserId: (session: { user?: { id?: string } } | null) => session?.user?.id ?? null,
+  getInternalSessionVersion: (session: { user?: { sessionVersion?: number } } | null) => session?.user?.sessionVersion ?? 0,
 }));
 vi.mock("@/src/lib/db", () => ({
   db: { user: { findUnique: async ({ where }: { where: { id: string } }) => mocks.users.get(where.id) ?? null } },
@@ -21,8 +22,8 @@ describe("internal staff access", () => {
   beforeEach(() => {
     mocks.auth.mockReset();
     mocks.users.clear();
-    mocks.users.set("admin-1", { id: "admin-1", name: "Ada", username: "ada", email: "ada@taller.test", role: "ADMIN" });
-    mocks.users.set("staff-1", { id: "staff-1", name: null, username: "mecanico", email: "mec@taller.test", role: "STAFF" });
+    mocks.users.set("admin-1", { id: "admin-1", name: "Ada", username: "ada", email: "ada@taller.test", role: "ADMIN", sessionVersion: 0 });
+    mocks.users.set("staff-1", { id: "staff-1", name: null, username: "mecanico", email: "mec@taller.test", role: "STAFF", sessionVersion: 0 });
   });
 
   it("sends anonymous callers to the login", async () => {
@@ -34,6 +35,14 @@ describe("internal staff access", () => {
     mocks.auth.mockResolvedValue({ user: { id: "deleted-user" } });
     await expect(requireStaff()).rejects.toThrow("redirect:/internal/login");
     expect(await getStaffMember()).toBeNull();
+  });
+
+  it("signs out tokens issued before the last password change", async () => {
+    mocks.users.get("staff-1")!.sessionVersion = 1;
+    mocks.auth.mockResolvedValue({ user: { id: "staff-1" } });
+    expect(await getStaffMember()).toBeNull();
+    mocks.auth.mockResolvedValue({ user: { id: "staff-1", sessionVersion: 1 } });
+    await expect(requireStaff()).resolves.toMatchObject({ userId: "staff-1" });
   });
 
   it("reads the role from the account and names the member for the header", async () => {

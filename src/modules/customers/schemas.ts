@@ -1,9 +1,20 @@
 import { z } from "zod";
 
+/**
+ * Public input, so every field is bounded. The limits match what staff can type when correcting the
+ * same record, and the phone must carry the digits its identity key is built from.
+ */
 export const customerSchema = z.object({
-  fullName: z.string().trim().min(1, "Customer name is required."),
-  phone: z.string().trim().min(6, "Customer phone is required."),
-  email: z.string().trim().email().optional(),
+  fullName: z.string().trim().min(1, "Customer name is required.").max(120),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .refine((phone) => {
+      const digits = phone.replace(/\D/gu, "").length;
+      return digits >= 6 && digits <= 20;
+    }, "Customer phone needs between 6 and 20 digits."),
+  email: z.string().trim().max(254).email().optional(),
 });
 
 export type CustomerInput = z.infer<typeof customerSchema>;
@@ -17,10 +28,10 @@ export type CustomerInput = z.infer<typeof customerSchema>;
  * falls back to the first active type of the catalog.
  */
 export const vehicleSchema = z.object({
-  vehicleTypeId: z.string().trim().min(1).optional(),
-  brand: z.string().trim().min(1, "Vehicle brand is required."),
-  model: z.string().trim().min(1, "Vehicle model is required."),
-  licensePlate: z.string().trim().optional(),
+  vehicleTypeId: z.string().trim().min(1).max(128).optional(),
+  brand: z.string().trim().min(1, "Vehicle brand is required.").max(60),
+  model: z.string().trim().min(1, "Vehicle model is required.").max(60),
+  licensePlate: z.string().trim().max(20).optional(),
   year: z.number().int().min(1900).max(2100).optional(),
 });
 

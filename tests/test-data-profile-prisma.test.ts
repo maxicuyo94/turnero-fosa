@@ -2,12 +2,12 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { getEnv } from "@/src/lib/env";
+import { getDatabaseUrl } from "@/src/lib/env";
 import { testDataPrefix } from "@/src/modules/testing/development-profile";
 import { loadTestDataProfile } from "@/src/modules/testing/load-test-data";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
-const localEnv = { DATABASE_URL: getEnv().DATABASE_URL, NODE_ENV: "test" };
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const localEnv = { DATABASE_URL: getDatabaseUrl(), NODE_ENV: "test" };
 const now = new Date("2026-07-01T09:00:00-03:00");
 
 describe("development test-data profile", () => {

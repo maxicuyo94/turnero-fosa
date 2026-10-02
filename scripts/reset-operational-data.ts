@@ -22,8 +22,6 @@ const TABLES = [
   "InventoryMovement",
   "ShopProduct",
   "LoginThrottle",
-  "Session",
-  "VerificationToken",
 ] as const;
 
 async function main() {

@@ -11,9 +11,11 @@ export type VehicleListScreenProps = {
   query: string;
   signedInUserName?: string | null;
   canManageWorkshop?: boolean;
+  /** The search returned as many units as one page holds; there may be more. */
+  truncated?: boolean;
 };
 
-export function VehicleListScreen({ vehicles, query, signedInUserName, canManageWorkshop }: VehicleListScreenProps) {
+export function VehicleListScreen({ vehicles, query, signedInUserName, canManageWorkshop, truncated }: VehicleListScreenProps) {
   return (
     <InternalShell active="vehicles" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <PageHeading
@@ -35,6 +37,9 @@ export function VehicleListScreen({ vehicles, query, signedInUserName, canManage
       </Card>
 
       <Card className="mt-6">
+        {truncated ? (
+          <p className="mb-4 text-sm text-zinc-500">Se muestran las {vehicles.length} unidades más recientes. Buscá para encontrar las demás.</p>
+        ) : null}
         {vehicles.length === 0 ? (
           <EmptyState>
             {query ? "Sin resultados. Probá con otra patente, marca o cliente." : "Todavía no hay unidades cargadas."}

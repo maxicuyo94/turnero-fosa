@@ -178,6 +178,7 @@ function mapInternalAppointment(appointment: Prisma.AppointmentGetPayload<{ incl
     customerName: appointment.customer.fullName,
     customerPhone: appointment.customer.phone,
     customerEmail: appointment.customer.email,
+    contactEmail: appointment.contactEmail,
     customerUpdatedAt: appointment.customer.updatedAt,
     customerDetailVersion: appointment.customer.detailVersion,
     vehicleId: appointment.vehicle.id,

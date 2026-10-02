@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { StaffRole } from "@prisma/client";
-import { auth, getInternalSessionUserId } from "@/src/lib/auth";
+import { auth, getInternalSessionUserId, getInternalSessionVersion } from "@/src/lib/auth";
 import { db } from "@/src/lib/db";
 
 export type { StaffRole } from "@prisma/client";
@@ -14,17 +14,19 @@ export type StaffMember = {
 
 /**
  * The signed-in staff member, read from the database rather than trusted from the token, so a
- * deleted account or a changed role takes effect on the next request. Cached per request.
+ * deleted account, a changed role or a password change takes effect on the next request. Cached
+ * per request.
  */
 export const getStaffMember = cache(async (): Promise<StaffMember | null> => {
-  const userId = getInternalSessionUserId(await auth());
+  const session = await auth();
+  const userId = getInternalSessionUserId(session);
   if (!userId) return null;
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, username: true, email: true, role: true },
+    select: { id: true, name: true, username: true, email: true, role: true, sessionVersion: true },
   });
-  if (!user) return null;
+  if (!user || user.sessionVersion !== getInternalSessionVersion(session)) return null;
 
   return { userId: user.id, displayName: user.name || user.username || user.email, role: user.role };
 });

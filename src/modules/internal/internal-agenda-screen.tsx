@@ -16,6 +16,7 @@ import {
   Card,
   Field,
   PageHeading,
+  Select,
   TextInput,
   type AlertTone,
 } from "@/src/components/ui";
@@ -72,7 +73,7 @@ const feedbackMessages: Record<InternalFeedbackCode, { tone: AlertTone; message:
   "settings-updated": { tone: "success", message: "Guardamos la configuración del taller." },
   "settings-invalid": { tone: "danger", message: "Revisá los datos: teléfono y WhatsApp válidos, dominio HTTPS sin rutas, remitente de email, fecha existente y valores numéricos dentro del rango." },
   "service-updated": { tone: "success", message: "Guardamos la duración para los nuevos turnos. Los turnos existentes conservan su horario." },
-  "service-invalid": { tone: "danger", message: "La duración debe ser de 1 a 1440 minutos." },
+  "service-invalid": { tone: "danger", message: "La duración debe ser de 1 a 1440 minutos y múltiplo del paso de la agenda." },
   "schedule-updated": { tone: "success", message: "Actualizamos el horario semanal del taller." },
   "schedule-invalid": {
     tone: "danger",
@@ -205,6 +206,21 @@ export function InternalAgendaScreen({
             <form action={updateWorkshopSettingsAction} className="mt-6 grid gap-4">
               <ContactSettingsFields settings={settings} />
               <h3 className="mt-3 text-lg font-bold text-white">Operación y señas</h3>
+              <Field hint="(con seña activa, la confirma el pago)" label="Confirmación de turnos">
+                <Select defaultValue={settings.confirmationMode ?? "MANUAL"} name="confirmationMode">
+                  <option value="MANUAL">La confirma el taller</option>
+                  <option value="AUTOMATIC">Automática al reservar</option>
+                </Select>
+              </Field>
+              <Field label="Permitir cancelación online">
+                <input
+                  className="h-5 w-5 accent-apple-400"
+                  defaultChecked={settings.cancellationEnabled ?? false}
+                  name="cancellationEnabled"
+                  type="checkbox"
+                  value="true"
+                />
+              </Field>
               <Field hint="(1-20)" label="Capacidad simultánea">
                 <TextInput defaultValue={settings.capacity} name="capacity" type="number" />
               </Field>
@@ -317,7 +333,7 @@ export function InternalAgendaScreen({
                 <form action={updateServiceDurationAction} className="mt-3 flex flex-wrap items-end gap-3">
                   <input name="serviceId" type="hidden" value={service.id} />
                   <Field label={`Duración de ${service.name}`} hint="minutos">
-                    <TextInput name="durationMinutes" type="number" min={1} max={1440} step={1} required defaultValue={service.durationMinutes} />
+                    <TextInput name="durationMinutes" type="number" min={settings?.slotStepMinutes ?? 1} max={1440} step={settings?.slotStepMinutes ?? 1} required defaultValue={service.durationMinutes} />
                   </Field>
                   <SubmitButton variant="ghost" size="sm">Guardar duración</SubmitButton>
                 </form>

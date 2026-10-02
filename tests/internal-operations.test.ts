@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  getInternalAgenda,
   getInternalAgendas,
   previewInternalAppointmentSlots,
   rescheduleInternalAppointment,
@@ -22,7 +21,7 @@ describe("internal daily agenda", () => {
       appointment({ id: "early", startAt: "2026-07-06T09:00:00-03:00" }),
     ]);
 
-    const agenda = await getInternalAgenda(repository, { date: today });
+    const [agenda] = await getInternalAgendas(repository, { dates: [today] });
 
     expect(agenda).toEqual({ date: today, appointments: [expect.objectContaining({ id: "early" }), expect.objectContaining({ id: "late" })] });
   });
@@ -30,7 +29,7 @@ describe("internal daily agenda", () => {
   it("returns an explicit empty agenda when no appointments exist", async () => {
     const repository = new InMemoryInternalRepository([]);
 
-    await expect(getInternalAgenda(repository, { date: today })).resolves.toEqual({ date: today, appointments: [] });
+    await expect(getInternalAgendas(repository, { dates: [today] })).resolves.toEqual([{ date: today, appointments: [] }]);
   });
 
   it("builds every agenda of the week from one range query", async () => {
@@ -127,6 +126,21 @@ describe("internal status transitions", () => {
     await updateInternalAppointmentStatus(repository, { appointmentId: "done", nextStatus: "IN_PROGRESS", changedById: null });
 
     expect(repository.queuedEmails).toEqual([]);
+  });
+
+  it("notifies the email typed in the booking, not the one on the customer record", async () => {
+    const repository = new InMemoryInternalRepository([
+      appointment({ id: "booked", status: "CONFIRMED", customerEmail: "owner@example.com", contactEmail: "booker@example.com" }),
+      appointment({ id: "walk-in", status: "CONFIRMED", customerEmail: "owner@example.com", contactEmail: null }),
+    ]);
+
+    await updateInternalAppointmentStatus(repository, { appointmentId: "booked", nextStatus: "IN_PROGRESS", changedById: null });
+    await updateInternalAppointmentStatus(repository, { appointmentId: "walk-in", nextStatus: "IN_PROGRESS", changedById: null });
+
+    expect(repository.queuedEmails.map((email) => [email.appointmentId, email.recipient])).toEqual([
+      ["booked", "booker@example.com"],
+      ["walk-in", "owner@example.com"],
+    ]);
   });
 });
 
@@ -241,6 +255,7 @@ function appointment(
     customerName: "Ada Lovelace",
     customerPhone: "+5491112345678",
     customerEmail: "ada@example.com",
+    contactEmail: null,
     customerUpdatedAt: new Date("2026-07-01T09:00:00-03:00"),
     customerDetailVersion: 0,
     vehicleId: "veh-test",

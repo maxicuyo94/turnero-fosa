@@ -47,7 +47,6 @@ export class PrismaBookingRepository implements BookingRepository {
         maximumBookingWindowDays: settings.maximumBookingWindowDays,
         confirmationMode: settings.confirmationMode,
         cancellationEnabled: settings.cancellationEnabled,
-        reschedulingEnabled: settings.reschedulingEnabled,
         depositRequired: isDepositActive(settings),
         depositAmountCents: settings.depositAmountCents,
         depositExpirationMinutes: settings.depositExpirationMinutes,
@@ -146,12 +145,17 @@ export class PrismaBookingRepository implements BookingRepository {
         status: input.status,
         idempotencyKey: input.idempotencyKey,
         cancellationTokenHash: input.cancellationToken ? hashCancellationToken(input.cancellationToken) : null,
+        contactEmail: input.customer.email ?? null,
         notes: input.notes,
         statusHistory: { create: { toStatus: input.status, note: "Public booking request created." } },
-        ...(input.notification ? { emailLogs: { create: emailOutboxEntry(input.notification) } } : {}),
       },
       include: { service: true },
     });
+    if (input.notification) {
+      await this.client.emailLog.create({
+        data: { ...emailOutboxEntry(input.notification(appointment)), appointmentId: appointment.id },
+      });
+    }
 
     return { ...mapAppointment(appointment), cancellationToken: input.cancellationToken };
   }
@@ -193,13 +197,9 @@ export class PrismaBookingRepository implements BookingRepository {
       });
     }
 
-    // A booking is not a correction of the record: only what is missing gets filled in.
-    const fills = {
-      ...(existing.email ? {} : input.email ? { email: input.email } : {}),
-    };
-    return Object.keys(fills).length > 0
-      ? this.client.customer.update({ where: { id: existing.id }, data: fills })
-      : existing;
+    // A booking is not a correction of the record, and anyone can type a known phone: the email
+    // typed here stays on the appointment (`contactEmail`) and never lands on the customer.
+    return existing;
   }
 
   /**

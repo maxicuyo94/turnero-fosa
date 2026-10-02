@@ -26,8 +26,8 @@ const changePasswordSchema = z.object({
 });
 
 /**
- * Cambia la contraseña del usuario interno con sesion iniciada. Exige la actual para que
- * una sesion abierta en un equipo ajeno no alcance para quedarse con la cuenta.
+ * Cambia la contraseña del usuario interno con sesion iniciada y cierra todas sus sesiones.
+ * Exige la actual para que una sesion abierta en un equipo ajeno no alcance para quedarse con la cuenta.
  */
 export async function changeInternalPassword(
   prisma: Pick<PrismaClient, "user">,
@@ -49,9 +49,10 @@ export async function changeInternalPassword(
   }
 
   // Solo se reemplaza si nadie la cambio mientras tanto, para no pisar otro cambio simultaneo.
+  // Subir la version cierra todas las sesiones abiertas, incluida una que alguien haya robado.
   const result = await prisma.user.updateMany({
     where: { id: userId, passwordHash: user.passwordHash },
-    data: { passwordHash: await createPasswordHash(newPassword) },
+    data: { passwordHash: await createPasswordHash(newPassword), sessionVersion: { increment: 1 } },
   });
   if (result.count === 0) throw new AccountError("La contraseña se cambió desde otra sesión. Recargá la página e intentá de nuevo.");
 }

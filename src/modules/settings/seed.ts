@@ -5,8 +5,9 @@ import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 export const defaultWorkshopSettingsId = "default-workshop";
 
 /**
- * Applies the editable Taller Express defaults. Safe to run repeatedly: settings and services are
- * upserted by deterministic identifiers and the recurring rows are replaced as a whole.
+ * Applies the Taller Express defaults for a new database. Running it again is idempotent but NOT
+ * harmless: it resets settings, the weekly schedule and the seeded services to these defaults,
+ * overwriting what the workshop edited. Existing databases change through migrations only.
  */
 export async function seedWorkshopConfiguration(prisma: PrismaClient): Promise<string> {
   const settings = await prisma.workshopSettings.upsert({

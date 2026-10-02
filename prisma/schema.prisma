@@ -66,8 +66,7 @@ model WorkshopSettings {
   minimumNoticeMinutes     Int
   maximumBookingWindowDays Int
   confirmationMode         ConfirmationMode   @default(MANUAL)
-  cancellationEnabled      Boolean            @default(true)
-  reschedulingEnabled      Boolean            @default(false)
+  cancellationEnabled      Boolean            @default(false)
   depositRequired          Boolean            @default(false)
   depositAmountCents       Int                @default(500000)
   depositExpirationMinutes Int                @default(30)
@@ -246,6 +245,9 @@ model Appointment {
   status                AppointmentStatus          @default(PENDING_CONFIRMATION)
   idempotencyKey        String                     @unique
   cancellationTokenHash String?
+  /// Email typed in the public booking. Notifications about this appointment go here first, so a
+  /// booking made with someone else's phone never attaches its email to that customer's record.
+  contactEmail          String?
   notes                 String?
   createdAt             DateTime                   @default(now())
   updatedAt             DateTime                   @updatedAt
@@ -350,12 +352,10 @@ model User {
   passwordHash  String?
   /// Staff can run the agenda, vehicles and inventory; only admins change how the workshop operates.
   role          StaffRole                  @default(STAFF)
-  emailVerified DateTime?
-  image         String?
+  /// Stamped into each session token at sign-in; bumping it signs every open session out.
+  sessionVersion Int                       @default(0)
   createdAt     DateTime                   @default(now())
   updatedAt     DateTime                   @updatedAt
-  accounts      Account[]
-  sessions      Session[]
   statusChanges AppointmentStatusHistory[]
   intervalChanges AppointmentIntervalHistory[]
   detailChanges AppointmentDetailChange[]
@@ -463,47 +463,14 @@ model StockCountLine {
   @@index([productId])
 }
 
-/// Failed internal sign-ins per key ("user:<username>" or "ip:<address>"), shared by every server instance.
+/// Attempt counters shared by every server instance: internal sign-ins ("user:<username>",
+/// "ip:<address>") and public bookings ("booking-ip:<address>"). `failures` counts attempts.
 model LoginThrottle {
   key         String    @id
   failures    Int       @default(0)
   windowStart DateTime
   lockedUntil DateTime?
   updatedAt   DateTime  @updatedAt
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
 }
 
 /// Email outbox: rows are written PENDING together with the change that owes the email, and a

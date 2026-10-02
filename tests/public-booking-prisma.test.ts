@@ -3,14 +3,14 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { getEnv } from "@/src/lib/env";
+import { getDatabaseUrl } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { cancelPublicAppointment, createPublicBooking, getPublicAppointmentStatus } from "@/src/modules/booking/service";
 import { updateInternalAppointmentStatus } from "@/src/modules/appointments/operations";
 import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 const now = new Date("2026-07-01T09:00:00-03:00");
 const date = "2026-07-20";
 let serviceId = "";
@@ -43,7 +43,7 @@ describe("Prisma public booking integration", () => {
     expect(first.accepted ? first.appointment.endAt.getTime() - first.appointment.startAt.getTime() : 0).toBe(120 * 60_000);
     expect(repeated).toMatchObject({
       accepted: true,
-      message: "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación.",
+      message: "Este pedido de turno ya fue recibido. Si dejaste tu email, ahí tenés el código y los enlaces del turno.",
       appointment: { idempotencyKey: "it-public-repeat-token" },
     });
     expect(repeated.accepted ? repeated.cancellationToken : "unexpected").toBeNull();
@@ -110,7 +110,8 @@ function bookingInput(overrides: { idempotencyKey: string; startTime: string; du
     startTime: overrides.startTime,
     durationMinutes: overrides.durationMinutes,
     customer: { fullName: `Integration Rider ${randomUUID()}`, phone: `+54911${Math.floor(Math.random() * 1_000_000_000)}`, email: `${overrides.idempotencyKey}@example.com` },
-    vehicle: { brand: "Honda", model: "XR150", licensePlate: overrides.idempotencyKey.toUpperCase() },
+    // Unique per key and within the 20-character plate limit ("it-public-" is the shared prefix).
+    vehicle: { brand: "Honda", model: "XR150", licensePlate: `IT-${overrides.idempotencyKey.replace("it-public-", "")}`.toUpperCase() },
     idempotencyKey: overrides.idempotencyKey,
     now,
   } satisfies Parameters<typeof createPublicBooking>[1];
@@ -130,7 +131,6 @@ async function applyExpressBookingPolicy(
       confirmationMode: overrides.confirmationMode ?? workshopSeedConfig.settings.confirmationMode,
       depositRequired: false,
       cancellationEnabled: overrides.cancellationEnabled ?? workshopSeedConfig.settings.cancellationEnabled,
-      reschedulingEnabled: workshopSeedConfig.settings.reschedulingEnabled,
     },
   });
 }

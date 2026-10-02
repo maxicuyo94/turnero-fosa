@@ -66,8 +66,11 @@ export type BookingRepository = {
     customer: z.infer<typeof customerSchema>;
     vehicle: z.infer<typeof vehicleSchema>;
     notes?: string;
-    /** Queued in the email outbox by the same write that creates the appointment. */
-    notification?: EmailNotificationDraft;
+    /**
+     * Built from the created appointment (its links need the id) and queued in the email outbox in
+     * the same transaction that creates it.
+     */
+    notification?: (appointment: { id: string }) => EmailNotificationDraft;
   }): Promise<PublicAppointmentRecord>;
   findCancellableAppointment(appointmentId: string, token: string): Promise<PublicAppointmentRecord | null>;
   /**
@@ -86,6 +89,8 @@ const bookingInputSchema = z.object({
   vehicle: vehicleSchema,
   idempotencyKey: z.string().trim().min(8),
   notes: z.string().trim().max(1_000).optional(),
+  /** Origin the confirmation email links back to; without it the email carries only the code. */
+  publicOrigin: z.string().url().optional(),
   now: z.date(),
 });
 
@@ -283,12 +288,19 @@ export async function createPublicBooking(
       vehicle: parsed.data.vehicle,
       notes: parsed.data.notes,
       notification: recipient
-        ? {
+        ? (created) => ({
             event: "PUBLIC_BOOKING_CREATED",
             recipient,
             subject: "Recibimos tu turno",
-            text: `Recibimos tu turno para ${service.name} el ${formatDateTime(startAt)}. Código: ${publicCode}.`,
-          }
+            text: bookingConfirmationText({
+              serviceName: service.name,
+              startAt,
+              publicCode,
+              appointmentId: created.id,
+              cancellationToken,
+              publicOrigin: parsed.data.publicOrigin,
+            }),
+          })
         : undefined,
     });
 
@@ -343,7 +355,7 @@ function bookingSuccess(
   return {
     accepted: true,
     message: repeatedWithoutToken
-      ? "Este pedido de turno ya fue recibido. Usá el mensaje original para acceder al enlace de cancelación."
+      ? "Este pedido de turno ya fue recibido. Si dejaste tu email, ahí tenés el código y los enlaces del turno."
       : appointment.status === "CONFIRMED"
         ? "Tu turno quedó confirmado automáticamente."
         : "Recibimos tu pedido de turno y queda pendiente de confirmación del taller.",
@@ -353,6 +365,33 @@ function bookingSuccess(
     depositRequired: options.depositRequired ?? false,
     repeated: options.repeated ?? false,
   };
+}
+
+/**
+ * The email is the only lasting copy of the cancellation link: the confirmation page shows it once
+ * and the token is stored hashed, so it cannot be recovered later.
+ */
+function bookingConfirmationText(input: {
+  serviceName: string;
+  startAt: Date;
+  publicCode: string;
+  appointmentId: string;
+  cancellationToken: string | null;
+  publicOrigin?: string;
+}): string {
+  const lines = [`Recibimos tu turno para ${input.serviceName} el ${formatDateTime(input.startAt)}. Código: ${input.publicCode}.`];
+  if (input.publicOrigin) {
+    const statusUrl = new URL("/booking/status", input.publicOrigin);
+    statusUrl.searchParams.set("code", input.publicCode);
+    lines.push("", `Consultá el estado: ${statusUrl.toString()}`);
+    if (input.cancellationToken) {
+      const cancelUrl = new URL("/booking/cancel", input.publicOrigin);
+      cancelUrl.searchParams.set("appointmentId", input.appointmentId);
+      cancelUrl.searchParams.set("token", input.cancellationToken);
+      lines.push(`Si necesitás cancelarlo: ${cancelUrl.toString()}`);
+    }
+  }
+  return lines.join("\n");
 }
 
 function createCancellationToken(): string {

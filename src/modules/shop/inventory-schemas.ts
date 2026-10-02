@@ -28,7 +28,8 @@ const versionSchema = integerInput.pipe(z.number().int("La versión no es válid
 const priceArsSchema = z
   .union([z.string(), z.number()])
   .transform((value, ctx) => {
-    const raw = typeof value === "number" ? String(value) : value.trim();
+    // Spreadsheet numbers carry binary noise (121.00000000000001); round them to cents first.
+    const raw = typeof value === "number" ? (Math.round(value * 100) / 100).toFixed(2) : value.trim();
     const matched = /^(\d+)(?:[.,](\d{1,2}))?$/u.exec(raw);
     if (!matched) {
       ctx.addIssue({ code: "custom", message: "Ingresá un precio sin separadores de miles y con hasta dos decimales." });

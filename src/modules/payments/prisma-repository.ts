@@ -54,7 +54,7 @@ export class PrismaDepositPaymentRepository implements DepositPaymentRepository 
       publicCode: appointment.publicCode,
       serviceName: appointment.service.name,
       customerName: appointment.customer.fullName,
-      customerEmail: appointment.customer.email,
+      customerEmail: appointment.contactEmail ?? appointment.customer.email,
       status: appointment.status,
     } : null;
   }

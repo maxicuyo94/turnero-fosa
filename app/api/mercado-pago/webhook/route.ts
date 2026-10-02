@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { processMercadoPagoNotification } from "@/src/lib/composition";
-import { getMercadoPagoEnv } from "@/src/lib/env";
+import { paymentEnv, processMercadoPagoNotification } from "@/src/lib/composition";
 import { validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pago-adapter";
 
 export async function POST(request: Request) {
-  const env = getMercadoPagoEnv();
+  const env = await paymentEnv().catch((error: unknown) => {
+    console.error("mercado-pago webhook: payment configuration is invalid", error);
+    return null;
+  });
   if (!env) return NextResponse.json({ received: false }, { status: 503 });
 
   const url = new URL(request.url);

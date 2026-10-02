@@ -74,14 +74,20 @@ export function findInventoryProductDetail(prisma: InventoryReader, id: string, 
   });
 }
 
-/** One product (`id`) or what the list shows with the same filters, up to `limit` rows. */
-export function listLabelProducts(prisma: InventoryReader, selection: { id?: string; filters: InventoryFilters }, limit: number) {
-  return prisma.shopProduct.findMany({
+/**
+ * One product (`id`) or what the list shows with the same filters, up to `limit` rows. "En mínimo"
+ * is filtered in memory (Prisma cannot compare two columns), so that selection is read whole and cut
+ * afterwards; cutting first would drop low-stock products that sort after the limit.
+ */
+export async function listLabelProducts(prisma: InventoryReader, selection: { id?: string; filters: InventoryFilters }, limit: number) {
+  const filterInMemory = !selection.id && selection.filters.status === "low";
+  const rows = await prisma.shopProduct.findMany({
     where: selection.id ? { id: selection.id } : inventoryWhere(selection.filters),
     select: { id: true, sku: true, name: true, location: true, priceCents: true, stock: true, reservedStock: true, minimumStock: true },
     orderBy: [{ location: "asc" }, { name: "asc" }],
-    take: limit,
+    ...(filterInMemory ? {} : { take: limit }),
   });
+  return filterInMemory ? applyStockFilter(selection.filters, rows).slice(0, limit) : rows;
 }
 
 /** Products without a barcode that an unknown scanned code could be linked to. */

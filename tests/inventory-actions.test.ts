@@ -12,15 +12,15 @@ const mocks = vi.hoisted(() => ({
   db: {
     user: {
       findUnique: async ({ where }: { where: { id: string } }) =>
-        ({ id: where.id, name: null, username: "staff", email: "staff@taller.test", role: "STAFF" }),
+        ({ id: where.id, name: null, username: "staff", email: "staff@taller.test", role: "STAFF", sessionVersion: 0 }),
     },
   },
 }));
 
 vi.mock("@/src/lib/auth", () => ({
   auth: mocks.auth,
-  isInternalSession: (session: { user?: { id?: string } } | null) => Boolean(session?.user?.id),
   getInternalSessionUserId: (session: { user?: { id?: string } } | null) => session?.user?.id ?? null,
+  getInternalSessionVersion: () => 0,
 }));
 vi.mock("@/src/lib/db", () => ({ db: mocks.db }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }));

@@ -185,6 +185,8 @@ function mapWorkshopSettings(settings: InternalWorkshopSettingsRecord): Internal
     emailFrom: settings.emailFrom,
     depositRefundPolicy: settings.depositRefundPolicy,
     depositActivationDate: settings.depositActivationDate,
+    confirmationMode: settings.confirmationMode,
+    cancellationEnabled: settings.cancellationEnabled,
     capacity: settings.capacity,
     slotStepMinutes: settings.slotStepMinutes,
     minimumNoticeMinutes: settings.minimumNoticeMinutes,

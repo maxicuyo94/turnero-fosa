@@ -78,6 +78,19 @@ describe("inventory Excel import", () => {
     await expect(parseInventoryExcel(await file())).rejects.toMatchObject({ issues: expect.arrayContaining([expect.stringContaining("Fila 900")]) });
   });
 
+  it("accepts a price computed by a formula despite its floating-point noise", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile("public/plantilla-carga-inventario.xlsx");
+    const sheet = workbook.getWorksheet("Carga")!;
+    sheet.getRow(5).values = [];
+    // What Excel stores for =100*1.21: one binary step above 121.
+    sheet.getRow(900).values = ["IVA-1", "", "Cubierta", "Cubiertas", "", "", "", { formula: "100*1.21", result: 121.00000000000001 }, 1, 0, "", "Sí"];
+    const buffer = await workbook.xlsx.writeBuffer();
+    await expect(parseInventoryExcel(new File([buffer], "inventario.xlsx"))).resolves.toEqual([
+      expect.objectContaining({ sku: "IVA-1", priceArs: "121.00" }),
+    ]);
+  });
+
   it("rejects empty, oversized, incorrect-format and damaged files", async () => {
     await expect(parseInventoryExcel(new File([], "empty.xlsx"))).rejects.toThrow("Seleccioná");
     await expect(parseInventoryExcel(new File([new Uint8Array(3 * 1024 * 1024 + 1)], "large.xlsx"))).rejects.toThrow("3 MB");

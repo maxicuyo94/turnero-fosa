@@ -1,5 +1,6 @@
 "use server";
 
+import { signOut } from "@/src/lib/auth";
 import { staffAccount } from "@/src/lib/composition";
 import { formString } from "@/src/lib/form-data";
 import { requireStaff } from "@/src/lib/staff-access";
@@ -15,10 +16,12 @@ export async function changePasswordAction(_previous: AccountActionState, formDa
       newPassword: formString(formData, "newPassword"),
       confirmPassword: formString(formData, "confirmPassword"),
     });
-    return { status: "success", message: "Contraseña actualizada. La próxima vez ingresá con la nueva." };
   } catch (error) {
     if (error instanceof AccountError) return { status: "error", message: error.message, field: error.field };
     console.error("internal password change failed", error);
     return { status: "error", message: "No se pudo cambiar la contraseña. Probá nuevamente." };
   }
+  // The change closed every session, this one included: the login page explains why.
+  await signOut({ redirectTo: "/internal/login?notice=password-changed" });
+  return { status: "success" };
 }

@@ -3,16 +3,19 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createPasswordHash, verifyPassword } from "@/src/lib/password";
 import { changeInternalPassword } from "@/src/modules/internal/account-service";
 
-type StoredUser = { id: string; passwordHash: string | null };
+type StoredUser = { id: string; passwordHash: string | null; sessionVersion: number };
 
 function fakeUsers(users: StoredUser[]) {
   return {
     users,
     user: {
       findUnique: async ({ where }: { where: { id: string } }) => users.find((user) => user.id === where.id) ?? null,
-      updateMany: async ({ where, data }: { where: { id: string; passwordHash: string }; data: { passwordHash: string } }) => {
+      updateMany: async ({ where, data }: { where: { id: string; passwordHash: string }; data: { passwordHash: string; sessionVersion: { increment: number } } }) => {
         const user = users.find((candidate) => candidate.id === where.id && candidate.passwordHash === where.passwordHash);
-        if (user) user.passwordHash = data.passwordHash;
+        if (user) {
+          user.passwordHash = data.passwordHash;
+          user.sessionVersion += data.sessionVersion.increment;
+        }
         return { count: user ? 1 : 0 };
       },
     },
@@ -22,7 +25,7 @@ function fakeUsers(users: StoredUser[]) {
 let prisma: ReturnType<typeof fakeUsers>;
 
 beforeEach(async () => {
-  prisma = fakeUsers([{ id: "admin", passwordHash: await createPasswordHash("actual-1234") }]);
+  prisma = fakeUsers([{ id: "admin", passwordHash: await createPasswordHash("actual-1234"), sessionVersion: 0 }]);
 });
 
 const change = (input: Record<string, string>) =>
@@ -35,6 +38,8 @@ describe("changeInternalPassword", () => {
     const stored = prisma.users[0].passwordHash!;
     expect(await verifyPassword("nueva-5678", stored)).toBe(true);
     expect(await verifyPassword("actual-1234", stored)).toBe(false);
+    // Las sesiones emitidas con la version anterior dejan de valer.
+    expect(prisma.users[0].sessionVersion).toBe(1);
   });
 
   it("rechaza una contraseña actual incorrecta sin cambiar nada", async () => {
@@ -42,6 +47,7 @@ describe("changeInternalPassword", () => {
 
     await expect(change({ currentPassword: "otra-cosa" })).rejects.toMatchObject({ message: "La contraseña actual no es correcta.", field: "currentPassword" });
     expect(prisma.users[0].passwordHash).toBe(before);
+    expect(prisma.users[0].sessionVersion).toBe(0);
   });
 
   it("valida largo, confirmación y que la nueva sea distinta", async () => {

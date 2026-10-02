@@ -1,14 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   canAcceptAppointment,
-  createAppointmentReservation,
   getAvailableSlots,
   getInternalAvailableSlots,
   validateAppointmentInterval,
 } from "@/src/modules/availability";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import { scheduleDateExceptionSchema } from "@/src/modules/settings/schemas";
-import { appointmentSchema } from "@/src/modules/appointments/schemas";
 import { serviceSchema } from "@/src/modules/catalog/schemas";
 import { customerSchema, vehicleSchema } from "@/src/modules/customers/schemas";
 
@@ -16,7 +14,7 @@ const monday = "2026-07-06";
 const now = new Date("2026-07-01T09:00:00-03:00");
 
 describe("domain schemas", () => {
-  it("validates configurable services, customers, motorcycles, and appointments", () => {
+  it("validates configurable services, customers and motorcycles", () => {
     expect(serviceSchema.parse(workshopSeedConfig.services[0])).toMatchObject({
       name: "Service Esencial",
       durationMinutes: 60,
@@ -35,13 +33,6 @@ describe("domain schemas", () => {
       vehicleSchema.parse({ brand: "Honda", model: "XR", licensePlate: "ABC123" }),
     ).toEqual({ brand: "Honda", model: "XR", licensePlate: "ABC123" });
 
-    expect(
-      appointmentSchema.parse({
-        startAt: new Date(`${monday}T09:00:00-03:00`),
-        endAt: new Date(`${monday}T09:30:00-03:00`),
-        status: "PENDING_CONFIRMATION",
-      }),
-    ).toMatchObject({ status: "PENDING_CONFIRMATION" });
   });
 
   it("rejects invalid domain input before persistence", () => {
@@ -316,38 +307,6 @@ describe("appointment capacity guard", () => {
     ).toEqual({ accepted: false, reason: "CAPACITY_EXHAUSTED" });
   });
 
-  it("rechecks the latest overlap state before creating the final-capacity appointment", async () => {
-    const repository = new InMemoryAppointmentRepository([
-      interval("2026-07-06T09:00:00-03:00", "2026-07-06T10:00:00-03:00", "CONFIRMED"),
-    ]);
-
-    const first = await createAppointmentReservation({
-      repository,
-      settings: workshopSeedConfig.settings,
-      input: { idempotencyKey: "first", startAt: new Date("2026-07-06T09:30:00-03:00"), serviceDurationMinutes: 30 },
-    });
-    const second = await createAppointmentReservation({
-      repository,
-      settings: workshopSeedConfig.settings,
-      input: { idempotencyKey: "second", startAt: new Date("2026-07-06T09:30:00-03:00"), serviceDurationMinutes: 30 },
-    });
-
-    expect(first).toMatchObject({ accepted: true });
-    expect(second).toEqual({ accepted: false, reason: "CAPACITY_EXHAUSTED" });
-    expect(repository.savedCount).toBe(1);
-  });
-
-  it("returns the existing reservation for a repeated idempotency key", async () => {
-    const repository = new InMemoryAppointmentRepository([]);
-    const input = { idempotencyKey: "same-form", startAt: new Date("2026-07-06T09:30:00-03:00"), serviceDurationMinutes: 30 };
-
-    const first = await createAppointmentReservation({ repository, settings: workshopSeedConfig.settings, input });
-    const second = await createAppointmentReservation({ repository, settings: workshopSeedConfig.settings, input });
-
-    expect(first).toMatchObject({ accepted: true });
-    expect(second).toEqual(first);
-    expect(repository.savedCount).toBe(1);
-  });
 });
 
 describe("internal appointment interval validation", () => {
@@ -506,30 +465,4 @@ function openException(date: string, opensAt: string, closesAt: string) {
 
 function interval(start: string, end: string, status: "PENDING_CONFIRMATION" | "CONFIRMED" | "CANCELLED") {
   return { startAt: new Date(start), endAt: new Date(end), status };
-}
-
-class InMemoryAppointmentRepository {
-  private appointments: ReturnType<typeof interval>[];
-  private reservations = new Map<string, Awaited<ReturnType<typeof createAppointmentReservation>>>();
-  savedCount = 0;
-
-  constructor(appointments: ReturnType<typeof interval>[]) {
-    this.appointments = appointments;
-  }
-
-  async findByIdempotencyKey(key: string) {
-    return this.reservations.get(key) ?? null;
-  }
-
-  async withCapacityLock<T>(operation: (appointments: ReturnType<typeof interval>[]) => Promise<T>) {
-    return operation(this.appointments);
-  }
-
-  async save(input: { idempotencyKey: string; startAt: Date; endAt: Date }) {
-    this.savedCount += 1;
-    this.appointments.push({ startAt: input.startAt, endAt: input.endAt, status: "PENDING_CONFIRMATION" });
-    const reservation = { accepted: true as const, appointment: { startAt: input.startAt, endAt: input.endAt } };
-    this.reservations.set(input.idempotencyKey, reservation);
-    return reservation;
-  }
 }

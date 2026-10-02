@@ -12,11 +12,12 @@ import { MercadoPagoAdapter, expectedPaymentLiveMode } from "@/src/modules/payme
 import { PrismaDepositPaymentRepository, listPaidUnconfirmedDeposits } from "@/src/modules/payments/prisma-repository";
 import { getDepositReconciler, reconcileReturnedPayment, settleOverdueDeposits } from "@/src/modules/payments/reconciliation";
 import { processMercadoPagoPayment } from "@/src/modules/payments/service";
-import { businessSettingsSchema } from "@/src/modules/settings/business-settings";
+import { businessSettingsSchema, isDepositActive } from "@/src/modules/settings/business-settings";
 import { PrismaWorkshopSettingsRepository } from "@/src/modules/settings/prisma-repository";
-import { getWorkshopNotificationEnv, getWorkshopPaymentEnv } from "@/src/modules/settings/runtime-settings";
+import { getWorkshopNotificationEnv, getWorkshopPaymentEnv, getWorkshopPublicOrigin } from "@/src/modules/settings/runtime-settings";
 import { findWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
 import { findStaffProfile, changeInternalPassword } from "@/src/modules/internal/account-service";
+import { PrismaRateLimitStore, beginBookingAttempt } from "@/src/lib/rate-limit";
 import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import {
   createInventoryProduct,
@@ -102,9 +103,31 @@ export function vehicleRepository(): PrismaVehicleRepository {
   return new PrismaVehicleRepository(db);
 }
 
+/** What the home page promises about booking, read from the stored policy; null before seeding. */
+export async function publicBookingPolicy() {
+  const settings = await findWorkshopSettingsRow(db);
+  if (!settings) return null;
+  const depositActive = isDepositActive(settings);
+  return {
+    automaticConfirmation: settings.confirmationMode === "AUTOMATIC" && !depositActive,
+    depositActive,
+    cancellationEnabled: settings.cancellationEnabled,
+  };
+}
+
 /** Public contact details shown in the footer; defaults while the workshop has not filled them. */
 export async function workshopContactSettings() {
   return businessSettingsSchema.parse((await findWorkshopSettingsRow(db)) ?? {});
+}
+
+/** Origin the booking emails link back to, or undefined when none is configured. */
+export async function publicAppOrigin(): Promise<string | undefined> {
+  return (await getWorkshopPublicOrigin(db)) ?? undefined;
+}
+
+/** Counts a public booking submission from `ip`; false once the address is over its budget. */
+export function allowPublicBookingAttempt(ip: string | null): Promise<boolean> {
+  return beginBookingAttempt(new PrismaRateLimitStore(db), ip);
 }
 
 export function bookingRepository(): PrismaBookingRepository {
@@ -121,6 +144,11 @@ export function workshopSettingsRepository(): PrismaWorkshopSettingsRepository {
 
 export function depositPaymentRepository(): PrismaDepositPaymentRepository {
   return new PrismaDepositPaymentRepository(db);
+}
+
+/** Mercado Pago configuration as checkout builds it (saved domain included), or null while unset. */
+export function paymentEnv(): Promise<MercadoPagoEnv | null> {
+  return getWorkshopPaymentEnv(db);
 }
 
 /** Mercado Pago checkout wiring, or null while payments are not configured. */

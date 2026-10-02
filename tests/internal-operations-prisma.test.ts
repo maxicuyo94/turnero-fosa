@@ -3,12 +3,12 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { getEnv } from "@/src/lib/env";
+import { getDatabaseUrl } from "@/src/lib/env";
 import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-repository";
 import { updateAppointmentDetails } from "@/src/modules/appointments/detail-edit";
 import { rescheduleInternalAppointment, updateInternalAppointmentStatus } from "@/src/modules/appointments/operations";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getEnv().DATABASE_URL }) });
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
 
 describe("Prisma internal operations integration", () => {
   beforeEach(async () => {

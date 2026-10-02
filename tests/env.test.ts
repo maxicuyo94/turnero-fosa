@@ -1,22 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { getEnv } from "@/src/lib/env";
+import { getDatabaseUrl, getNotificationEnv } from "@/src/lib/env";
 
-const validEnv = {
-  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/turnero_fosa",
-  AUTH_SECRET: "a-valid-secret-with-at-least-32-chars",
-  NEXT_PUBLIC_APP_URL: "http://localhost:3000",
-  RESEND_API_KEY: "re_test_key",
-  EMAIL_FROM: "Taller Express <turnos@example.com>",
-};
-
-describe("getEnv", () => {
-  it("returns typed application configuration", () => {
-    expect(getEnv(validEnv)).toEqual(validEnv);
+describe("environment readers", () => {
+  it("returns the database URL and refuses an empty one", () => {
+    const url = "postgresql://postgres:postgres@localhost:5432/turnero_fosa";
+    expect(getDatabaseUrl({ DATABASE_URL: url })).toBe(url);
+    expect(() => getDatabaseUrl({ DATABASE_URL: "" })).toThrow(/DATABASE_URL is required/u);
   });
 
-  it("fails with an actionable configuration error", () => {
-    expect(() => getEnv({ ...validEnv, DATABASE_URL: "" })).toThrow(
-      /Invalid application configuration.*DATABASE_URL/u,
-    );
+  it("treats email delivery as off until both provider values are present", () => {
+    expect(getNotificationEnv({})).toBeNull();
+    expect(getNotificationEnv({ RESEND_API_KEY: "re_test", EMAIL_FROM: "Taller <turnos@example.com>" })).toEqual({
+      RESEND_API_KEY: "re_test",
+      EMAIL_FROM: "Taller <turnos@example.com>",
+    });
+    expect(() => getNotificationEnv({ RESEND_API_KEY: "re_test" })).toThrow();
   });
 });
