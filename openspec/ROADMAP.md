@@ -2,8 +2,10 @@
 
 Actualizado: **2026-10-07**. La mejora del detalle del turno se publicó desde
 `43d5847` y se migró en Preview y Producción. Las correcciones de la auditoría de
-código (`baeaf1c`, rama `fix/audit-findings`) están implementadas y probadas
-localmente, pero **todavía no se publicaron** en Preview ni en Producción.
+código (`baeaf1c`, rama `fix/audit-findings`) se publicaron en Preview el
+2026-10-07 (`43f84c3`), con sus migraciones aplicadas; **falta Producción**. Las
+actualizaciones de Dependabot de octubre se publicaron en Preview y Producción
+(`fad8a6e`), y el CI y los deploys de Vercel corren solo en `main` y `preview`.
 
 Este documento ordena el trabajo futuro. El detalle de errores, riesgos y pruebas
 pendientes está en [BACKLOG.md](BACKLOG.md). Las prioridades son propuestas; no
@@ -27,7 +29,7 @@ certificar el estado remoto ni constituye una auditoría exhaustiva.
 | Email de creación, cambio de estado y reprogramación | Implementado con outbox y reintentos (`98851c1`) | Confirmar remitente/dominio productivo y entrega real; hacer visible el estado de entrega. Programar `/api/cron/emails` es de baja prioridad hoy |
 | Roles de personal ADMIN/STAFF | Publicado (`98851c1`) | Configuración queda para ADMIN; falta el rol de mecánico y permisos por operación |
 | Inventario interno y escaneo de códigos | E1 publicado en producción; E2 verificado en Preview el 2026-09-24 | [Entregables del shop](changes/spare-parts-shop/deliverables.md); el usuario confirmó el 2026-09-29 que se realizó la prueba con hardware del taller, sin registrar aquí dispositivos ni resultados detallados |
-| Correcciones de auditoría (reserva, autenticación, inventario) | Implementado en `fix/audit-findings`; pendiente de publicar | Límite de reservas por IP, límites de campos, email de contacto por turno, cierre de sesiones al cambiar contraseña, encabezados anti-framing. Incluye la migración destructiva `20261002130000_drop_unused_columns`, a revisar antes del despliegue |
+| Correcciones de auditoría (reserva, autenticación, inventario) | Publicado en Preview el 2026-10-07 (`43f84c3`); pendiente Producción | Límite de reservas por IP, límites de campos, email de contacto por turno, cierre de sesiones al cambiar contraseña, encabezados anti-framing. Incluye la migración destructiva `20261002130000_drop_unused_columns`, a revisar antes del despliegue |
 | Unidad genérica con historial y reutilización | Publicado (`3cbdc2b`); patente única el 2026-09-24 | [Cambio OpenSpec](changes/generic-vehicle-history/tasks.md); la fusión se quitó (VEH-001); la patente se corrige desde la ficha con historial |
 
 Publicar el código de pagos no habilita Mercado Pago automáticamente. En la
@@ -116,7 +118,7 @@ incluyendo recuperaciones ante fallos; nunca tomar la URL de retorno como aproba
 - Rol de mecánico y permisos por operación (ADMIN/STAFF ya existen).
 - Auditoría de modificaciones, monitoreo de errores, health checks y ejercicios
   de restauración de backups. Login y reserva pública ya tienen límites de
-  solicitudes (en `fix/audit-findings`); faltan la consulta por código y los reintentos de pago.
+  solicitudes (publicados en Preview); faltan la consulta por código y los reintentos de pago.
 - Auditoría actualizada de dependencias y revisión de las actualizaciones automáticas.
 
 Las siguientes entregas del shop (cuenta de cliente, mostrador, presupuestos y

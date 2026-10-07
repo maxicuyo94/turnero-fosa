@@ -48,10 +48,12 @@ On Windows, if Vitest's default fork workers time out during startup, run `pnpm 
 database (the same rule as the test-data loader), because integration tests rewrite settings and delete rows.
 The inventory database tests also remove only their own fixtures.
 
-## Audit fixes — pending deployment
+## Audit fixes — in Preview, pending Production
 
 Commit `baeaf1c` on branch `fix/audit-findings` (2026-10-02) closes the findings of a code audit.
-It is **not yet in `preview` or `main`**, so neither environment runs it.
+It was published in Preview on 2026-10-07 (`43f84c3`): CI passed, both migrations below were applied
+to the Neon `non-production` branch, the public routes returned 200 and the new headers are served.
+It is **not yet in `main`**, so Production does not run it.
 
 - **Booking:** public fields are bounded (name 120, phone 40 characters with 6–20 digits, email 254,
   brand/model 60, plate 20) and each client address may submit 10 bookings per hour; signed-in staff are exempt.
@@ -69,8 +71,12 @@ It is **not yet in `preview` or `main`**, so neither environment runs it.
   `strict-origin-when-cross-origin` ([next.config.ts](next.config.ts)).
 - **Inventory/units:** low-stock labels filter before applying the page limit, Excel prices round to cents,
   and **Interno → Unidades** searches in SQL and returns at most 200 units.
+- **Concurrency:** serializable transactions (scheduling, booking, inventory, stock counts) retry up to
+  five times with a jittered pause ([src/lib/transaction-retry.ts](src/lib/transaction-retry.ts)), so two
+  simultaneous edits no longer surface a raw `P2034`. Database test files (`*-prisma.test.ts`) run one at a
+  time in their own Vitest project because they share one database.
 
-Migrations, applied by `vercel-build` on the next deploy of each environment:
+Migrations, applied by `vercel-build` (Preview: 2026-10-07; Production: on its next deploy):
 
 | Migration | Effect |
 |---|---|
@@ -383,7 +389,7 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 
 - Repeated idempotent submissions do not expose invalid cancellation links.
 - Field bounds, phone digit count and the per-address limit are covered by `tests/public-booking.test.ts`
-  and `tests/rate-limit.test.ts` (on `fix/audit-findings`).
+  and `tests/rate-limit.test.ts`.
 - Playwright public booking checks clean up their test data and can run repeatedly.
 - PostgreSQL-backed integration tests cover cancellation, idempotency, and concurrent capacity behavior.
 
