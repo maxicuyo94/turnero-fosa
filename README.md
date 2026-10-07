@@ -48,12 +48,11 @@ On Windows, if Vitest's default fork workers time out during startup, run `pnpm 
 database (the same rule as the test-data loader), because integration tests rewrite settings and delete rows.
 The inventory database tests also remove only their own fixtures.
 
-## Audit fixes — in Preview, pending Production
+## Audit fixes
 
-Commit `baeaf1c` on branch `fix/audit-findings` (2026-10-02) closes the findings of a code audit.
-It was published in Preview on 2026-10-07 (`43f84c3`): CI passed, both migrations below were applied
-to the Neon `non-production` branch, the public routes returned 200 and the new headers are served.
-It is **not yet in `main`**, so Production does not run it.
+Commit `baeaf1c` (2026-10-02) closes the findings of a code audit. It was published in Preview and
+Production on 2026-10-07 (`c5326bb`): CI passed, both migrations below were applied to the Neon
+`non-production` and `main` branches, the public routes returned 200 and the new headers are served.
 
 - **Booking:** public fields are bounded (name 120, phone 40 characters with 6–20 digits, email 254,
   brand/model 60, plate 20) and each client address may submit 10 bookings per hour; signed-in staff are exempt.
@@ -76,12 +75,12 @@ It is **not yet in `main`**, so Production does not run it.
   simultaneous edits no longer surface a raw `P2034`. Database test files (`*-prisma.test.ts`) run one at a
   time in their own Vitest project because they share one database.
 
-Migrations, applied by `vercel-build` (Preview: 2026-10-07; Production: on its next deploy):
+Migrations, applied by `vercel-build` in Preview and Production on 2026-10-07:
 
 | Migration | Effect |
 |---|---|
 | `20261002120000_audit_fixes` | Additive: `Appointment.contactEmail`, `User.sessionVersion` (default 0); `cancellationEnabled` defaults to `false`. |
-| `20261002130000_drop_unused_columns` | **Destructive:** drops `WorkshopSettings.reschedulingEnabled`, `User.emailVerified`, `User.image` and the Auth.js adapter tables `Account`, `Session`, `VerificationToken`. The app never read them (JWT sessions, no adapter); review before deploying. |
+| `20261002130000_drop_unused_columns` | **Destructive:** dropped `WorkshopSettings.reschedulingEnabled`, `User.emailVerified`, `User.image` and the Auth.js adapter tables `Account`, `Session`, `VerificationToken`. The app never read them (JWT sessions, no adapter). |
 
 Deploying bumps nothing for existing users (`sessionVersion` starts at 0), so current sessions stay valid.
 

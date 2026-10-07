@@ -1,7 +1,7 @@
 # Backlog de errores y riesgos
 
-Revisión: **2026-10-07**. `preview` en `43f84c3` (incluye la auditoría) y `main`
-en `fad8a6e` (actualizaciones de Dependabot, sin la auditoría).
+Revisión: **2026-10-07**. `preview` y `main` en `c5326bb` (auditoría y
+actualizaciones de Dependabot publicadas).
 
 | Ítem | Estado |
 | --- | --- |
@@ -11,7 +11,7 @@ en `fad8a6e` (actualizaciones de Dependabot, sin la auditoría).
 | VEH-001 | Cerrado: patente única desde `20260924150000_unique_vehicle_plate` |
 | VEH-002 | Asumido, sin corrección |
 | OPS-001 | Outbox implementado; falta remitente productivo y visibilidad de entrega |
-| AUD-001 | Publicado en Preview el 2026-10-07; pendiente Producción |
+| AUD-001 | Cerrado: publicado en Preview y Producción el 2026-10-07 |
 
 Orden de trabajo: [ROADMAP.md](ROADMAP.md).
 
@@ -200,8 +200,10 @@ cubre el flujo habitual.
 ## AUD-001 — Hallazgos de la auditoría de código
 
 Corregido 2026-10-02 (`baeaf1c`, rama `fix/audit-findings`), con pruebas de regresión.
-Publicado en Preview el 2026-10-07 (`43f84c3`): CI aprobado, migraciones aplicadas en
-`non-production`, rutas públicas 200 y encabezados nuevos presentes. **Falta Producción.**
+Publicado en Preview y Producción el 2026-10-07 (`c5326bb`): CI aprobado, migraciones
+aplicadas en `non-production` y `main`, rutas públicas 200 y encabezados nuevos
+presentes. **Cerrado** salvo reproducción nueva. No se registró una prueba manual de
+reserva, login y cambio de contraseña en los entornos publicados.
 
 Al publicarlo en Preview, el CI mostró que las transacciones serializables (agenda,
 reserva, inventario y conteos) agotaban sus tres reintentos seguidos ante dos
@@ -223,16 +225,15 @@ una pausa aleatoria creciente, y los archivos de prueba con base de datos corren
   pago inválida; encabezados `X-Frame-Options`, `frame-ancestors`, `nosniff` y `Referrer-Policy`.
 - **Limpieza:** modo de confirmación y cancelación online editables; búsqueda de unidades
   en SQL con tope de 200; las pruebas de integración se niegan a correr contra una base no local.
-- **Cierre:** verificar en Preview reserva, login y cambio de contraseña, y luego
-  avanzar `main`. Esto aplica en Producción la migración destructiva
-  `20261002130000_drop_unused_columns` (borra `reschedulingEnabled`, `emailVerified`,
-  `image`, `Account`, `Session`, `VerificationToken`).
+- **Migración destructiva aplicada:** `20261002130000_drop_unused_columns` borró
+  `reschedulingEnabled`, `emailVerified`, `image`, `Account`, `Session` y
+  `VerificationToken`, que la aplicación no leía.
 
 ## Verificaciones operativas pendientes
 
 - Revisar límites de solicitudes en consulta por código y reintentos de pago.
   Login (por usuario e IP) y reserva pública (10 por IP y hora, personal exento)
-  comparten el limitador de `src/lib/rate-limit.ts` (publicado en Preview);
+  comparten el limitador de `src/lib/rate-limit.ts`;
   revisar también las protecciones configuradas en infraestructura.
 - Actualizar auditoría de dependencias. No tratar el aviso histórico de `sharp`
   del README como el resultado de una auditoría actual.
