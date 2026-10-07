@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { InventoryError } from "@/src/modules/shop/inventory-service";
+import { retryPause, SERIALIZABLE_MAX_ATTEMPTS } from "@/src/lib/transaction-retry";
 
 const MAX_COUNT_LINES = 2_000;
 const MAX_QUANTITY = 1_000_000;
@@ -197,12 +198,13 @@ async function requireOpenCount(tx: Prisma.TransactionClient, countId: string) {
 }
 
 async function withCountTransaction<T>(prisma: PrismaClient, operation: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  for (let attempt = 0; ; attempt += 1) {
+  for (let attempt = 1; ; attempt += 1) {
     try {
       return await prisma.$transaction(operation, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
       const retryable = error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034";
-      if (!retryable || attempt === 2) throw error;
+      if (!retryable || attempt === SERIALIZABLE_MAX_ATTEMPTS) throw error;
+      await retryPause(attempt);
     }
   }
 }

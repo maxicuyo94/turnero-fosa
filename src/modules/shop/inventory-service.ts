@@ -7,6 +7,7 @@ import {
   type CreateInventoryProductInput,
   type RecordInventoryMovementInput,
 } from "@/src/modules/shop/inventory-schemas";
+import { retryPause, SERIALIZABLE_MAX_ATTEMPTS } from "@/src/lib/transaction-retry";
 
 type InventoryClient = Pick<PrismaClient, "shopProduct" | "inventoryMovement">;
 
@@ -275,11 +276,12 @@ function staleVersionError(): InventoryError {
 }
 
 async function withInventoryTransaction<T>(prisma: PrismaClient, operation: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 1; attempt <= SERIALIZABLE_MAX_ATTEMPTS; attempt += 1) {
     try {
       return await prisma.$transaction(operation, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
     } catch (error) {
-      if (!isSerializationError(error) || attempt === 2) throw error;
+      if (!isSerializationError(error) || attempt === SERIALIZABLE_MAX_ATTEMPTS) throw error;
+      await retryPause(attempt);
     }
   }
   throw new Error("No se pudo completar la operación de inventario.");
