@@ -8,6 +8,7 @@ import { emailOutboxEntry } from "@/src/modules/notifications/prisma-repository"
 import { lapsedDepositHoldWhere } from "@/src/modules/payments/prisma-repository";
 import { workshopDayBounds } from "@/src/lib/workshop-date";
 import { identityDerivedId, normalizeLicensePlate, normalizePhone } from "@/src/modules/customers/identity";
+import { retryPause, SERIALIZABLE_MAX_ATTEMPTS } from "@/src/lib/transaction-retry";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -103,7 +104,7 @@ export class PrismaBookingRepository implements BookingRepository {
   async withBookingTransaction<T>(operation: (repository: BookingRepository) => Promise<T>): Promise<T> {
     if (this.options.tx) return operation(this);
     await this.options.beforeBooking?.();
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    for (let attempt = 1; attempt <= SERIALIZABLE_MAX_ATTEMPTS; attempt += 1) {
       try {
         return await this.prisma.$transaction(
           async (tx) => {
@@ -113,7 +114,8 @@ export class PrismaBookingRepository implements BookingRepository {
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
         );
       } catch (error) {
-        if (!isRetryableTransactionError(error) || attempt === 3) throw error;
+        if (!isRetryableTransactionError(error) || attempt === SERIALIZABLE_MAX_ATTEMPTS) throw error;
+        await retryPause(attempt);
       }
     }
 

@@ -11,6 +11,7 @@ import type {
   InternalSchedulingRepository,
 } from "@/src/modules/appointments/operations";
 import { mapScheduleDateException } from "@/src/modules/settings/date-exceptions";
+import { retryPause, SERIALIZABLE_MAX_ATTEMPTS } from "@/src/lib/transaction-retry";
 
 type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -100,7 +101,7 @@ export class PrismaAppointmentRepository implements InternalOperationsRepository
 
   async withSchedulingTransaction<T>(operation: (repository: InternalSchedulingRepository) => Promise<T>): Promise<T> {
     if (this.tx) return operation(this);
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
+    for (let attempt = 1; attempt <= SERIALIZABLE_MAX_ATTEMPTS; attempt += 1) {
       try {
         return await this.prisma.$transaction(
           async (tx) => {
@@ -110,7 +111,8 @@ export class PrismaAppointmentRepository implements InternalOperationsRepository
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
         );
       } catch (error) {
-        if (!isRetryableTransactionError(error) || attempt === 3) throw error;
+        if (!isRetryableTransactionError(error) || attempt === SERIALIZABLE_MAX_ATTEMPTS) throw error;
+        await retryPause(attempt);
       }
     }
     throw new Error("Scheduling transaction retry attempts exhausted.");
