@@ -376,8 +376,11 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
   Vercel variable filtered to one branch is delivered only to that branch, and
   `sync-preview-admin.ts` throws when any of the three is missing. It runs inside `vercel-build`, so the
   deployment dies before `next build` — while `DATABASE_URL`, which carries no filter, resolves fine
-  and the migrations apply, which makes the failure read like a build problem when it is not. A
-  feature branch gets a working preview only if its own copies are added, or the filter is dropped.
+  and the migrations apply, which makes the failure read like a build problem when it is not. That is
+  why [vercel.json](vercel.json) (`git.deploymentEnabled`) deploys only `main` and `preview`; other
+  branches get no Vercel deployment.
+- GitHub Actions CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs only on pushes to `main`
+  and `preview`, not on pull requests, so a branch is first verified when it reaches `preview`.
 - The `MERCADO_PAGO_*` variables exist only for Preview, scoped to the `preview` Git branch (sandbox credentials). Production has none, so live collection stays off until they are added there.
 - `CRON_SECRET` exists in Production and in Preview (scoped to the `preview` branch), with different values kept in `PRODUCTION.local.md` and `PREVIEW.local.md`. Calls without it get 401. No scheduler calls `/api/cron/deposits` and `/api/cron/emails` yet; this is a lower-priority operational improvement today because request-triggered delivery and reconciliation provide a backstop. Reassess its priority if mandatory deposits or delivery deadlines are introduced.
 - Email delivery is disabled when `RESEND_API_KEY` and `EMAIL_FROM` are absent (queued emails then end as `FAILED`). Until the workshop verifies a domain in Resend, the sender is `onboarding@resend.dev`, which only delivers to the Resend account owner.
