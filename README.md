@@ -44,7 +44,40 @@ batch succeeds. Reuploading a successful file cannot add stock a second time.
 Each initial movement records the authenticated staff member and Excel origin.
 
 On Windows, if Vitest's default fork workers time out during startup, run `pnpm exec vitest run --pool=threads --maxWorkers=1`.
-The inventory database tests guard against production/non-allowlisted targets and remove only their own fixtures.
+`vitest.setup.ts` refuses to start the suite when `DATABASE_URL` points to a non-local, non-allowlisted
+database (the same rule as the test-data loader), because integration tests rewrite settings and delete rows.
+The inventory database tests also remove only their own fixtures.
+
+## Audit fixes — pending deployment
+
+Commit `baeaf1c` on branch `fix/audit-findings` (2026-10-02) closes the findings of a code audit.
+It is **not yet in `preview` or `main`**, so neither environment runs it.
+
+- **Booking:** public fields are bounded (name 120, phone 40 characters with 6–20 digits, email 254,
+  brand/model 60, plate 20) and each client address may submit 10 bookings per hour; signed-in staff are exempt.
+  The booking email is stored on the appointment (`Appointment.contactEmail`) instead of overwriting an
+  existing customer's email; notifications prefer it. The confirmation email links to `/booking/status`
+  and, when online cancellation is on, to the cancellation page.
+- **Auth:** login attempts are counted atomically before the password check (5 failures per username and
+  20 per IP in 15 minutes); successes and refused attempts are given back. Changing the password bumps
+  `User.sessionVersion`, which signs out every session of that account. The login page and home read the
+  staff member from the database, so a token whose account was deleted no longer loops between redirects.
+- **Settings:** confirmation mode and online cancellation are editable in Configuración; the home chips
+  reflect the stored policy. A service duration must be a multiple of the slot step.
+- **Payments:** the webhook reads the same Mercado Pago configuration as checkout and answers 503 when it is invalid.
+- **Headers:** every route sends `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff` and
+  `strict-origin-when-cross-origin` ([next.config.ts](next.config.ts)).
+- **Inventory/units:** low-stock labels filter before applying the page limit, Excel prices round to cents,
+  and **Interno → Unidades** searches in SQL and returns at most 200 units.
+
+Migrations, applied by `vercel-build` on the next deploy of each environment:
+
+| Migration | Effect |
+|---|---|
+| `20261002120000_audit_fixes` | Additive: `Appointment.contactEmail`, `User.sessionVersion` (default 0); `cancellationEnabled` defaults to `false`. |
+| `20261002130000_drop_unused_columns` | **Destructive:** drops `WorkshopSettings.reschedulingEnabled`, `User.emailVerified`, `User.image` and the Auth.js adapter tables `Account`, `Session`, `VerificationToken`. The app never read them (JWT sessions, no adapter); review before deploying. |
+
+Deploying bumps nothing for existing users (`sessionVersion` starts at 0), so current sessions stay valid.
 
 ## Roadmap and known issues
 
@@ -135,7 +168,8 @@ Provider API credentials remain in environment variables.
 Deposit activation starts at midnight Argentina on the selected date, only while
 the deposit toggle is enabled. Empty activation dates preserve immediate activation.
 Refund terms are displayed publicly; refunds are processed manually. Duration edits
-affect new reservations and preserve existing appointment intervals.
+affect new reservations and preserve existing appointment intervals; a duration must be a
+multiple of the slot step or the service would have no bookable time.
 
 ### Mercado Pago deposits
 
@@ -248,7 +282,12 @@ The seed creates an internal admin when `ADMIN_USERNAME`, `ADMIN_EMAIL`, and `AD
 
 `proxy.ts` refuses every `/internal` request without a session. Pages and server actions then call
 `requireStaff()` ([src/lib/staff-access.ts](src/lib/staff-access.ts)), which reads the account from
-the database on each request, so a deleted account or a changed role applies immediately.
+the database on each request, so a deleted account or a changed role applies immediately. A session
+whose `sessionVersion` no longer matches the account (after a password change) is rejected too.
+
+Login and public booking share a PostgreSQL-backed limiter ([src/lib/rate-limit.ts](src/lib/rate-limit.ts),
+table `LoginThrottle`), so every serverless instance sees the same counters. The client address is the
+first hop of `X-Forwarded-For`.
 
 | Role | Can |
 |---|---|
@@ -331,8 +370,9 @@ and notes. Apply existing migrations with `prisma migrate deploy`, not by reseed
 | Name | Taller de motos Express |
 | Address | B° Parques Nacionales, calle Los Cardones 3289 |
 | Instagram | Expresstallerdemotos |
-| Booking mode | Turnos programados, automatically confirmed |
-| Public cancellation/rescheduling | Disabled |
+| Booking mode | Turnos programados, automatically confirmed (editable in Configuración) |
+| Public cancellation | Disabled by default, editable in Configuración |
+| Public rescheduling | Not offered |
 | Deposit policy | Configurable amount (initial value ARS 5,000); collection disabled by default, live activation pending |
 | Services | Service Esencial 60 min, Service Deluxe 4 h, Reparaciones generales, Reparacion de motor, Enderezado de chasis, Enderezado de barrales |
 | Notifications requested | Email and WhatsApp |
@@ -342,6 +382,8 @@ Pending before launch: phone/WhatsApp number, exact weekly hours, lunch break or
 ## Public booking verification status
 
 - Repeated idempotent submissions do not expose invalid cancellation links.
+- Field bounds, phone digit count and the per-address limit are covered by `tests/public-booking.test.ts`
+  and `tests/rate-limit.test.ts` (on `fix/audit-findings`).
 - Playwright public booking checks clean up their test data and can run repeatedly.
 - PostgreSQL-backed integration tests cover cancellation, idempotency, and concurrent capacity behavior.
 
@@ -384,7 +426,7 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
 - Every date and time is computed in the workshop's zone (`America/Argentina/Buenos_Aires`) through [src/lib/workshop-date.ts](src/lib/workshop-date.ts); nothing else hardcodes an offset or zone.
 - CI uses an ephemeral PostgreSQL 17 service and deterministic non-production values from `.github/workflows/ci.yml`.
 
-Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation/rescheduling disabled.
+Confirmed production policy values remain capacity `2`, automatic confirmation, two-hour minimum notice, a 30-day booking window, and online cancellation disabled (now editable; rescheduling is internal only).
 
 ## Schedules and date exceptions
 

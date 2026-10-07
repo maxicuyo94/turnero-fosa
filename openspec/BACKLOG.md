@@ -1,7 +1,8 @@
 # Backlog de errores y riesgos
 
-Revisión: **2026-09-29**, código `e10dd03` en las ramas locales `main` y `preview`.
-Esta revisión documental no verifica el despliegue remoto.
+Revisión: **2026-10-07**, código `baeaf1c` en la rama `fix/audit-findings`
+(`main` y `preview` siguen en `daffe76`). Esta revisión documental no verifica el
+despliegue remoto.
 
 | Ítem | Estado |
 | --- | --- |
@@ -11,6 +12,7 @@ Esta revisión documental no verifica el despliegue remoto.
 | VEH-001 | Cerrado: patente única desde `20260924150000_unique_vehicle_plate` |
 | VEH-002 | Asumido, sin corrección |
 | OPS-001 | Outbox implementado; falta remitente productivo y visibilidad de entrega |
+| AUD-001 | Corregido en `fix/audit-findings`; pendiente de publicar |
 
 Orden de trabajo: [ROADMAP.md](ROADMAP.md).
 
@@ -196,10 +198,36 @@ cubre el flujo habitual.
 - **Cierre:** una caída del proveedor no pierde eventos ni impide el registro del
   turno, y el taller ve qué emails no se entregaron.
 
+## AUD-001 — Hallazgos de la auditoría de código
+
+Corregido 2026-10-02 (`baeaf1c`, rama `fix/audit-findings`), con pruebas de regresión.
+**Pendiente de publicar**: ni Preview ni Producción ejecutan este código.
+
+- **Prioridad:** P1 para los puntos de seguridad. **Evidencia:** inspección de código y
+  pruebas unitarias/de integración nuevas (`tests/rate-limit.test.ts`,
+  `tests/public-booking.test.ts`, `tests/inventory-label-selection.test.ts`, entre otras).
+- **Errores corregidos:** duraciones de servicio que no eran múltiplo del paso dejaban
+  el servicio sin horarios; bucle de redirección con un token cuya cuenta ya no existe;
+  el email de confirmación no traía enlace de estado ni de cancelación; las etiquetas de
+  stock bajo cortaban antes de filtrar.
+- **Seguridad:** campos públicos acotados y teléfono con 6–20 dígitos; límite de 10
+  reservas por IP y hora; el email de la reserva se guarda en `Appointment.contactEmail`
+  sin sobrescribir el del cliente existente; cambiar la contraseña incrementa
+  `User.sessionVersion` y cierra todas las sesiones; intentos de login contados de forma
+  atómica antes de verificar la contraseña; el webhook responde 503 con configuración de
+  pago inválida; encabezados `X-Frame-Options`, `frame-ancestors`, `nosniff` y `Referrer-Policy`.
+- **Limpieza:** modo de confirmación y cancelación online editables; búsqueda de unidades
+  en SQL con tope de 200; las pruebas de integración se niegan a correr contra una base no local.
+- **Cierre:** revisar la migración destructiva `20261002130000_drop_unused_columns`
+  (borra `reschedulingEnabled`, `emailVerified`, `image`, `Account`, `Session`,
+  `VerificationToken`), publicar en Preview, verificar reserva, login y cambio de
+  contraseña, y luego avanzar `main`.
+
 ## Verificaciones operativas pendientes
 
-- Revisar límites de solicitudes en consulta por código, reservas y reintentos.
-  El login ya tiene limitador por usuario e IP (`src/lib/login-throttle.ts`);
+- Revisar límites de solicitudes en consulta por código y reintentos de pago.
+  Login (por usuario e IP) y reserva pública (10 por IP y hora, personal exento)
+  comparten el limitador de `src/lib/rate-limit.ts` en `fix/audit-findings`;
   revisar también las protecciones configuradas en infraestructura.
 - Actualizar auditoría de dependencias. No tratar el aviso histórico de `sharp`
   del README como el resultado de una auditoría actual.
