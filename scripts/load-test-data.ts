@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "../src/lib/prisma-adapter";
 import { loadTestDataProfile } from "../src/modules/testing/load-test-data";
 import { resolveTestDataTarget } from "../src/modules/testing/test-data-guard";
 
@@ -15,7 +15,7 @@ async function main() {
     return;
   }
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+  const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: process.env.DATABASE_URL }) });
   try {
     const result = await loadTestDataProfile({ prisma, profile });
     if (!result.accepted) {

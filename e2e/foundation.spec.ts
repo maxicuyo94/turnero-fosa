@@ -1,11 +1,11 @@
 import "dotenv/config";
 import { expect, test } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { createPasswordHash } from "@/src/lib/password";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const e2ePhonePrefix = "+5491100";
 const internalE2EDate = "2026-07-21";
 

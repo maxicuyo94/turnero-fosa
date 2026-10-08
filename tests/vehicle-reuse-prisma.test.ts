@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
@@ -10,7 +10,7 @@ import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repositor
 import { correctVehiclePlate } from "@/src/modules/vehicles/service";
 import { updateAppointmentDetails } from "@/src/modules/appointments/detail-edit";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const now = new Date("2026-07-01T09:00:00-03:00");
 const date = "2026-07-20";
 let serviceId = "";

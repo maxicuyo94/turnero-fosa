@@ -1,11 +1,11 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { PrismaEmailDeliveryRepository } from "@/src/modules/notifications/prisma-repository";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const repository = new PrismaEmailDeliveryRepository(prisma);
 const recipient = "it-outbox@taller.test";
 const now = new Date();

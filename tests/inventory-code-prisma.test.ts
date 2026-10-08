@@ -2,14 +2,14 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { resolveTestDataTarget } from "@/src/modules/testing/test-data-guard";
 import { findSimilarInventoryCodes, linkInventoryBarcode, resolveInventoryCode } from "@/src/modules/shop/inventory-code-service";
 import { createInventoryProduct } from "@/src/modules/shop/inventory-service";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const target = resolveTestDataTarget({
   profile: "development",
   env: { ...process.env, NODE_ENV: process.env.NODE_ENV ?? "test" },

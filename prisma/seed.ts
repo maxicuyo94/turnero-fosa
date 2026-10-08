@@ -1,9 +1,9 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "../src/lib/prisma-adapter";
 import { getDatabaseUrl } from "../src/lib/env";
 import { seedAdminUser, seedWorkshopConfiguration } from "../src/modules/settings/seed";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 
 export async function main() {
   await seedWorkshopConfiguration(prisma);

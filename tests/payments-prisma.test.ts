@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { PrismaClient, type AppointmentStatus, type DepositPaymentStatus } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
@@ -16,7 +16,7 @@ import { PrismaAppointmentRepository } from "@/src/modules/appointments/prisma-r
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
 import { workshopDate } from "@/src/lib/workshop-date";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const repository = new PrismaDepositPaymentRepository(prisma);
 const prefix = "it-payments-";
 // Keep these fixtures ahead of real-time expiry scans in parallel booking tests.

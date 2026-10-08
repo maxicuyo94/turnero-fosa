@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "../src/lib/prisma-adapter";
 
 // Vacia los datos operativos (turnos, clientes, unidades, pagos, emails, inventario) y conserva
 // lo que hace funcionar al taller: configuracion, servicios, horarios, feriados, tipos de
@@ -33,7 +33,7 @@ async function main() {
   const apply = process.argv.includes("--apply");
   console.log(`[reset] Base: ${hostname}${pathname}`);
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
+  const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: url }) });
   try {
     // Una base con migraciones atrasadas puede no tener alguna tabla todavia: se saltea.
     const existing: string[] = [];

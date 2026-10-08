@@ -2,12 +2,12 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { createPasswordHash } from "@/src/lib/password";
 import { resolveTestDataTarget } from "@/src/modules/testing/test-data-guard";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const target = resolveTestDataTarget({
   profile: "development",
   env: { ...process.env, NODE_ENV: process.env.NODE_ENV ?? "test" },

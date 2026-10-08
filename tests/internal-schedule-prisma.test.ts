@@ -1,13 +1,13 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { PrismaWorkshopSettingsRepository } from "@/src/modules/settings/prisma-repository";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import type { WeeklySchedule } from "@/src/modules/settings/schemas";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const workshopSettingsId = "it-schedule-workshop";
 const repository = new PrismaWorkshopSettingsRepository(prisma, { workshopSettingsId });
 

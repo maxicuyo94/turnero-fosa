@@ -1,4 +1,4 @@
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 import { seedAdminUser } from "@/src/modules/settings/seed";
 
@@ -18,7 +18,7 @@ async function main() {
   }
 
   const prisma = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+    adapter: new SerializedPrismaPg({ connectionString: process.env.DATABASE_URL! }),
   });
 
   try {

@@ -3,7 +3,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { getDatabaseUrl } from "@/src/lib/env";
 import { createPasswordHash } from "@/src/lib/password";
@@ -16,7 +16,7 @@ import {
   updateInventoryProduct,
 } from "@/src/modules/shop/inventory-service";
 
-const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: getDatabaseUrl() }) });
+const prisma = new PrismaClient({ adapter: new SerializedPrismaPg({ connectionString: getDatabaseUrl() }) });
 const target = resolveTestDataTarget({
   profile: "development",
   env: { ...process.env, NODE_ENV: process.env.NODE_ENV ?? "test" },
