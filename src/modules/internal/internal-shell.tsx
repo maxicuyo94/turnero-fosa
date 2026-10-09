@@ -8,7 +8,7 @@ export type InternalNavSection = "agenda" | "settings" | "vehicles" | "shop" | "
 
 const sections: { id: InternalNavSection; label: string; href: string; adminOnly?: boolean }[] = [
   { id: "agenda", label: "Agenda", href: "/internal" },
-  { id: "settings", label: "Configuración", href: "/internal?section=settings", adminOnly: true },
+  { id: "settings", label: "Configuración", href: "/internal/settings", adminOnly: true },
   { id: "vehicles", label: "Unidades", href: "/internal/vehicles" },
   { id: "shop", label: "Repuestos", href: "/internal/shop" },
   { id: "account", label: "Mi cuenta", href: "/internal/account" },

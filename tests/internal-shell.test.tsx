@@ -35,7 +35,7 @@ describe("InternalShell", () => {
 
     expect(sectionLinks()).toEqual([
       ["Agenda", "/internal?date=2026-07-06"],
-      ["Configuración", "/internal?section=settings"],
+      ["Configuración", "/internal/settings"],
       ["Unidades", "/internal/vehicles"],
       ["Repuestos", "/internal/shop"],
       ["Mi cuenta", "/internal/account"],

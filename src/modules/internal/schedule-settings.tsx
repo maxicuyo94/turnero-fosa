@@ -3,7 +3,7 @@ import {
   importHolidaysAction,
   saveDateExceptionAction,
   updateWeeklyScheduleAction,
-} from "@/app/(internal)/internal/actions";
+} from "@/app/(internal)/internal/settings/actions";
 import { Card, Chip, EmptyState, Field, TextInput } from "@/src/components/ui";
 import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopCalendarDate } from "@/src/lib/workshop-date";
@@ -22,7 +22,7 @@ const dayLabels: Record<DayOfWeek, string> = {
 
 export function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: string; schedule: InternalWeeklyScheduleRecord }) {
   return (
-    <Card className="mt-5">
+    <Card>
       <h2 className="text-2xl font-black text-white">Horario semanal</h2>
       <p className="mt-2 text-sm text-zinc-500">
         Se guarda completo: los turnos públicos usan estos valores apenas confirmás los cambios.
@@ -106,7 +106,7 @@ export function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: strin
 
 export function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: string; exceptions: ScheduleDateException[] }) {
   return (
-    <Card className="mt-5">
+    <Card>
       <h2 className="text-2xl font-black text-white">Fechas especiales</h2>
       <p className="mt-2 text-sm text-zinc-500">
         Feriados y cierres puntuales. Una fecha especial manda sobre el horario semanal.

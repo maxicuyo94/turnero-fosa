@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { appointmentRepository, deposits, settleOverdueDepositsAfterResponse, workshopSettingsRepository } from "@/src/lib/composition";
 import { hasRole, requireStaff } from "@/src/lib/staff-access";
 import { workshopDate } from "@/src/lib/workshop-date";
@@ -6,7 +7,6 @@ import {
   InternalAgendaScreen,
   internalFeedbackCodes,
   type InternalFeedbackCode,
-  type InternalSection,
 } from "@/src/modules/internal/internal-agenda-screen";
 import { datesForWeek, parseAgendaView } from "@/src/modules/appointments/agenda-navigation";
 import { getInternalAgendas } from "@/src/modules/appointments/operations";
@@ -25,6 +25,8 @@ export default async function InternalPage({
   const canManageWorkshop = hasRole(staff, "ADMIN");
 
   const params = await searchParams;
+  // Configuración moved to its own pages; old bookmarks still land there.
+  if (params?.section === "settings" && canManageWorkshop) redirect("/internal/settings");
   // A hand-edited or stale link falls back to today instead of failing the whole panel.
   const today = workshopDate(new Date());
   const date = calendarDateSchema.safeParse(params?.date).data ?? today;
@@ -33,12 +35,9 @@ export default async function InternalPage({
   settleOverdueDepositsAfterResponse();
   const appointments = appointmentRepository();
   const workshop = workshopSettingsRepository();
-  const [weekAgendas, settings, services, vehicleTypes, schedule, exceptions, paidUnconfirmedDeposits] = await Promise.all([
+  const [weekAgendas, settings, exceptions, paidUnconfirmedDeposits] = await Promise.all([
     getInternalAgendas(appointments, { dates: datesForWeek(date) }),
     workshop.getWorkshopSettings(),
-    workshop.listServices(),
-    workshop.listVehicleTypes(),
-    workshop.getWeeklySchedule(),
     workshop.listDateExceptions(exceptionRange(date)),
     deposits.listPaidUnconfirmedDeposits(),
   ]);
@@ -52,10 +51,6 @@ export default async function InternalPage({
       paidUnconfirmedDeposits={paidUnconfirmedDeposits}
       exceptions={exceptions}
       feedback={parseFeedback(params?.feedback)}
-      schedule={schedule}
-      section={canManageWorkshop ? parseSection(params?.section) : "agenda"}
-      services={services}
-      vehicleTypes={vehicleTypes}
       settings={settings}
       signedInUserName={staff.displayName}
       today={today}
@@ -65,7 +60,7 @@ export default async function InternalPage({
   );
 }
 
-/** The panel shows the exceptions the workshop can still act on: the current and next calendar year. */
+/** The agenda marks the holidays and closures of the current and next calendar year. */
 function exceptionRange(date: string): { from: string; to: string } {
   const year = Number(date.slice(0, 4));
   return { from: `${year}-01-01`, to: `${year + 1}-12-31` };
@@ -73,8 +68,4 @@ function exceptionRange(date: string): { from: string; to: string } {
 
 function parseFeedback(value: string | undefined): InternalFeedbackCode | null {
   return internalFeedbackCodes.find((code) => code === value) ?? null;
-}
-
-function parseSection(value: string | undefined): InternalSection {
-  return value === "settings" ? "settings" : "agenda";
 }

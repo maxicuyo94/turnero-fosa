@@ -58,14 +58,32 @@ export type InternalServiceRecord = {
 export type InternalMaintenanceRepository = {
   getWorkshopSettings?(): Promise<InternalWorkshopSettingsRecord>;
   listServices?(): Promise<InternalServiceRecord[]>;
-  updateWorkshopSettings(input: InternalWorkshopSettingsRecord): Promise<InternalWorkshopSettingsRecord>;
+  /** Partial: only the fields present are written, so each settings page saves just its own group. */
+  updateWorkshopSettings(input: Partial<InternalWorkshopSettingsRecord>): Promise<InternalWorkshopSettingsRecord>;
   updateServiceVisibility(serviceId: string, isActive: boolean): Promise<InternalServiceRecord>;
 };
 
-const settingsInputSchema = businessSettingsSchema.extend({
-  // Optional so a caller that does not show them leaves the stored policy untouched.
-  confirmationMode: z.enum(["MANUAL", "AUTOMATIC"]).optional(),
-  cancellationEnabled: z.boolean().optional(),
+const contactSettingsInputSchema = businessSettingsSchema.pick({
+  publicPhone: true,
+  whatsappNumber: true,
+  publicAppUrl: true,
+  emailFrom: true,
+});
+
+/** Contact details: shown on public screens and used as email sender and payment return domain. */
+export async function updateInternalContactSettings(
+  repository: InternalMaintenanceRepository,
+  input: z.input<typeof contactSettingsInputSchema>,
+): Promise<{ accepted: true; settings: InternalWorkshopSettingsRecord }> {
+  return { accepted: true, settings: await repository.updateWorkshopSettings(contactSettingsInputSchema.parse(input)) };
+}
+
+const bookingSettingsInputSchema = businessSettingsSchema.pick({
+  depositRefundPolicy: true,
+  depositActivationDate: true,
+}).extend({
+  confirmationMode: z.enum(["MANUAL", "AUTOMATIC"]),
+  cancellationEnabled: z.boolean(),
   capacity: z.coerce.number().int().min(1).max(20),
   minimumNoticeMinutes: z.coerce.number().int().min(0).max(10_080),
   maximumBookingWindowDays: z.coerce.number().int().min(1).max(365),
@@ -74,24 +92,15 @@ const settingsInputSchema = businessSettingsSchema.extend({
   depositExpirationMinutes: z.coerce.number().int().min(5).max(10_080),
 });
 
-export async function updateInternalWorkshopSettings(
+/** Booking policy and deposits: how and when customers can book, and what they pay upfront. */
+export async function updateInternalBookingSettings(
   repository: InternalMaintenanceRepository,
-  input: z.input<typeof settingsInputSchema>,
+  input: z.input<typeof bookingSettingsInputSchema>,
 ): Promise<{ accepted: true; settings: InternalWorkshopSettingsRecord }> {
-  const parsed = settingsInputSchema.parse(input);
+  const { depositAmountArs, ...parsed } = bookingSettingsInputSchema.parse(input);
   return {
     accepted: true,
-    settings: await repository.updateWorkshopSettings({
-      ...businessSettingsSchema.parse(parsed),
-      ...(parsed.confirmationMode ? { confirmationMode: parsed.confirmationMode } : {}),
-      ...(parsed.cancellationEnabled === undefined ? {} : { cancellationEnabled: parsed.cancellationEnabled }),
-      capacity: parsed.capacity,
-      minimumNoticeMinutes: parsed.minimumNoticeMinutes,
-      maximumBookingWindowDays: parsed.maximumBookingWindowDays,
-      depositRequired: parsed.depositRequired,
-      depositAmountCents: Math.round(parsed.depositAmountArs * 100),
-      depositExpirationMinutes: parsed.depositExpirationMinutes,
-    }),
+    settings: await repository.updateWorkshopSettings({ ...parsed, depositAmountCents: Math.round(depositAmountArs * 100) }),
   };
 }
 

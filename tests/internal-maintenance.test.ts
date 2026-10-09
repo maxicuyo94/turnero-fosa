@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   deleteInternalDateException,
+  updateInternalBookingSettings,
   saveInternalDateException,
   updateInternalServiceVisibility,
   updateInternalWeeklySchedule,
-  updateInternalWorkshopSettings,
   type InternalMaintenanceRepository,
   type InternalServiceRecord,
   type InternalWorkshopSettingsRecord,
@@ -16,7 +16,9 @@ describe("internal settings and catalog maintenance", () => {
   it("updates workshop capacity so future availability can use editable settings", async () => {
     const repository = new InMemoryMaintenanceRepository();
 
-    const result = await updateInternalWorkshopSettings(repository, {
+    const result = await updateInternalBookingSettings(repository, {
+      confirmationMode: "MANUAL",
+      cancellationEnabled: false,
       capacity: 3,
       minimumNoticeMinutes: 180,
       maximumBookingWindowDays: 20,
@@ -186,8 +188,8 @@ class InMemoryMaintenanceRepository implements InternalMaintenanceRepository {
   };
   services: InternalServiceRecord[] = [{ id: "oil", name: "Service Esencial", durationMinutes: 60, isActive: true, displayOrder: 1 }];
 
-  async updateWorkshopSettings(input: InternalWorkshopSettingsRecord) {
-    this.settings = input;
+  async updateWorkshopSettings(input: Partial<InternalWorkshopSettingsRecord>) {
+    this.settings = { ...this.settings, ...input };
     return this.settings;
   }
 

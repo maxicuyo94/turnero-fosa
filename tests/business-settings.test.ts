@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { businessSettingsSchema, isDepositActive } from "@/src/modules/settings/business-settings";
-import { updateInternalServiceDuration, updateInternalWorkshopSettings } from "@/src/modules/settings/maintenance";
+import { updateInternalBookingSettings, updateInternalContactSettings, updateInternalServiceDuration } from "@/src/modules/settings/maintenance";
 import { getWorkshopNotificationEnv, getWorkshopPaymentEnv } from "@/src/modules/settings/runtime-settings";
 import type { PrismaClient } from "@prisma/client";
 import { PrismaBookingRepository } from "@/src/modules/booking/prisma-repository";
@@ -9,14 +9,23 @@ import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 import { scheduleDateExceptionSchema, weeklyScheduleSchema } from "@/src/modules/settings/schemas";
 
 describe("business settings", () => {
-  it("persists business decisions alongside operational settings", async () => {
+  it("saves contact details without touching the booking policy", async () => {
     const save = vi.fn(async (input) => input);
-    const contact = { publicPhone: "+54 261 5551234", whatsappNumber: "+5492615551234", publicAppUrl: "https://taller.example", emailFrom: "turnos@taller.example", depositRefundPolicy: "Consultar al taller para gestionar la devolución.", depositActivationDate: "2026-10-01" };
-    await updateInternalWorkshopSettings({ updateWorkshopSettings: save, updateServiceVisibility: vi.fn() }, {
-      capacity: 2, minimumNoticeMinutes: 120, maximumBookingWindowDays: 30,
-      depositRequired: true, depositAmountArs: 5000, depositExpirationMinutes: 30, ...contact,
+    const contact = { publicPhone: "+54 261 5551234", whatsappNumber: "+5492615551234", publicAppUrl: "https://taller.example", emailFrom: "turnos@taller.example" };
+    await updateInternalContactSettings({ updateWorkshopSettings: save, updateServiceVisibility: vi.fn() }, contact);
+    expect(save).toHaveBeenCalledWith(contact);
+  });
+
+  it("saves the booking policy and deposit decisions without touching contact details", async () => {
+    const save = vi.fn(async (input) => input);
+    await updateInternalBookingSettings({ updateWorkshopSettings: save, updateServiceVisibility: vi.fn() }, {
+      confirmationMode: "MANUAL", cancellationEnabled: false, capacity: 2, minimumNoticeMinutes: 120, maximumBookingWindowDays: 30,
+      depositRequired: true, depositAmountArs: 5000, depositExpirationMinutes: 30,
+      depositRefundPolicy: "Consultar al taller para gestionar la devolución.", depositActivationDate: "2026-10-01",
     });
-    expect(save).toHaveBeenCalledWith(expect.objectContaining(contact));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ depositAmountCents: 500_000, depositRefundPolicy: "Consultar al taller para gestionar la devolución.", depositActivationDate: "2026-10-01" }));
+    expect(save.mock.calls[0][0]).not.toHaveProperty("publicPhone");
+    expect(save.mock.calls[0][0]).not.toHaveProperty("depositAmountArs");
   });
 
   it.each([

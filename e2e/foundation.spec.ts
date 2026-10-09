@@ -106,7 +106,7 @@ test("capacity changes keep appointments and show a persistent conflict warning"
     await page.getByLabel("Contraseña").fill(requiredEnv("ADMIN_PASSWORD"));
     await page.getByRole("button", { name: "Ingresar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Agenda" })).toBeVisible();
-    await page.goto("/internal?section=settings");
+    await page.goto("/internal/settings/booking");
     await page.getByLabel("Capacidad simultánea", { exact: false }).fill("1");
     await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
     const conflictLink = page.getByRole("alert").locator(`a[href="/internal?date=${futureDate}"]`);
@@ -115,7 +115,7 @@ test("capacity changes keep appointments and show a persistent conflict warning"
     expect(await prisma.appointment.findMany({ where: { id: { in: [firstId, secondId] } } })).toEqual([
       expect.objectContaining({ ...interval, status: "CONFIRMED" }), expect.objectContaining({ ...interval, status: "CONFIRMED" }),
     ]);
-    await page.goto("/internal?section=settings");
+    await page.goto("/internal/settings/booking");
     await expect(conflictLink).toBeVisible();
     await page.reload();
     await expect(conflictLink).toBeVisible();
@@ -146,13 +146,20 @@ test("internal settings persist business details and service durations", async (
     await page.getByLabel("WhatsApp", { exact: false }).fill("+5492615551234");
     await page.getByLabel("Dominio público", { exact: false }).fill("https://taller.example");
     await page.getByLabel("Remitente de email", { exact: false }).fill("turnos@taller.example");
+    await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
+    await expect(page.getByText("Guardamos la configuración del taller.")).toBeVisible();
+    await page.reload();
+    await expect(page.getByLabel("Teléfono público")).toHaveValue("+54 261 5551234");
+    await page.getByRole("link", { name: "Reservas y señas", exact: true }).click();
     await page.getByLabel("Fecha de activación de señas", { exact: false }).fill("2026-10-01");
     await page.getByLabel("Política de devolución", { exact: false }).fill("Contactanos para solicitar una devolución.");
     await page.getByRole("button", { name: "Guardar cambios", exact: true }).click();
     await expect(page.getByText("Guardamos la configuración del taller.")).toBeVisible();
     await page.reload();
-    await expect(page.getByLabel("Teléfono público")).toHaveValue("+54 261 5551234");
     await expect(page.getByLabel("Fecha de activación de señas", { exact: false })).toHaveValue("2026-10-01");
+    // Saving the booking page must not clear the contact details saved on General.
+    expect(await prisma.workshopSettings.findUnique({ where: { id: original.id } })).toMatchObject({ publicPhone: "+54 261 5551234" });
+    await page.getByRole("link", { name: "Catálogo", exact: true }).click();
     const duration = page.getByLabel(`Duración de ${service.name}`, { exact: false });
     await duration.fill("180");
     await duration.locator("xpath=ancestor::form").getByRole("button", { name: "Guardar duración" }).click();

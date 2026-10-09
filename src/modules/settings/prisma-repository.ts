@@ -29,7 +29,7 @@ export class PrismaWorkshopSettingsRepository implements InternalMaintenanceRepo
     );
   }
 
-  async updateWorkshopSettings(input: InternalWorkshopSettingsRecord): Promise<InternalWorkshopSettingsRecord> {
+  async updateWorkshopSettings(input: Partial<InternalWorkshopSettingsRecord>): Promise<InternalWorkshopSettingsRecord> {
     return mapWorkshopSettings(
       await this.prisma.workshopSettings.update({ where: { id: await this.resolveWorkshopSettingsId() }, data: input }),
     );
