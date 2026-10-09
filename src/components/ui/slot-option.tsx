@@ -29,7 +29,7 @@ export function SlotOption({
   return (
     <label
       className={cn(
-        "group flex cursor-pointer items-center justify-between rounded-xl border border-white/5 bg-charcoal-950 px-4 py-3 text-zinc-100 transition hover:border-apple-300/60 hover:bg-apple-400/10",
+        "group flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-white/20 bg-charcoal-950 px-4 py-3 text-zinc-100 transition hover:border-apple-300/60 hover:bg-apple-400/10 has-[:checked]:border-apple-300 has-[:checked]:bg-apple-400/15 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-apple-300",
         disabled && "cursor-not-allowed opacity-60",
         className,
       )}
@@ -46,8 +46,9 @@ export function SlotOption({
         />
         <span className="font-black text-white">{startTime}</span>
       </span>
-      <span className="text-xs font-semibold uppercase tracking-[0.14em] text-apple-300">
-        {remainingCapacity} cupos
+      <span className="text-right text-xs font-semibold text-apple-300">
+        <span className="block uppercase tracking-[0.14em]">{remainingCapacity} {remainingCapacity === 1 ? "cupo" : "cupos"}</span>
+        <span aria-hidden="true" className="hidden group-has-[:checked]:block">Seleccionado</span>
       </span>
     </label>
   );

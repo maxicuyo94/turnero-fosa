@@ -12,13 +12,13 @@ export type EmptyStateProps = {
  */
 export function EmptyState({ className, children }: EmptyStateProps) {
   return (
-    <p
+    <div
       className={cn(
         "rounded-2xl border border-dashed border-white/10 bg-black/10 p-8 text-center text-zinc-400",
         className,
       )}
     >
       {children}
-    </p>
+    </div>
   );
 }

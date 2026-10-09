@@ -4,6 +4,7 @@ import { cn } from "./cn";
 export type CardPadding = "none" | "sm" | "md";
 
 export type CardProps = {
+  id?: string;
   padding?: CardPadding;
   /** Optional accessible label when the card stands alone as a region. */
   "aria-label"?: string;
@@ -25,7 +26,7 @@ export function Card({ padding = "md", className, children, ...rest }: CardProps
   return (
     <section
       className={cn(
-        "rounded-[1.7rem] border border-white/10 bg-white/[0.04] shadow-2xl shadow-black/20",
+        "rounded-panel border border-border-subtle bg-surface-panel shadow-xl shadow-black/10",
         paddingClasses[padding],
         className,
       )}

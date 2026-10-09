@@ -65,6 +65,7 @@ test("la cámara lee un código de barras y abre la ficha sin tocar el stock", a
   await login(page);
   await page.goto("/internal/shop/inventory");
 
+  await page.locator('a[href="#escanear"]').click();
   const wasm = page.waitForResponse((response) => response.url().includes("/vendor/zxing_reader-"));
   await page.getByRole("button", { name: "Escanear con cámara" }).click();
 
@@ -155,6 +156,7 @@ async function login(page: Page) {
 
 async function searchCode(page: Page, code: string) {
   await page.goto("/internal/shop/inventory");
+  await page.locator('a[href="#escanear"]').click();
   await page.getByLabel("Código", { exact: true }).fill(code);
   await page.getByRole("button", { name: "Buscar código" }).click();
 }

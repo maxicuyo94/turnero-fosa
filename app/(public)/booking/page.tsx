@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createAppointmentAction, retryDepositAction } from "@/app/(public)/booking/actions";
 import { bookingRepository, depositPaymentRepository, settleOverdueDepositsAfterResponse } from "@/src/lib/composition";
 import { getStaffMember } from "@/src/lib/staff-access";
-import { workshopDate } from "@/src/lib/workshop-date";
+import { workshopDate, workshopInstant } from "@/src/lib/workshop-date";
 import { calendarDateSchema } from "@/src/modules/settings/business-settings";
 import { PublicBookingScreen } from "@/src/modules/booking/public-booking-screen";
 import { describeBookingOutcome, parseBookingOutcome } from "@/src/modules/booking/booking-outcome";
@@ -10,6 +10,7 @@ import {
   getPublicAppointmentStatus,
   getPublicAvailability,
   getPublicDepositPolicy,
+  findNextPublicAvailability,
   listPublicServices,
 } from "@/src/modules/booking/service";
 
@@ -46,6 +47,14 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
     ? availability.durationMinutes
     : requestedDurationMinutes ?? selectedService?.durationMinutes ?? 0;
   const durationStepMinutes = availability.accepted ? availability.slotStepMinutes : availability.slotStepMinutes ?? 1;
+  const nextAvailability = selectedService && availability.accepted && availability.slots.length === 0
+    ? await findNextPublicAvailability(repository, {
+        serviceId: selectedServiceId,
+        fromDate: workshopDate(new Date(workshopInstant(selectedDate).getTime() + 86_400_000)),
+        durationMinutes: requestedDurationMinutes,
+        now: new Date(),
+      })
+    : null;
   const outcomeParams = parseBookingOutcome(params);
   const bookedAppointment = outcomeParams?.code
     ? await getPublicAppointmentStatus(repository, { code: outcomeParams.code })
@@ -68,6 +77,7 @@ export default async function BookingPage({ searchParams }: BookingPageProps) {
       depositAmountCents: checkout?.amountCents,
     } : undefined}
     selectedDate={selectedDate}
+    nextAvailability={nextAvailability}
     selectedDurationMinutes={selectedDurationMinutes}
     durationStepMinutes={durationStepMinutes}
     canEditDuration={canEditDuration}

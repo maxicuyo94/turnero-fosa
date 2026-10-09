@@ -6,6 +6,7 @@ import {
   Field,
   PageHeading,
   Select,
+  StatusBadge,
   TextInput,
   Textarea,
 } from "@/src/components/ui";
@@ -24,15 +25,6 @@ export type VehicleRecordScreenProps = {
   plateHolderId?: string | null;
   signedInUserName?: string | null;
   canManageWorkshop?: boolean;
-};
-
-const statusLabels: Record<string, string> = {
-  PENDING_CONFIRMATION: "Pendiente",
-  CONFIRMED: "Confirmado",
-  IN_PROGRESS: "En taller",
-  COMPLETED: "Completado",
-  CANCELLED: "Cancelado",
-  NO_SHOW: "No asistio",
 };
 
 export function VehicleRecordScreen({
@@ -64,27 +56,25 @@ export function VehicleRecordScreen({
 
       <Card className="mt-8">
         <h2 className="text-2xl font-black text-white">Historial</h2>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-zinc-400">
           {vehicle.appointmentCount === 0
             ? "Todavía sin turnos."
-            : `${vehicle.appointmentCount} turnos registrados, del mas reciente al mas antiguo.`}
+            : `${vehicle.appointmentCount} turnos registrados, del más reciente al más antiguo.`}
         </p>
 
         {vehicle.appointments.length === 0 ? (
-          <EmptyState className="mt-5">Esta unidad todavia no tiene turnos.</EmptyState>
+          <EmptyState className="mt-5">Esta unidad todavía no tiene turnos.</EmptyState>
         ) : (
           <ol className="mt-5 grid gap-3">
             {vehicle.appointments.map((appointment) => (
               <li className="rounded-xl border border-white/5 bg-charcoal-950 p-4" key={appointment.id}>
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span className="font-black text-white">{formatDateTime(appointment.startAt)}</span>
-                  <span className="text-xs uppercase tracking-wide text-lime-300">
-                    {statusLabels[appointment.status] ?? appointment.status}
-                  </span>
+                  <StatusBadge className="px-3 py-1 text-xs" status={appointment.status} />
                 </div>
                 <p className="mt-1 text-sm text-zinc-300">{appointment.serviceName}</p>
-                {appointment.notes ? <p className="mt-2 text-sm text-zinc-500">{appointment.notes}</p> : null}
-                <p className="mt-2 text-xs text-zinc-600">Codigo {appointment.publicCode}</p>
+                {appointment.notes ? <p className="mt-2 text-sm text-zinc-400">{appointment.notes}</p> : null}
+                <p className="mt-2 text-xs text-zinc-400">Código {appointment.publicCode}</p>
               </li>
             ))}
           </ol>
@@ -120,7 +110,7 @@ export function VehicleRecordScreen({
 
       <Card className="mt-6">
         <h2 className="text-2xl font-black text-white">Ficha</h2>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-zinc-400">
           La patente se corrige aparte, más abajo: identifica a la unidad.
         </p>
         <form action={saveAction} className="mt-6 grid gap-4 md:grid-cols-2">
@@ -161,7 +151,7 @@ export function VehicleRecordScreen({
 
       <Card className="mt-6">
         <h2 className="text-2xl font-black text-white">Corregir patente</h2>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-zinc-400">
           Para una patente mal cargada. Si ya es de otra unidad no se guarda: revisá cuál es la correcta. Vacía, la
           unidad queda sin patente. Cada cambio queda en el historial.
         </p>

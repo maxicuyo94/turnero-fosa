@@ -15,15 +15,19 @@ import {
 import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime, workshopTime } from "@/src/lib/workshop-date";
 import type { PublicAppointmentStatusResult } from "@/src/modules/booking/service";
+import { Disclosure } from "@/src/components/ui";
+import { CodeRecoveryForm, type RecoveryState } from "@/src/modules/booking/code-recovery-form";
 
 type PublicAppointmentStatusScreenProps = {
   code?: string;
   result?: PublicAppointmentStatusResult;
+  recoveryAction?: (state: RecoveryState, formData: FormData) => Promise<RecoveryState>;
 };
 
 export function PublicAppointmentStatusScreen({
   code = "",
   result,
+  recoveryAction,
 }: PublicAppointmentStatusScreenProps) {
   return (
     <>
@@ -63,6 +67,7 @@ export function PublicAppointmentStatusScreen({
             {result.message}
           </Alert>
         ) : null}
+        {recoveryAction ? <Card className="mt-6" padding="sm"><Disclosure title="¿Perdiste el código?" description="Recuperalo usando el email de la reserva."><CodeRecoveryForm action={recoveryAction} /></Disclosure></Card> : null}
       </PageShell>
     </>
   );

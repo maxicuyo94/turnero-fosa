@@ -2,7 +2,30 @@
   --color-charcoal-950: #090d0b;
   --color-charcoal-900: #101611;
   --color-charcoal-800: #172018;
+  --color-apple-100: #eaffcc;
+  --color-apple-200: #d1ff94;
   --color-apple-300: #b8ff58;
   --color-apple-400: #8ee000;
   --color-apple-500: #73bd00;
+
+  /* Semantic roles: components choose intent, while these aliases own the palette. */
+  --color-surface-page: var(--color-charcoal-950);
+  --color-surface-panel: rgb(255 255 255 / 0.04);
+  --color-surface-control: var(--color-zinc-950);
+  --color-surface-hover: rgb(255 255 255 / 0.08);
+  --color-text-primary: #f5f7f2;
+  --color-text-secondary: var(--color-zinc-300);
+  --color-text-muted: var(--color-zinc-400);
+  --color-border-subtle: rgb(255 255 255 / 0.10);
+  --color-border-control: rgb(255 255 255 / 0.20);
+  --color-action: var(--color-apple-400);
+  --color-action-hover: var(--color-apple-300);
+  --color-action-text: var(--color-zinc-950);
+  --color-focus: var(--color-apple-300);
+  --color-danger: var(--color-red-300);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --radius-control: 0.625rem;
+  --radius-action-lg: 0.875rem;
+  --radius-panel: 1.5rem;
+  --spacing-control: 2.75rem;
 }

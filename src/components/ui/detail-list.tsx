@@ -22,7 +22,7 @@ export function DetailList({ items, columns = 2, className }: DetailListProps) {
     <dl className={cn("grid gap-5", columns === 2 && "sm:grid-cols-2", className)}>
       {items.map((item, index) => (
         <div key={index}>
-          <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">
             {item.term}
           </dt>
           <dd className="mt-2 text-lg font-bold text-white">{item.description}</dd>

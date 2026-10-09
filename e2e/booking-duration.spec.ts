@@ -56,7 +56,7 @@ test("el visitante no edita la duracion y el cambio de servicio la actualiza", a
   await expect(page.getByText(summaryPattern(shortService))).toBeVisible();
 
   await page.getByLabel("Servicio").selectOption({ label: `${longService.name} - ${longService.durationMinutes} min` });
-  await page.getByRole("button", { name: "Ver", exact: true }).click();
+  await page.getByRole("button", { name: "Buscar horarios", exact: true }).click();
 
   await expect(page.getByText(summaryPattern(longService))).toBeVisible();
 });
@@ -87,7 +87,7 @@ test("la sesion interna edita la duracion y la reajusta al cambiar de servicio",
 
   const stretched = longService.durationMinutes + 30;
   await duration.fill(String(stretched));
-  await page.getByRole("button", { name: "Ver", exact: true }).click();
+  await page.getByRole("button", { name: "Buscar horarios", exact: true }).click();
 
   await expect(page.getByText(summaryPattern(longService, stretched))).toBeVisible();
   await expect(page.getByRole("spinbutton", { name: /Duración total/ })).toHaveValue(String(stretched));

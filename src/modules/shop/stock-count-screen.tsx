@@ -52,7 +52,7 @@ export function StockCountsScreen({ counts, locations, error, signedInUserName, 
           {counts.length ? (
             <ul className="divide-y divide-white/10">{counts.map((count) => (
               <li key={count.id}><Link className="flex min-w-0 flex-col gap-2 px-6 py-5 transition hover:bg-white/[0.035] sm:flex-row sm:items-center sm:justify-between" href={`/internal/shop/counts/${count.id}`}>
-                <div className="min-w-0"><p className="break-words font-bold text-white">{count.title}</p><p className="mt-1 text-xs text-zinc-500">{formatDate(count.createdAt)}{count.openedBy ? ` · ${count.openedBy}` : ""}</p></div>
+                <div className="min-w-0"><p className="break-words font-bold text-white">{count.title}</p><p className="mt-1 text-xs text-zinc-400">{formatDate(count.createdAt)}{count.openedBy ? ` · ${count.openedBy}` : ""}</p></div>
                 <div className="flex items-center gap-3"><span className="text-sm text-zinc-400">{count.counted} de {count.lines} contados</span><StatusChip status={count.status} /></div>
               </Link></li>
             ))}</ul>
@@ -139,8 +139,8 @@ function CountLine({ countId, row, open, view }: { countId: string; row: StockCo
     <li className="grid min-w-0 gap-3 px-6 py-5 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
       <div className="min-w-0">
         <p className="break-words font-bold text-white">{row.product.name}</p>
-        <p className="mt-1 break-words font-mono text-xs text-zinc-500">{row.product.sku}{row.product.location ? ` · ${row.product.location}` : ""}</p>
-        <p className="mt-2 text-sm text-zinc-400">Registrado {number(row.expectedStock)} · Reservado {number(row.product.reservedStock)} · {row.countedQuantity === null ? <span className="text-zinc-500">Sin contar</span> : <>Contado <span className="font-bold text-white">{number(row.countedQuantity)}</span></>}{difference ? <span className={difference > 0 ? " font-bold text-apple-300" : " font-bold text-red-300"}> ({difference > 0 ? "+" : ""}{number(difference)})</span> : null}</p>
+        <p className="mt-1 break-words font-mono text-xs text-zinc-400">{row.product.sku}{row.product.location ? ` · ${row.product.location}` : ""}</p>
+        <p className="mt-2 text-sm text-zinc-400">Registrado {number(row.expectedStock)} · Reservado {number(row.product.reservedStock)} · {row.countedQuantity === null ? <span className="text-zinc-400">Sin contar</span> : <>Contado <span className="font-bold text-white">{number(row.countedQuantity)}</span></>}{difference ? <span className={difference > 0 ? " font-bold text-apple-300" : " font-bold text-red-300"}> ({difference > 0 ? "+" : ""}{number(difference)})</span> : null}</p>
         {row.issue === "moved" ? <p className="mt-2 text-sm text-red-300">Se movió durante el conteo (ahora {number(row.product.stock)} registradas). Recontalo antes de aplicar.</p> : null}
         {row.issue === "reserved" ? <p className="mt-2 text-sm text-red-300">Lo contado no cubre las {number(row.product.reservedStock)} unidades reservadas. Revisá las reservas o volvé a contar.</p> : null}
       </div>
@@ -194,7 +194,7 @@ function ScanSearching() {
 }
 
 function StatusChip({ status }: { status: CountStatus }) {
-  const styles = { OPEN: "bg-apple-400/15 text-apple-300", APPLIED: "bg-white/10 text-zinc-300", CANCELLED: "bg-zinc-800 text-zinc-500" }[status];
+  const styles = { OPEN: "bg-apple-400/15 text-apple-300", APPLIED: "bg-white/10 text-zinc-300", CANCELLED: "bg-zinc-800 text-zinc-400" }[status];
   return <span className={`w-fit shrink-0 rounded-full px-3 py-1 text-xs font-bold ${styles}`}>{{ OPEN: "Abierto", APPLIED: "Aplicado", CANCELLED: "Cancelado" }[status]}</span>;
 }
 

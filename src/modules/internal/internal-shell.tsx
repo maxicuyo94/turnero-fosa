@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { PageShell, SiteHeader } from "@/src/components/ui";
+import { PageShell, SiteHeader, TabNav } from "@/src/components/ui";
 import { LinkPendingSpinner } from "@/src/components/pending";
 import { signOutAction } from "@/app/(internal)/internal/actions";
 
@@ -29,16 +29,15 @@ export function InternalShell({ active, signedInUserName, canManageWorkshop = fa
   return (
     <>
       <SiteHeader accountHref="/internal/account" active="internal" linkComponent={Link} onSignOut={signOutAction} userName={signedInUserName} />
-      <PageShell>
-        <nav aria-label="Secciones del panel" className="mb-8 flex min-w-0 gap-2 overflow-x-auto whitespace-nowrap border-b border-white/10">
-          {sections
+      <PageShell compact>
+        <TabNav label="Secciones del panel" variant="primary" linkComponent={Link} className="mb-6" items={sections
             .filter((section) => canManageWorkshop || !section.adminOnly)
-            .map((section) => (
-              <InternalNavLink active={section.id === active} href={hrefs?.[section.id] ?? section.href} key={section.id}>
-                {section.label}
-              </InternalNavLink>
-            ))}
-        </nav>
+            .map((section) => ({
+              active: section.id === active,
+              href: hrefs?.[section.id] ?? section.href,
+              label: section.label,
+              indicator: <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />,
+            }))} />
         {children}
       </PageShell>
     </>
@@ -48,44 +47,18 @@ export function InternalShell({ active, signedInUserName, canManageWorkshop = fa
 /** Secondary tabs inside a section (e.g. Resumen / Inventario in Repuestos). */
 export function InternalSubNav({ label, items }: { label: string; items: { label: string; href: string; active: boolean }[] }) {
   return (
-    <nav aria-label={label} className="mb-8 flex min-w-0 gap-2 overflow-x-auto whitespace-nowrap">
-      {items.map((item) => (
-        <Link
-          aria-current={item.active ? "page" : undefined}
-          className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
-            item.active ? "border-apple-400/60 bg-apple-400/10 text-white" : "border-white/10 text-zinc-400 hover:text-white"
-          }`}
-          href={item.href}
-          key={item.href}
-        >
-          {item.label}
-          <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
-        </Link>
-      ))}
-    </nav>
+    <TabNav label={label} linkComponent={Link} className="mb-6" items={items.map((item) => ({
+      ...item,
+      indicator: <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />,
+    }))} />
   );
 }
 
 /** Contextual "back" link used by detail screens. */
 export function InternalBackLink({ href, children }: { href: string; children: string }) {
   return (
-    <Link className="text-sm font-bold text-zinc-400 hover:text-white" href={href}>
+    <Link className="inline-flex min-h-11 items-center text-sm font-bold text-zinc-400 hover:text-white" href={href}>
       ← {children}
-      <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
-    </Link>
-  );
-}
-
-function InternalNavLink({ active, href, children }: { active: boolean; href: string; children: string }) {
-  return (
-    <Link
-      aria-current={active ? "page" : undefined}
-      className={`border-b-2 px-4 py-3 text-sm font-black transition sm:px-5 ${
-        active ? "border-apple-400 text-white" : "border-transparent text-zinc-500 hover:text-white"
-      }`}
-      href={href}
-    >
-      {children}
       <LinkPendingSpinner className="ml-2 inline h-3.5 w-3.5 align-[-2px]" />
     </Link>
   );

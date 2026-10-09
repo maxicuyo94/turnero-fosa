@@ -10,6 +10,8 @@ import { formatWorkshopCalendarDate } from "@/src/lib/workshop-date";
 import type { InternalWeeklyScheduleRecord } from "@/src/modules/settings/maintenance";
 import { dayOfWeekSchema, type DayOfWeek, type ScheduleDateException } from "@/src/modules/settings/schemas";
 
+import { WeeklyScheduleDay } from "@/src/modules/internal/weekly-schedule-day";
+
 const dayLabels: Record<DayOfWeek, string> = {
   MONDAY: "Lunes",
   TUESDAY: "Martes",
@@ -24,7 +26,7 @@ export function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: strin
   return (
     <Card>
       <h2 className="text-2xl font-black text-white">Horario semanal</h2>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-sm text-zinc-400">
         Se guarda completo: los turnos públicos usan estos valores apenas confirmás los cambios.
       </p>
 
@@ -35,70 +37,22 @@ export function WeeklyScheduleCard({ agendaDate, schedule }: { agendaDate: strin
           const dayBreaks = schedule.breaks.filter((item) => item.dayOfWeek === dayOfWeek);
 
           return (
-            <fieldset className="rounded-xl border border-white/5 bg-charcoal-950 p-4" key={dayOfWeek}>
-              <legend className="px-1 text-sm font-medium text-white">{dayLabels[dayOfWeek]}</legend>
-              <div className="grid gap-3 sm:grid-cols-[auto_1fr_1fr]">
-                <Field className="sm:items-center" label="Abierto">
-                  <input
-                    aria-label={`${dayLabels[dayOfWeek]}: abierto`}
-                    className="h-5 w-5 accent-apple-400"
-                    defaultChecked={day?.isOpen ?? false}
-                    name={`isOpen-${dayOfWeek}`}
-                    type="checkbox"
-                    value="true"
-                  />
-                </Field>
-                <Field label="Abre">
-                  <TextInput
-                    aria-label={`${dayLabels[dayOfWeek]}: abre`}
-                    defaultValue={day?.opensAt ?? "09:00"}
-                    density="sm"
-                    name={`opensAt-${dayOfWeek}`}
-                    type="time"
-                  />
-                </Field>
-                <Field label="Cierra">
-                  <TextInput
-                    aria-label={`${dayLabels[dayOfWeek]}: cierra`}
-                    defaultValue={day?.closesAt ?? "19:00"}
-                    density="sm"
-                    name={`closesAt-${dayOfWeek}`}
-                    type="time"
-                  />
-                </Field>
-              </div>
-
-              <div className="mt-3 grid gap-3">
-                {[...dayBreaks, null].map((scheduleBreak, index) => (
-                  <div className="grid gap-3 sm:grid-cols-2" key={`${dayOfWeek}-break-${index}`}>
-                    <Field label={`Descanso ${index + 1} desde`}>
-                      <TextInput
-                        aria-label={`${dayLabels[dayOfWeek]}: descanso ${index + 1} desde`}
-                        defaultValue={scheduleBreak?.startsAt ?? ""}
-                        density="sm"
-                        name={`break-${dayOfWeek}-${index}-startsAt`}
-                        type="time"
-                      />
-                    </Field>
-                    <Field label={`Descanso ${index + 1} hasta`}>
-                      <TextInput
-                        aria-label={`${dayLabels[dayOfWeek]}: descanso ${index + 1} hasta`}
-                        defaultValue={scheduleBreak?.endsAt ?? ""}
-                        density="sm"
-                        name={`break-${dayOfWeek}-${index}-endsAt`}
-                        type="time"
-                      />
-                    </Field>
-                  </div>
-                ))}
-              </div>
-            </fieldset>
+            <WeeklyScheduleDay
+              breaks={dayBreaks}
+              day={day}
+              dayOfWeek={dayOfWeek}
+              key={JSON.stringify([dayOfWeek, day, dayBreaks])}
+              label={dayLabels[dayOfWeek]}
+            />
           );
         })}
 
-        <SubmitButton className="mt-1 w-fit" size="md">
-          Guardar horarios
-        </SubmitButton>
+        <div className="sticky bottom-3 z-10 mt-1 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/20 bg-charcoal-950 p-3 shadow-xl">
+          <p className="text-sm text-zinc-300">Guardá los cambios de toda la semana.</p>
+          <SubmitButton className="w-fit" size="md">
+            Guardar horarios
+          </SubmitButton>
+        </div>
       </form>
     </Card>
   );
@@ -108,7 +62,7 @@ export function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: str
   return (
     <Card>
       <h2 className="text-2xl font-black text-white">Fechas especiales</h2>
-      <p className="mt-2 text-sm text-zinc-500">
+      <p className="mt-2 text-sm text-zinc-400">
         Feriados y cierres puntuales. Una fecha especial manda sobre el horario semanal.
       </p>
 
@@ -123,7 +77,7 @@ export function DateExceptionsCard({ agendaDate, exceptions }: { agendaDate: str
             >
               <span>
                 <span className="block font-medium text-white">{exception.label ?? "Sin motivo"}</span>
-                <span className="mt-1 block text-xs text-zinc-500">
+                <span className="mt-1 block text-xs text-zinc-400">
                   <span>{formatDisplayDate(exception.date)}</span>
                   {" · "}
                   <span>{exception.isOpen ? `Abre ${exception.opensAt} a ${exception.closesAt}` : "Cerrado"}</span>

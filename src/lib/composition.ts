@@ -17,7 +17,8 @@ import { PrismaWorkshopSettingsRepository } from "@/src/modules/settings/prisma-
 import { getWorkshopNotificationEnv, getWorkshopPaymentEnv, getWorkshopPublicOrigin } from "@/src/modules/settings/runtime-settings";
 import { findWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
 import { findStaffProfile, changeInternalPassword } from "@/src/modules/internal/account-service";
-import { PrismaRateLimitStore, beginBookingAttempt } from "@/src/lib/rate-limit";
+import { PrismaRateLimitStore, beginBookingAttempt, beginRecoveryAttempt } from "@/src/lib/rate-limit";
+import { PrismaCodeRecoveryRepository, getCancellationPaymentSummary } from "@/src/modules/booking/support-repository";
 import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import {
   createInventoryProduct,
@@ -98,6 +99,13 @@ export const stockCounts = bindDb({
 
 export const staffAccount = bindDb({ findStaffProfile, changeInternalPassword });
 export const appointmentDetails = bindDb({ updateAppointmentDetails });
+export const bookingSupport = bindDb({ getCancellationPaymentSummary });
+
+export function codeRecoveryRepository() { return new PrismaCodeRecoveryRepository(db); }
+export function allowCodeRecoveryAttempt(input: { email: string; ip: string | null }) {
+  return beginRecoveryAttempt(new PrismaRateLimitStore(db), input);
+}
+export async function publicEmailDeliveryAvailable() { return (await getWorkshopNotificationEnv(db)) !== null; }
 
 export function vehicleRepository(): PrismaVehicleRepository {
   return new PrismaVehicleRepository(db);

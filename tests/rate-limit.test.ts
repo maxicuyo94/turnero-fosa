@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   beginBookingAttempt,
+  beginRecoveryAttempt,
   beginLoginAttempt,
   bookingRateLimit,
   clientIpFromHeaders,
@@ -11,6 +12,20 @@ import {
   type RateLimitStore,
 } from "@/src/lib/rate-limit";
 import { verifyPasswordAgainstDummy } from "@/src/lib/password";
+
+describe("code recovery budget", () => {
+  it("limits the same normalized email across different addresses without storing it in the key", async () => {
+    const store = new InMemoryRateLimitStore();
+    for (let i = 0; i < 3; i++) expect(await beginRecoveryAttempt(store, { email: " Person@Example.com ", ip: `203.0.113.${i}` })).toBe(true);
+    expect(await beginRecoveryAttempt(store, { email: "person@example.com", ip: "203.0.113.99" })).toBe(false);
+    expect([...store.records.keys()].join()).not.toContain("person@example.com");
+  });
+  it("also limits unknown client addresses and unrelated recipient floods", async () => {
+    const store = new InMemoryRateLimitStore();
+    for (let i = 0; i < 10; i++) expect(await beginRecoveryAttempt(store, { email: `p${i}@example.com`, ip: null })).toBe(true);
+    expect(await beginRecoveryAttempt(store, { email: "another@example.com", ip: null })).toBe(false);
+  });
+});
 
 /** Applies each update one at a time, the way the row lock serializes them in PostgreSQL. */
 class InMemoryRateLimitStore implements RateLimitStore {

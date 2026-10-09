@@ -24,6 +24,7 @@ describe("estado pendiente", () => {
     const { container } = render(<Toggle aria-label="Ocultar Moto" checked pending />);
 
     expect(screen.getByRole("button", { name: "Ocultar Moto" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ocultar Moto" })).toHaveAttribute("aria-pressed", "true");
     expect(container.querySelector("svg.animate-spin")).not.toBeNull();
   });
 });

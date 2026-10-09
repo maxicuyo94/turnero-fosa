@@ -10,3 +10,18 @@ coverage/
 playwright-report/
 test-results/
 *.tsbuildinfo
+
+# Private operational notes and local/generated artifacts are never uploaded.
+*.local.md
+outputs/
+.git/
+.github/
+.claude/
+.design-sync/
+.ds-sync/
+ds-bundle/
+ds-dist/
+*.log
+*.db
+*.sqlite
+*.sqlite3

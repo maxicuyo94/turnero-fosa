@@ -57,6 +57,7 @@ test("importa Excel, informa filas inválidas y bloquea la carga repetida", asyn
   await loginAsFixtureUser(page);
   await page.goto("/internal/shop/inventory");
   const card = page.getByLabel("Importar inventario desde Excel", { exact: true });
+  await page.locator('a[href="#importar"]').first().click();
   const downloadPromise = page.waitForEvent("download");
   await card.getByRole("link", { name: "Descargar plantilla" }).click();
   const download = await downloadPromise;
@@ -95,9 +96,10 @@ test("el personal crea, edita y registra entrada, consumo y ajuste sin recargar"
 
   await loginAsFixtureUser(page);
   await page.goto("/internal/shop/inventory");
-  await expect(page.getByRole("heading", { name: "Repuestos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Inventario", exact: true })).toBeVisible();
 
   const newProduct = page.locator('[aria-label="Nuevo repuesto"]');
+  await page.getByRole("link", { name: "Nuevo repuesto", exact: true }).click();
   await newProduct.getByLabel("Nombre").fill("Pastillas E2E inventario");
   await newProduct.getByLabel("SKU").fill(sku);
   await newProduct.getByLabel("Código de barras").fill(`  ${barcode} `);
@@ -183,6 +185,7 @@ test("permite tres altas consecutivas y refleja búsqueda, filtros y resumen rea
   await loginAsFixtureUser(page);
   await page.goto("/internal/shop/inventory");
   const newProduct = page.locator('[aria-label="Nuevo repuesto"]');
+  await page.getByRole("link", { name: "Nuevo repuesto", exact: true }).click();
   const products = [
     { name: "Rotación E2E 1", stock: "0", location: "ROT-A1" },
     { name: "Rotación E2E 2", stock: "1", location: "ROT-A2" },
@@ -206,6 +209,7 @@ test("permite tres altas consecutivas y refleja búsqueda, filtros y resumen rea
   await expectNoHorizontalOverflow(page);
 
   await page.getByLabel("Buscar repuesto").fill("");
+  await page.getByText("Filtros avanzados", { exact: true }).click();
   await page.getByLabel("Estado").selectOption("low");
   await page.getByRole("button", { name: "Filtrar", exact: true }).click();
   await expect(page.getByText("Rotación E2E 1", { exact: true })).toBeVisible();
@@ -214,7 +218,7 @@ test("permite tres altas consecutivas y refleja búsqueda, filtros y resumen rea
   await expectNoHorizontalOverflow(page);
 
   await page.goto("/internal/shop");
-  await expect(page.getByRole("heading", { name: "Inventario" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Resumen de repuestos" })).toBeVisible();
   const allProducts = await prisma.shopProduct.findMany();
   const summary = page.locator('[aria-label="Resumen de inventario"]');
   const metrics = {

@@ -5,6 +5,8 @@ import {
   getPublicAvailability,
   getPublicAppointmentStatus,
   listPublicServices,
+  findNextPublicAvailability,
+  getPublicCancellationPreview,
   type BookingRepository,
   type PublicAppointmentRecord,
   type PublicServiceRecord,
@@ -18,6 +20,35 @@ const monday = "2026-07-06";
 const now = new Date("2026-07-01T09:00:00-03:00");
 
 describe("public booking services and availability", () => {
+  it("skips a closed date and a fully occupied date to suggest the first free day", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service()], exceptions: [{ date: monday, label: "Cerrado", source: "MANUAL", manualOverride: true, isOpen: false, opensAt: null, closesAt: null }], appointments: [
+      appointment({ id: "one", startAt: "2026-07-07T00:00:00-03:00", endAt: "2026-07-08T00:00:00-03:00" }),
+      appointment({ id: "two", startAt: "2026-07-07T00:00:00-03:00", endAt: "2026-07-08T00:00:00-03:00" }),
+    ] });
+    await expect(findNextPublicAvailability(repository, { serviceId: "oil", fromDate: monday, now })).resolves.toEqual({ date: "2026-07-08", startTime: "09:00" });
+  });
+
+  it("never suggests a date outside the booking window or an invalid duration", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service()] });
+    await expect(findNextPublicAvailability(repository, { serviceId: "oil", fromDate: "2027-01-01", now })).resolves.toBeNull();
+    await expect(findNextPublicAvailability(repository, { serviceId: "oil", fromDate: monday, durationMinutes: 1, now })).resolves.toBeNull();
+  });
+
+  it("respects minimum notice and requested duration when suggesting the first time", async () => {
+    const repository = new InMemoryBookingRepository({ services: [service()] });
+    const result = await findNextPublicAvailability(repository, { serviceId: "oil", fromDate: monday, durationMinutes: 120, now: new Date("2026-07-06T10:30:00-03:00") });
+    expect(result).toEqual({ date: monday, startTime: "15:00" });
+  });
+
+  it("exposes cancellation details only for the correct secret and keeps policy restrictions", async () => {
+    const token = "a".repeat(32);
+    const repository = new InMemoryBookingRepository({ services: [service()], appointments: [appointment({ cancellationToken: token })], settings: { ...workshopSeedConfig.settings, cancellationEnabled: false } });
+    await expect(getPublicCancellationPreview(repository, { appointmentId: "appt", token: "b".repeat(32), now })).resolves.toBeNull();
+    await expect(getPublicCancellationPreview(repository, { appointmentId: "appt", token, now })).resolves.toMatchObject({ canCancel: false, appointment: { publicCode: "TEST234567" } });
+    repository.settings.cancellationEnabled = true;
+    await expect(getPublicCancellationPreview(repository, { appointmentId: "appt", token, now })).resolves.toMatchObject({ canCancel: true });
+    await expect(getPublicCancellationPreview(repository, { appointmentId: "appt", token, now: new Date("2026-07-07T00:00:00-03:00") })).resolves.toMatchObject({ canCancel: false });
+  });
   it("lists only active services in display order", async () => {
     const repository = new InMemoryBookingRepository({
       services: [

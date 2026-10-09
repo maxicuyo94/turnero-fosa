@@ -8,6 +8,18 @@ const services = [
 ];
 
 describe("PublicBookingScreen", () => {
+  it("updates the selection summary without discarding customer details", () => {
+    render(<PublicBookingScreen services={services} selectedServiceId="oil" selectedDate="2026-07-06" selectedDurationMinutes={60} slots={[
+      { startAt: new Date("2026-07-06T09:00:00-03:00"), endAt: new Date("2026-07-06T10:00:00-03:00"), startTime: "09:00", remainingCapacity: 2 },
+      { startAt: new Date("2026-07-06T15:00:00-03:00"), endAt: new Date("2026-07-06T16:00:00-03:00"), startTime: "15:00", remainingCapacity: 1 },
+    ]} />);
+    fireEvent.click(screen.getByRole("radio", { name: /09:00/ }));
+    fireEvent.change(screen.getByLabelText("Nombre y apellido"), { target: { value: "Ada" } });
+    fireEvent.click(screen.getByRole("radio", { name: /15:00/ }));
+    expect(screen.getByText("15:00–16:00 · 60 min")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nombre y apellido")).toHaveValue("Ada");
+    expect(screen.getByRole("radio", { name: /15:00/ })).toBeChecked();
+  });
   it("shows active services, available slots, and the customer booking form", () => {
     render(
       <PublicBookingScreen
@@ -24,6 +36,8 @@ describe("PublicBookingScreen", () => {
     expect(screen.getByRole("option", { name: "Service Esencial - 60 min" })).toBeInTheDocument();
     expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toHaveValue(90);
     expect(screen.getByRole("radio", { name: /09:00/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nombre y apellido")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /09:00/i }));
     expect(screen.getByLabelText("Nombre y apellido")).toBeInTheDocument();
     expect(screen.getByLabelText("Marca")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Solicitar turno" })).toBeInTheDocument();
@@ -42,6 +56,8 @@ describe("PublicBookingScreen", () => {
 
     expect(screen.queryByRole("spinbutton", { name: /Duración total/i })).not.toBeInTheDocument();
     expect(container.querySelector('input[name="durationMinutes"]')).toBeNull();
+    expect(screen.queryByLabelText("Nombre y apellido")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cambiar servicio o fecha" })).toHaveAttribute("href", "#buscar-horarios");
   });
 
   it("resets the duration to the newly selected service duration", () => {
@@ -73,7 +89,7 @@ describe("PublicBookingScreen", () => {
       />,
     );
 
-    expect(screen.getByText("No hay horarios disponibles para este servicio y fecha. Probá con otro día."))
+    expect(screen.getByText("No hay horarios disponibles para este servicio y fecha."))
       .toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   });

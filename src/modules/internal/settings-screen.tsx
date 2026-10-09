@@ -150,8 +150,8 @@ export function VehicleTypesCard({ vehicleTypes }: { vehicleTypes: InternalVehic
   return (
     <Card>
       <h2 className="text-2xl font-black text-white">Tipos de vehículo</h2>
-      <p className="mt-2 text-sm text-zinc-500">
-        Lo que el taller atiende. El toggle controla si se ofrece al reservar; un tipo no se borra, para no
+      <p className="mt-2 text-sm text-zinc-400">
+        Lo que el taller atiende. Activá los tipos que se ofrecen al reservar; un tipo no se borra, para no
         perder el historial de las unidades cargadas con él.
       </p>
       <div className="mt-5 grid gap-3">
@@ -185,7 +185,7 @@ export function ServicesCard({ services, slotStepMinutes }: { services: Internal
   return (
     <Card>
       <h2 className="text-2xl font-black text-white">Catálogo de servicios</h2>
-      <p className="mt-2 text-sm text-zinc-500">El toggle controla la visibilidad pública.</p>
+      <p className="mt-2 text-sm text-zinc-400">Activá los servicios que se ofrecen al reservar. La visibilidad se guarda al cambiar el interruptor.</p>
       <div className="mt-5 grid gap-3">
         {services.map((service) => (
           <div key={service.id} className="rounded-xl border border-white/5 bg-charcoal-950 p-3">
@@ -197,7 +197,7 @@ export function ServicesCard({ services, slotStepMinutes }: { services: Internal
               <input name="isActive" type="hidden" value={service.isActive ? "false" : "true"} />
               <span>
                 <span className="block font-medium text-white">{service.name}</span>
-                <span className="mt-1 block text-xs text-zinc-500">{service.durationMinutes} min</span>
+                <span className="mt-1 block text-xs text-zinc-400">{service.durationMinutes} min</span>
               </span>
               <SubmitToggle
                 aria-label={service.isActive ? `Ocultar ${service.name}` : `Publicar ${service.name}`}

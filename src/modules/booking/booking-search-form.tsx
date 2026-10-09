@@ -36,10 +36,11 @@ export function BookingSearchForm({
   return (
     <Form
       action="/booking"
+      id="buscar-horarios"
       className={
         canEditDuration
-          ? "grid gap-3 md:min-w-[38rem] md:grid-cols-[1fr_9rem_9rem_auto] md:items-end"
-          : "grid gap-3 md:min-w-[29rem] md:grid-cols-[1fr_9rem_auto] md:items-end"
+          ? "grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_9rem_9rem_auto] md:items-end xl:min-w-[38rem]"
+          : "grid min-w-0 gap-3 md:grid-cols-[minmax(0,1fr)_9rem_auto] md:items-end xl:min-w-[29rem]"
       }
     >
       <Field label="Servicio">
@@ -80,7 +81,7 @@ export function BookingSearchForm({
           />
         </Field>
       ) : null}
-      <SubmitButton>Ver</SubmitButton>
+      <SubmitButton>Buscar horarios</SubmitButton>
     </Form>
   );
 }

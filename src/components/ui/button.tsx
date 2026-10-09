@@ -1,12 +1,12 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "./cn";
 import { Spinner } from "./spinner";
 
-export type ButtonVariant = "primary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg";
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  /** `primary` is the lime call-to-action; `ghost` is the low-emphasis outline. */
+export type ButtonProps = ComponentPropsWithRef<"button"> & {
+  /** Primary action, secondary action, quiet outline, or destructive confirmation. */
   variant?: ButtonVariant;
   size?: ButtonSize;
   /** Stretch to the container width on narrow screens. */
@@ -17,19 +17,21 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: "bg-apple-400 text-zinc-950 hover:bg-apple-300",
-  ghost: "border border-white/10 bg-white/[0.04] text-zinc-400 hover:text-white",
+  primary: "bg-action text-action-text enabled:hover:bg-action-hover",
+  secondary: "border border-border-control bg-surface-hover text-text-primary enabled:hover:bg-white/15",
+  ghost: "border border-border-subtle bg-surface-panel text-text-secondary enabled:hover:bg-surface-hover enabled:hover:text-text-primary",
+  danger: "border border-danger/40 bg-danger/10 text-danger enabled:hover:bg-danger/20",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "rounded-lg px-4 py-2 text-sm",
-  md: "rounded-xl px-5 py-3 text-sm",
-  lg: "rounded-2xl px-6 py-3 text-base",
+  sm: "rounded-control px-4 py-2 text-sm",
+  md: "rounded-control px-5 py-3 text-sm",
+  lg: "rounded-action-lg px-6 py-3 text-base",
 };
 
 /**
- * The workshop's action button. Use `primary` for the single main action of a
- * form or card and `ghost` for secondary controls such as sign-out.
+ * One primary action per group; secondary and ghost lower the emphasis.
+ * Danger identifies a destructive confirmation; pending blocks repeated submission.
  */
 export function Button({
   variant = "primary",
@@ -46,7 +48,7 @@ export function Button({
     <button
       aria-busy={pending || undefined}
       className={cn(
-        "inline-flex items-center justify-center gap-2 font-black transition disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-control items-center justify-center gap-2 font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
         pending && "disabled:cursor-wait",
         variantClasses[variant],
         sizeClasses[size],

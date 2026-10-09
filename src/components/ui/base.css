@@ -4,8 +4,8 @@
    every preview card to viewport height. app/globals.css adds it. */
 :root {
   color-scheme: dark;
-  --background: #090d0b;
-  --foreground: #f5f7f2;
+  --background: var(--color-surface-page);
+  --foreground: var(--color-text-primary);
 }
 
 * {
@@ -18,11 +18,27 @@ body {
   margin: 0;
   background:
     radial-gradient(circle at 20% 20%, rgb(142 224 0 / 0.18), transparent 28rem),
-    linear-gradient(135deg, #090d0b 0%, #101611 55%, #172018 100%);
+    linear-gradient(135deg, var(--color-charcoal-950) 0%, var(--color-charcoal-900) 55%, var(--color-charcoal-800) 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 ::selection {
   background: rgb(142 224 0 / 0.35);
+}
+
+@layer base {
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

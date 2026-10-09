@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { createHash } from "node:crypto";
 
 /**
  * Attempt budgets counted in PostgreSQL, so every serverless instance shares them. Each attempt is
@@ -105,6 +106,15 @@ export async function recordLoginSuccess(store: RateLimitStore, keys: string[], 
 /** Counts a public booking submission; without a known address there is nothing to count against. */
 export function beginBookingAttempt(store: RateLimitStore, ip: string | null, now = new Date()): Promise<boolean> {
   return ip ? consumeAttempt(store, [{ key: `booking-ip:${ip}`, policy: bookingRateLimit }], now) : Promise.resolve(true);
+}
+
+/** A recipient budget also prevents mail flooding from several client addresses. */
+export function beginRecoveryAttempt(store: RateLimitStore, input: { email: string; ip: string | null }, now = new Date()): Promise<boolean> {
+  const emailKey = createHash("sha256").update(input.email.trim().toLowerCase()).digest("hex");
+  return consumeAttempt(store, [
+    { key: `recovery-email:${emailKey}`, policy: { windowMinutes: 60, lockMinutes: 60, maxAttempts: 3 } },
+    { key: `recovery-ip:${input.ip ?? "unknown"}`, policy: { windowMinutes: 60, lockMinutes: 60, maxAttempts: 10 } },
+  ], now);
 }
 
 export class PrismaRateLimitStore implements RateLimitStore {

@@ -14,7 +14,7 @@ export function Chip({ className, children }: ChipProps) {
   return (
     <span
       className={cn(
-        "rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-zinc-500",
+        "rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs text-zinc-400",
         className,
       )}
     >

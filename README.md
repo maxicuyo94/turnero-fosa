@@ -414,18 +414,27 @@ Dependabot tracks npm and GitHub Actions updates weekly. An earlier audit record
 
 ## Environment strategy
 
+El sistema de diseño se documenta en [src/components/ui/README.md](src/components/ui/README.md) y su referencia visual para administradores está en `/internal/design-system`. Incluye roles de color compartidos, estados de controles, validación accesible y navegación reutilizable; se genera con `pnpm ds:build`.
+
+La preparación y verificación previa a publicación está documentada en [publicacion.md](publicacion.md). `pnpm release:check --local` comprueba la configuración local sin escribir datos ni mostrar secretos; seleccionar el archivo privado del entorno con `--env=...` para revisar una publicación.
+
 - Production uses the Vercel production variables and the Neon `main` branch.
 - The Vercel `preview` Git branch and Development environment use the isolated Neon `non-production` branch.
 - Vercel deploys run `pnpm vercel-build` (set in [vercel.json](vercel.json)): `prisma migrate deploy`, the preview admin sync, then `next build`, so each Vercel environment applies pending migrations using its own `DATABASE_URL`. A plain `pnpm build` (local, CI) only builds; migrate explicitly with `pnpm db:migrate`. Keep migrations additive: a deploy whose build fails after migrating leaves the database one step ahead of the running code.
 - Preview builds also synchronize the branch-specific admin credentials after migrations; keep the local copy in the Git-ignored `.env.preview.local` file.
 - `ADMIN_USERNAME`, `ADMIN_EMAIL` and `ADMIN_PASSWORD` are scoped in Vercel to the `preview` Git
-  branch, so **preview verification happens by pushing to `preview`**, not from a feature branch. A
+  branch. Git deployments must use `preview`; manual CLI deployments must select that branch's
+  configuration with `--meta githubCommitRef=preview` and then assign its stable Preview alias. A
   Vercel variable filtered to one branch is delivered only to that branch, and
   `sync-preview-admin.ts` throws when any of the three is missing. It runs inside `vercel-build`, so the
   deployment dies before `next build` — while `DATABASE_URL`, which carries no filter, resolves fine
   and the migrations apply, which makes the failure read like a build problem when it is not. That is
   why [vercel.json](vercel.json) (`git.deploymentEnabled`) deploys only `main` and `preview`; other
   branches get no Vercel deployment.
+- On 2026-10-09 the local design improvements were published manually to Preview and Production,
+  without pushing Git branches or running GitHub Actions. Deployment URLs, validation and rollback
+  information are recorded in [publicacion.md](publicacion.md). The remote Git branches do not yet
+  contain these local changes; a later Git deployment must include them to preserve this release.
 - GitHub Actions CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs only on pushes to `main`
   and `preview`, not on pull requests, so a branch is first verified when it reaches `preview`.
 - The `MERCADO_PAGO_*` variables exist only for Preview, scoped to the `preview` Git branch (sandbox credentials). Production has none, so live collection stays off until they are added there.

@@ -4,7 +4,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useTransition, type ReactNode } from "react";
-import { Alert, Card, EmptyState, Field, PageHeading, Select, Spinner, TextInput, Textarea } from "@/src/components/ui";
+import { Alert, Card, Disclosure, EmptyState, Field, PageHeading, Select, Spinner, TextInput, Textarea } from "@/src/components/ui";
 import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
 import {
@@ -77,7 +77,7 @@ export function ShopDashboardScreen({
     <ShopShell active="summary" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
       <PageHeading
         eyebrow="Taller · stock"
-        title="Inventario"
+        title="Resumen de repuestos"
         description="Controlá repuestos, existencias y reposiciones desde un solo lugar."
         action={<Link className="rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 transition hover:bg-apple-300" href="/internal/shop/inventory">Ver inventario</Link>}
       />
@@ -90,7 +90,7 @@ export function ShopDashboardScreen({
       <section className="mt-10 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
         <Card padding="none" className="overflow-hidden">
           <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-            <div><h2 className="font-bold text-white">Últimos repuestos</h2><p className="mt-1 text-sm text-zinc-500">Alta reciente en el inventario.</p></div>
+            <div><h2 className="font-bold text-white">Últimos repuestos</h2><p className="mt-1 text-sm text-zinc-400">Alta reciente en el inventario.</p></div>
             <Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href="/internal/shop/inventory">Ver todos</Link>
           </div>
           {recentProducts.length ? <div className="divide-y divide-white/10">{recentProducts.map((product) => <InventoryRow key={product.id} product={product} />)}</div> : <EmptyState className="m-6">Todavía no hay repuestos cargados. Creá el primero para empezar a controlar el stock.</EmptyState>}
@@ -127,23 +127,53 @@ export function InventoryScreen({
   const filterQuery = inventoryFilterQuery(filters);
   return (
     <ShopShell active="inventory" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
-      <PageHeading eyebrow="Taller · stock" title="Repuestos" description="Buscá por nombre, SKU o código de barras. Las cantidades se actualizan desde cada ficha." action={<a className="rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href="#nuevo">Nuevo repuesto</a>} />
-      <InventoryCodeLookup />
+      <PageHeading eyebrow="Repuestos · stock" title="Inventario" description="Buscá por nombre, SKU o código de barras. Las cantidades se actualizan desde cada ficha." action={<a className="inline-flex min-h-11 items-center rounded-xl bg-apple-400 px-5 py-3 text-sm font-black text-zinc-950 hover:bg-apple-300" href="#nuevo">Nuevo repuesto</a>} />
       <Card className="mt-6" aria-label="Filtros de inventario">
-        <Form action="" className="grid min-w-0 gap-3 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full md:grid-cols-[minmax(0,1fr)_11rem_11rem_11rem_auto]">
+        <Form action="" className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-3 [&_input]:min-w-0 [&_input]:w-full [&_select]:min-w-0 [&_select]:w-full">
           <TextInput aria-label="Buscar repuesto" defaultValue={filters.q} density="sm" name="q" placeholder="Buscar por nombre, SKU o código" />
+          <SubmitButton>Filtrar</SubmitButton>
+          <Disclosure className="col-span-2" title="Filtros avanzados" description="Estado, categoría y ubicación." initiallyOpen={Boolean(filters.status || filters.category || filters.location)}>
+          <div className="grid gap-3 md:grid-cols-3">
+          <Field label="Estado">
           <Select aria-label="Estado" defaultValue={filters.status} density="sm" name="status"><option value="">Todos los estados</option><option value="active">Activos</option><option value="inactive">Inactivos</option><option value="low">En mínimo</option></Select>
+          </Field>
+          <Field label="Categoría">
           <Select aria-label="Categoría" defaultValue={filters.category} density="sm" name="category"><option value="">Todas las categorías</option>{categories.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
+          </Field>
+          <Field label="Ubicación">
           <Select aria-label="Ubicación" defaultValue={filters.location} density="sm" name="location"><option value="">Todas las ubicaciones</option>{locations.map((value) => <option key={value} value={value}>{value}</option>)}</Select>
-          <SubmitButton className="justify-self-start">Filtrar</SubmitButton>
+          </Field>
+          </div>
+          </Disclosure>
         </Form>
       </Card>
       <Card padding="none" className="mt-6 overflow-hidden">
-        <div className="flex items-center justify-between gap-4 px-6 py-5"><div><h2 className="font-bold text-white">Listado</h2><p className="mt-1 text-sm text-zinc-500">{products.length} {products.length === 1 ? "resultado" : "resultados"}</p></div>{products.length ? <Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href={`/internal/shop/inventory/labels${filterQuery ? `?${filterQuery}` : ""}`}>Imprimir etiquetas</Link> : null}</div>
-        {products.length ? <div className="divide-y divide-white/10">{products.map((product) => <InventoryRow key={product.id} product={product} />)}</div> : <EmptyState className="m-6">No encontramos repuestos con esos filtros.</EmptyState>}
+        <div className="flex items-center justify-between gap-4 px-6 py-5"><div><h2 className="font-bold text-white">Listado</h2><p className="mt-1 text-sm text-zinc-400">{products.length} {products.length === 1 ? "resultado" : "resultados"}</p></div>{products.length ? <Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href={`/internal/shop/inventory/labels${filterQuery ? `?${filterQuery}` : ""}`}>Imprimir etiquetas</Link> : null}</div>
+        {products.length ? <div className="divide-y divide-white/10">{products.map((product) => <InventoryRow key={product.id} product={product} />)}</div> : (
+          <EmptyState className="m-6">
+            <p>{filterQuery ? "No encontramos repuestos con esos filtros." : "Todavía no cargaste repuestos."}</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-3">
+              {filterQuery ? <Link className="inline-flex min-h-11 items-center font-bold text-apple-300 underline" href="/internal/shop/inventory">Limpiar filtros</Link> : <>
+                <a className="inline-flex min-h-11 items-center font-bold text-apple-300 underline" href="#nuevo">Crear repuesto</a>
+                <a className="inline-flex min-h-11 items-center font-bold text-apple-300 underline" href="#importar">Importar desde Excel</a>
+              </>}
+            </div>
+          </EmptyState>
+        )}
       </Card>
-      <ExcelImportCard />
-      <NewProductForm initialBarcode={initialBarcode} requestKey={createRequestKey} />
+      <div className="mt-6 flex flex-wrap gap-4">
+        <a className="inline-flex min-h-11 items-center text-sm font-bold text-zinc-300 underline" href="#escanear">Buscar por código o escanear</a>
+        <a className="inline-flex min-h-11 items-center text-sm font-bold text-zinc-300 underline" href="#importar">Importar desde Excel</a>
+      </div>
+      <Disclosure className="mt-4" title="Buscar por código o escanear" description="Abrí una ficha con el lector, la cámara o un código escrito.">
+        <InventoryCodeLookup />
+      </Disclosure>
+      <Disclosure className="mt-4" title="Nuevo repuesto" description="Cargá un producto y su stock inicial." initiallyOpen={Boolean(initialBarcode)}>
+        <NewProductForm initialBarcode={initialBarcode} requestKey={createRequestKey} />
+      </Disclosure>
+      <Disclosure className="mt-4" title="Importar desde Excel" description="Cargá varios repuestos con una planilla.">
+        <ExcelImportCard />
+      </Disclosure>
     </ShopShell>
   );
 }
@@ -152,7 +182,7 @@ function InventoryCodeLookup() {
   const router = useRouter();
   const [searching, startSearch] = useTransition();
   return (
-    <Card className="mt-8" aria-label="Buscar por código">
+    <Card id="escanear" aria-label="Buscar por código">
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:items-start">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Escaneo</p>
@@ -173,7 +203,7 @@ function InventoryCodeLookup() {
 function ExcelImportCard() {
   const [state, action] = useActionState(importInventoryExcelAction, shopInitialActionState);
   return (
-    <Card className="mt-8" aria-label="Importar inventario desde Excel">
+    <Card className="mt-8" id="importar" aria-label="Importar inventario desde Excel">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Carga masiva</p>
@@ -218,7 +248,7 @@ export function InventoryProductScreen({ product, history, historyLimit, movemen
         <MovementForm product={product} requestKey={movementRequestKey} />
       </section>
       <Card padding="none" className="mt-6 overflow-hidden">
-        <div className="flex items-start justify-between gap-5 border-b border-white/10 px-6 py-5"><div><h2 className="font-bold text-white">Historial de movimientos</h2><p className="mt-1 text-sm text-zinc-500">Se muestran los últimos {historyLimit}. El historial no se puede editar ni borrar.</p></div></div>
+        <div className="flex items-start justify-between gap-5 border-b border-white/10 px-6 py-5"><div><h2 className="font-bold text-white">Historial de movimientos</h2><p className="mt-1 text-sm text-zinc-400">Se muestran los últimos {historyLimit}. El historial no se puede editar ni borrar.</p></div></div>
         {history.length ? <ol className="divide-y divide-white/10">{history.map((movement) => <MovementRow key={movement.id} movement={movement} />)}</ol> : <EmptyState className="m-6">No hay movimientos registrados todavía.</EmptyState>}
       </Card>
     </ShopShell>
@@ -243,15 +273,15 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
       {error ? <Alert className="mt-6" tone="danger">{error}</Alert> : null}
       {ambiguous ? (
         <Card padding="none" className="mt-8 overflow-hidden" aria-label="Repuestos con este código">
-          <div className="border-b border-white/10 px-6 py-5"><h2 className="font-bold text-white">Coincidencias</h2><p className="mt-1 text-sm text-zinc-500">Corregí el SKU o el código de barras de la ficha que no corresponda para que el código identifique un solo repuesto.</p></div>
-          <ul className="divide-y divide-white/10">{matches.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
+          <div className="border-b border-white/10 px-6 py-5"><h2 className="font-bold text-white">Coincidencias</h2><p className="mt-1 text-sm text-zinc-400">Corregí el SKU o el código de barras de la ficha que no corresponda para que el código identifique un solo repuesto.</p></div>
+          <ul className="divide-y divide-white/10">{matches.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-400">{product.sku}{product.barcode ? ` · ${product.barcode}` : ""}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
         </Card>
       ) : (
         <>
         {similar.length ? (
           <Card padding="none" className="mt-8 overflow-hidden border-apple-400/40" aria-label="Códigos parecidos">
-            <div className="border-b border-white/10 px-6 py-5"><h2 className="font-bold text-white">¿Es alguno de estos?</h2><p className="mt-1 text-sm text-zinc-500">Tienen un código casi igual al leído. Si es el mismo repuesto, abrí la ficha y corregí el código de barras para que coincida con el impreso.</p></div>
-            <ul className="divide-y divide-white/10">{similar.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">Código guardado: <span className="text-apple-300">{product.barcode}</span> · {product.sku}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
+            <div className="border-b border-white/10 px-6 py-5"><h2 className="font-bold text-white">¿Es alguno de estos?</h2><p className="mt-1 text-sm text-zinc-400">Tienen un código casi igual al leído. Si es el mismo repuesto, abrí la ficha y corregí el código de barras para que coincida con el impreso.</p></div>
+            <ul className="divide-y divide-white/10">{similar.map((product) => <li key={product.id}><Link className="block px-6 py-5 transition hover:bg-white/[0.035]" href={`/internal/shop/inventory/${product.id}`}><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-400">Código guardado: <span className="text-apple-300">{product.barcode}</span> · {product.sku}{product.location ? ` · ${product.location}` : ""}</p></Link></li>)}</ul>
           </Card>
         ) : null}
         <section className="mt-8 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
@@ -272,7 +302,7 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
             {linkCandidates.length ? (
               <ul className="divide-y divide-white/10">{linkCandidates.map((product) => (
                 <li className="flex min-w-0 flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between" key={product.id}>
-                  <div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.location ? ` · ${product.location}` : ""}</p></div>
+                  <div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-400">{product.sku}{product.location ? ` · ${product.location}` : ""}</p></div>
                   <form action={linkInventoryBarcodeAction}>
                     <input name="productId" type="hidden" value={product.id} />
                     <input name="barcode" type="hidden" value={code} />
@@ -352,10 +382,10 @@ function MovementFields({ formAction, product, requestKey, state, values }: { fo
 
 function RequestKey({ initialKey, state }: { initialKey: string; state: ShopActionState }) { return <input type="hidden" name="requestKey" value={state.status === "error" ? state.values?.requestKey ?? initialKey : initialKey} />; }
 function ActionFeedback({ state, successHref, successLabel }: { state: ShopActionState; successHref?: string; successLabel?: string }) { if (state.status === "idle") return null; return <Alert className="mt-5" tone={state.status === "success" ? "success" : "danger"}>{state.message}{successHref && successLabel ? <Link className="ml-2 font-bold underline" href={successHref}>{successLabel}</Link> : null}</Alert>; }
-function Metric({ label, value, note, alert = false }: { label: string; value: number; note: string; alert?: boolean }) { return <Card className={alert ? "border-apple-400/40" : ""}><p className="text-sm text-zinc-400">{label}</p><p className={alert ? "mt-3 text-4xl font-black text-apple-300" : "mt-3 text-4xl font-black text-white"}>{number(value)}</p><p className="mt-2 text-xs text-zinc-500">{note}</p></Card>; }
-function InventoryRow({ product }: { product: InventoryListProduct }) { const available = product.stock - product.reservedStock; const low = available <= product.minimumStock; return <Link className="grid min-w-0 gap-3 px-6 py-5 transition hover:bg-white/[0.035] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center" href={`/internal/shop/inventory/${product.id}`}><div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-500">{product.sku}{product.location ? ` · ${product.location}` : ""}</p><p className="mt-2 text-sm font-semibold text-zinc-300">{formatArs(product.priceCents)}</p></div><div className="text-left sm:text-right"><p className={low ? "font-black text-apple-300" : "font-black text-white"}>{number(available)} disp.</p><p className="mt-1 text-xs text-zinc-500">Físico {number(product.stock)} · Reservado {number(product.reservedStock)}</p></div><StatusChip active={product.isActive} low={low} /></Link>; }
-function MovementRow({ movement }: { movement: InventoryHistoryItem }) { const delta = movement.quantityDelta; const actor = movement.actor?.name ?? movement.actor?.username ?? movement.actor?.email ?? "Sistema"; return <li className="grid min-w-0 gap-3 px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><p className="font-bold text-white">{movementLabel(movement.kind)} <span className={delta >= 0 ? "text-apple-300" : "text-red-300"}>{delta >= 0 ? "+" : ""}{number(delta)}</span></p><p className="mt-1 break-words text-sm text-zinc-400">{movement.reason}{movement.reference ? ` · ${movement.reference}` : ""}</p><p className="mt-2 break-words text-xs text-zinc-600">{formatDate(movement.createdAt)} · {actor}</p></div><p className="text-sm text-zinc-400">{number(movement.stockBefore)} → <span className="font-bold text-white">{number(movement.stockAfter)}</span></p></li>; }
-function StatusChip({ active, low }: { active: boolean; low?: boolean }) { return <span className={low ? "w-fit rounded-full bg-apple-400/15 px-3 py-1 text-xs font-bold text-apple-300" : active ? "w-fit rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-zinc-300" : "w-fit rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-500"}>{low ? "En mínimo" : active ? "Activo" : "Inactivo"}</span>; }
+function Metric({ label, value, note, alert = false }: { label: string; value: number; note: string; alert?: boolean }) { return <Card className={alert ? "border-apple-400/40" : ""}><p className="text-sm text-zinc-400">{label}</p><p className={alert ? "mt-3 text-4xl font-black text-apple-300" : "mt-3 text-4xl font-black text-white"}>{number(value)}</p><p className="mt-2 text-xs text-zinc-400">{note}</p></Card>; }
+function InventoryRow({ product }: { product: InventoryListProduct }) { const available = product.stock - product.reservedStock; const low = available <= product.minimumStock; return <Link className="grid min-w-0 gap-3 px-6 py-5 transition hover:bg-white/[0.035] sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center" href={`/internal/shop/inventory/${product.id}`}><div className="min-w-0"><p className="break-words font-bold text-white">{product.name}</p><p className="mt-1 break-words font-mono text-xs tracking-wide text-zinc-400">{product.sku}{product.location ? ` · ${product.location}` : ""}</p><p className="mt-2 text-sm font-semibold text-zinc-300">{formatArs(product.priceCents)}</p></div><div className="text-left sm:text-right"><p className={low ? "font-black text-apple-300" : "font-black text-white"}>{number(available)} disp.</p><p className="mt-1 text-xs text-zinc-400">Físico {number(product.stock)} · Reservado {number(product.reservedStock)}</p></div><StatusChip active={product.isActive} low={low} /></Link>; }
+function MovementRow({ movement }: { movement: InventoryHistoryItem }) { const delta = movement.quantityDelta; const actor = movement.actor?.name ?? movement.actor?.username ?? movement.actor?.email ?? "Sistema"; return <li className="grid min-w-0 gap-3 px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto_auto]"><div className="min-w-0"><p className="font-bold text-white">{movementLabel(movement.kind)} <span className={delta >= 0 ? "text-apple-300" : "text-red-300"}>{delta >= 0 ? "+" : ""}{number(delta)}</span></p><p className="mt-1 break-words text-sm text-zinc-400">{movement.reason}{movement.reference ? ` · ${movement.reference}` : ""}</p><p className="mt-2 break-words text-xs text-zinc-400">{formatDate(movement.createdAt)} · {actor}</p></div><p className="text-sm text-zinc-400">{number(movement.stockBefore)} → <span className="font-bold text-white">{number(movement.stockAfter)}</span></p></li>; }
+function StatusChip({ active, low }: { active: boolean; low?: boolean }) { return <span className={low ? "w-fit rounded-full bg-apple-400/15 px-3 py-1 text-xs font-bold text-apple-300" : active ? "w-fit rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-zinc-300" : "w-fit rounded-full bg-zinc-800 px-3 py-1 text-xs font-bold text-zinc-400"}>{low ? "En mínimo" : active ? "Activo" : "Inactivo"}</span>; }
 function formatPrice(value?: number) { return value === undefined ? "" : (value / 100).toFixed(2).replace(".", ","); }
 function formatArs(value: number) { return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100); }
 function number(value: number) { return new Intl.NumberFormat("es-AR").format(value); }

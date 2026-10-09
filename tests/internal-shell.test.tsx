@@ -24,6 +24,8 @@ describe("InternalShell", () => {
     ]);
     expect(screen.getByRole("link", { name: "Unidades" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Agenda" })).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Ver sitio público" })).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("link", { name: /^Reservar$/ })).not.toBeInTheDocument();
   });
 
   it("adds Configuración for administrators and honours per-section hrefs", () => {

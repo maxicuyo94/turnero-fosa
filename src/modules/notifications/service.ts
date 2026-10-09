@@ -1,4 +1,4 @@
-export type EmailNotificationEvent = "PUBLIC_BOOKING_CREATED" | "APPOINTMENT_STATUS_CHANGED" | "APPOINTMENT_INTERVAL_CHANGED";
+export type EmailNotificationEvent = "PUBLIC_BOOKING_CREATED" | "APPOINTMENT_STATUS_CHANGED" | "APPOINTMENT_INTERVAL_CHANGED" | "PUBLIC_CODE_RECOVERY";
 
 /**
  * An email a business change owes the customer. Repositories store it in the outbox in the same

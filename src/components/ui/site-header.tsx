@@ -1,5 +1,6 @@
 import { cn } from "./cn";
 import type { LinkComponent } from "./link-component";
+import { Button } from "./button";
 
 export type SiteHeaderSection = "home" | "booking" | "internal";
 
@@ -19,8 +20,7 @@ export type SiteHeaderProps = {
 
 /**
  * Sticky product chrome: the rotated lime mark, the brand wordmark, and the
- * three top-level destinations. Present on every page except the standalone
- * cancellation screen.
+ * top-level destinations, with a separate context for workshop staff.
  */
 export function SiteHeader({
   active,
@@ -38,35 +38,36 @@ export function SiteHeader({
       className={cn("border-b border-white/10 bg-charcoal-950/85 backdrop-blur", className)}
     >
       <div className="mx-auto flex w-full max-w-6xl flex-col items-start gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <Link className="flex items-center gap-3 text-lg font-black text-white" href="/">
+        <Link className="flex min-h-11 items-center gap-3 text-lg font-black text-white" href={active === "internal" ? "/internal" : "/"}>
           <span className="h-6 w-6 rotate-45 rounded-md bg-apple-400" />
-          {brand}
+          <span>{brand}{active === "internal" ? <span className="block text-xs font-normal text-zinc-400">Panel del taller</span> : null}</span>
         </Link>
-        <nav className="flex w-full items-center justify-between gap-2 text-sm text-zinc-300 sm:w-auto sm:justify-start sm:gap-5">
-          <Link className={navClass(active === "home")} href="/">
+        <nav aria-label="Navegación principal" className="flex w-full items-center justify-between gap-2 text-sm text-zinc-300 sm:w-auto sm:justify-start sm:gap-5">
+          {active === "internal" ? (
+            <Link className={navClass(false)} href="/">Ver sitio público</Link>
+          ) : <>
+          <Link aria-current={active === "home" ? "page" : undefined} className={navClass(active === "home")} href="/">
             Inicio
           </Link>
-          <Link className={navClass(active === "booking")} href="/booking">
+          <Link aria-current={active === "booking" ? "page" : undefined} className={navClass(active === "booking")} href="/booking">
             Reservar
           </Link>
-          <Link className={navClass(active === "internal")} href="/internal">
-            Internos
+          <Link className={navClass(false)} href="/internal">
+            Acceso al taller
           </Link>
+          </>}
           {userName && accountHref ? (
-            <Link className="hidden text-zinc-500 transition hover:text-white sm:inline" href={accountHref} title="Mi cuenta">
+            <Link className="hidden min-h-11 items-center text-zinc-400 transition hover:text-white sm:inline-flex" href={accountHref} title="Mi cuenta">
               {userName}
             </Link>
           ) : userName ? (
-            <span className="hidden text-zinc-500 sm:inline">{userName}</span>
+            <span className="hidden text-zinc-400 sm:inline">{userName}</span>
           ) : null}
           {onSignOut ? (
             <form action={onSignOut}>
-              <button
-                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-zinc-400 transition hover:text-white"
-                type="submit"
-              >
+              <Button variant="ghost" type="submit">
                 Salir
-              </button>
+              </Button>
             </form>
           ) : null}
         </nav>
@@ -76,5 +77,5 @@ export function SiteHeader({
 }
 
 function navClass(isActive: boolean): string {
-  return isActive ? "border-b-2 border-apple-400 pb-2 text-white" : "transition hover:text-white";
+  return cn("inline-flex min-h-11 items-center border-b-2 px-1 py-2 transition", isActive ? "border-apple-400 text-white" : "border-transparent hover:text-white");
 }

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { formatWorkshopDateTime, workshopInstant } from "@/src/lib/workshop-date";
+import { formatWorkshopDateTime, workshopDate, workshopInstant } from "@/src/lib/workshop-date";
 import { countsTowardCapacity, type AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { customerSchema, vehicleSchema } from "@/src/modules/customers/schemas";
 import { getAvailableSlots, type AvailableSlot } from "@/src/modules/availability";
@@ -208,6 +208,41 @@ export async function getPublicAppointmentStatus(
       status: appointment.status,
     },
   };
+}
+
+/** One context per search; closed dates need no appointment query. Always revalidated on booking. */
+export async function findNextPublicAvailability(
+  repository: BookingRepository,
+  input: { serviceId: string; fromDate: string; durationMinutes?: number; now: Date },
+): Promise<{ date: string; startTime: string } | null> {
+  if (!calendarDateSchema.safeParse(input.fromDate).success) return null;
+  const [context, service] = await Promise.all([repository.getBookingContext(), repository.findActiveService(input.serviceId)]);
+  if (!service) return null;
+  const durationMinutes = effectiveDurationMinutes(service.durationMinutes, input.durationMinutes, context.settings.slotStepMinutes);
+  if (durationMinutes === null) return null;
+  const today = workshopDate(input.now);
+  const lastDate = workshopDate(new Date(workshopInstant(today).getTime() + context.settings.maximumBookingWindowDays * 86_400_000));
+  for (let date = input.fromDate > today ? input.fromDate : today; date <= lastDate;
+    date = workshopDate(new Date(workshopInstant(date).getTime() + 86_400_000))) {
+    const base = { ...context, date, serviceDurationMinutes: durationMinutes, now: input.now };
+    if (!getAvailableSlots({ ...base, appointments: [] }).length) continue;
+    const appointments = await repository.findAppointmentsForDate(date, { excludeLapsedDepositHolds: true });
+    const first = getAvailableSlots({ ...base, appointments })[0];
+    if (first) return { date, startTime: first.startTime };
+  }
+  return null;
+}
+
+/** The secret link must be validated before exposing even the service or date. */
+export async function getPublicCancellationPreview(
+  repository: BookingRepository,
+  input: { appointmentId: string; token: string; now: Date },
+): Promise<{ appointment: PublicAppointmentRecord; canCancel: boolean } | null> {
+  if (!input.appointmentId || !/^[a-f0-9]{32}$/u.test(input.token)) return null;
+  const appointment = await repository.findCancellableAppointment(input.appointmentId, input.token);
+  if (!appointment) return null;
+  const { settings } = await repository.getBookingContext();
+  return { appointment, canCancel: settings.cancellationEnabled && countsTowardCapacity(appointment.status) && appointment.startAt > input.now };
 }
 
 export async function createPublicBooking(

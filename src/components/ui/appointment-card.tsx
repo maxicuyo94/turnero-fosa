@@ -38,7 +38,7 @@ export function AppointmentCard({
           <p className="text-sm font-semibold text-apple-300">{timeLabel}</p>
           <h3 className="mt-2 text-xl font-black text-white">{customerName}</h3>
           <p className="mt-1 text-sm text-zinc-300">{serviceName}</p>
-          {meta ? <p className="text-sm text-zinc-500">{meta}</p> : null}
+          {meta ? <p className="text-sm text-zinc-400">{meta}</p> : null}
           {notes ? <p className="mt-3 text-sm text-zinc-300">{notes}</p> : null}
           {children}
         </div>

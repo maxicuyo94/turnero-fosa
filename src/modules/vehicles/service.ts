@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AppointmentStatus } from "@/src/modules/appointments/schemas";
 import { normalizeLicensePlate } from "@/src/modules/customers/identity";
 
 export type VehicleSummary = {
@@ -99,7 +100,7 @@ export type VehicleAppointmentEntry = {
   serviceName: string;
   startAt: Date;
   endAt: Date;
-  status: string;
+  status: AppointmentStatus;
   notes: string | null;
 };
 

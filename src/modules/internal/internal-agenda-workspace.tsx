@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import {
   Button,
   Card,
+  Disclosure,
   EmptyState,
   Field,
   Select,
@@ -98,19 +99,7 @@ export function InternalAgendaWorkspace({
 
   return (
     <>
-      <section aria-label="Resumen del día" className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Turnos del día" value={agenda.appointments.length} />
-        <MetricCard label="Pendientes" tone={pending > 0 ? "attention" : "neutral"} value={pending} />
-        <MetricCard label="Confirmados" tone="positive" value={confirmed} />
-        <MetricCard
-          detail={capacity ? `de ${capacity} puestos` : undefined}
-          label="En curso ahora"
-          tone={inProgress > 0 ? "positive" : "neutral"}
-          value={inProgress}
-        />
-      </section>
-
-      <Card className="mt-5 overflow-hidden" padding="none">
+      <Card className="mt-6 overflow-hidden" padding="none">
         <div className="border-b border-white/10 p-5 sm:p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div>
@@ -119,7 +108,7 @@ export function InternalAgendaWorkspace({
                 {mode === "week" ? formatWeekRange(agenda.date) : formatDisplayDate(agenda.date)}
               </h2>
               {selectedDateException ? <DateExceptionNotice exception={selectedDateException} /> : null}
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="mt-1 text-sm text-zinc-400">
                 {visibleAppointments.length === agenda.appointments.length
                   ? `${agenda.appointments.length} turnos programados`
                   : `${visibleAppointments.length} de ${agenda.appointments.length} turnos visibles`}
@@ -142,7 +131,14 @@ export function InternalAgendaWorkspace({
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(11rem,0.7fr)_minmax(11rem,0.8fr)_auto] md:items-end">
+          <section aria-label="Resumen del día" className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <MetricCard label="Turnos del día" value={agenda.appointments.length} />
+            <MetricCard label="Pendientes" tone={pending > 0 ? "attention" : "neutral"} value={pending} />
+            <MetricCard label="Confirmados" tone="positive" value={confirmed} />
+            <MetricCard detail={capacity ? `de ${capacity} puestos` : undefined} label="En curso ahora" tone={inProgress > 0 ? "positive" : "neutral"} value={inProgress} />
+          </section>
+
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
             <Field label="Buscar turno">
               <TextInput
                 aria-label="Buscar por cliente, teléfono, moto o patente"
@@ -153,32 +149,25 @@ export function InternalAgendaWorkspace({
                 value={query}
               />
             </Field>
-            <Field label="Estado">
-              <Select density="sm" onChange={(event) => setStatus(event.target.value as StatusFilter)} value={status}>
-                <option value="ALL">Todos</option>
-                {internalStatusOptions.map((option) => (
-                  <option key={option} value={option}>{capitalizeLabel(statusLabel(option))}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Servicio">
-              <Select density="sm" onChange={(event) => setService(event.target.value)} value={service}>
-                <option value="ALL">Todos</option>
-                {services.map((option) => <option key={option} value={option}>{option}</option>)}
-              </Select>
-            </Field>
-            <Button
-              disabled={!activeFilters}
-              onClick={() => {
-                setQuery("");
-                setStatus("ALL");
-                setService("ALL");
-              }}
-              type="button"
-              variant="ghost"
-            >
-              Limpiar
-            </Button>
+            <Button disabled={!activeFilters} onClick={() => { setQuery(""); setStatus("ALL"); setService("ALL"); }} type="button" variant="ghost">Limpiar</Button>
+            <Disclosure className="col-span-2" title="Filtrar por estado o servicio" initiallyOpen={status !== "ALL" || service !== "ALL"}>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Estado">
+                  <Select density="sm" onChange={(event) => setStatus(event.target.value as StatusFilter)} value={status}>
+                    <option value="ALL">Todos</option>
+                    {internalStatusOptions.map((option) => (
+                      <option key={option} value={option}>{capitalizeLabel(statusLabel(option))}</option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Servicio">
+                  <Select density="sm" onChange={(event) => setService(event.target.value)} value={service}>
+                    <option value="ALL">Todos</option>
+                    {services.map((option) => <option key={option} value={option}>{option}</option>)}
+                  </Select>
+                </Field>
+              </div>
+            </Disclosure>
           </div>
         </div>
 
@@ -224,16 +213,16 @@ function MetricCard({
   tone?: "neutral" | "positive" | "attention";
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 shadow-xl shadow-black/10">
-      <p className="text-sm font-medium text-zinc-500">{label}</p>
-      <div className="mt-3 flex items-end gap-2">
+    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 sm:p-4">
+      <p className="text-xs font-medium text-zinc-400 sm:text-sm">{label}</p>
+      <div className="mt-2 flex flex-wrap items-end gap-2">
         <strong className={cn(
-          "text-3xl font-black",
+          "text-2xl font-black",
           tone === "positive" && "text-apple-300",
           tone === "attention" && "text-amber-300",
           tone === "neutral" && "text-white",
         )}>{value}</strong>
-        {detail ? <span className="pb-1 text-xs text-zinc-600">{detail}</span> : null}
+        {detail ? <span className="pb-1 text-xs text-zinc-400">{detail}</span> : null}
       </div>
     </div>
   );
@@ -242,7 +231,7 @@ function MetricCard({
 function AgendaDateNavigation({ date, today, view }: { date: string; today: string; view: AgendaView }) {
   const unit = view === "week" ? "Semana" : "Día";
   const showsToday = view === "week" ? datesForWeek(date).includes(today) : date === today;
-  const linkClass = "rounded-lg px-3 py-2 text-sm font-black text-zinc-400 transition hover:bg-white/[0.06] hover:text-white";
+  const linkClass = "inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-black text-zinc-400 transition hover:bg-white/[0.06] hover:text-white";
   return (
     <nav aria-label="Navegar fechas" className="flex rounded-xl border border-white/10 bg-black/20 p-1">
       <Link aria-label={`${unit} anterior`} className={linkClass} href={agendaHref({ date: adjacentAgendaDate(date, view, -1), view })}>
@@ -270,8 +259,8 @@ function ViewButton({ active, children, onClick }: { active: boolean; children: 
     <button
       aria-pressed={active}
       className={cn(
-        "rounded-lg px-4 py-2 text-sm font-black transition",
-        active ? "bg-apple-400 text-zinc-950" : "text-zinc-500 hover:text-white",
+        "min-h-11 rounded-lg px-4 py-2 text-sm font-black transition",
+        active ? "bg-apple-400 text-zinc-950" : "text-zinc-400 hover:text-white",
       )}
       onClick={onClick}
       type="button"
@@ -309,16 +298,16 @@ function DayAgenda({
         >
           <div>
             <p className="text-lg font-black text-white">{formatTime(appointment.startAt)}</p>
-            <p className="mt-1 text-xs text-zinc-600">hasta {formatTime(appointment.endAt)}</p>
+            <p className="mt-1 text-xs text-zinc-400">hasta {formatTime(appointment.endAt)}</p>
           </div>
           <div className="min-w-0">
             <p className="truncate font-black text-white">{appointment.customerName}</p>
             <p className="mt-1 truncate text-sm text-zinc-400">{appointment.serviceName}</p>
-            <p className="mt-1 truncate text-xs text-zinc-600">{appointment.vehicleLabel} · {appointment.customerPhone}</p>
+            <p className="mt-1 truncate text-xs text-zinc-400">{appointment.vehicleLabel} · {appointment.customerPhone}</p>
           </div>
           <div className="flex items-center justify-between gap-3 sm:justify-end">
             <StatusBadge status={appointment.status} />
-            <span aria-hidden="true" className="text-xl text-zinc-600">›</span>
+            <span aria-hidden="true" className="text-xl text-zinc-400">›</span>
           </div>
         </button>
       ))}
@@ -340,25 +329,28 @@ function WeekAgenda({
   onSelect: (appointment: InternalAppointmentRecord) => void;
 }) {
   return (
-    <div className="overflow-x-auto">
-      <div className="grid min-w-[62rem] grid-cols-7 divide-x divide-white/5">
+    <div>
+      <div className="grid divide-y divide-white/10 xl:grid-cols-7 xl:divide-x xl:divide-y-0">
       {agendas.map((day) => {
         const appointments = day.appointments.filter(matchesFilters);
         const dateException = exceptionsByDate.get(day.date);
         return (
           <div
             className={cn(
-              "min-h-96 min-w-0 p-3",
+              "min-w-0 p-4 xl:min-h-96 xl:p-3",
               day.date === selectedDate && "bg-apple-400/[0.035]",
               dateException && !dateException.isOpen && "bg-amber-400/[0.035]",
             )}
             key={day.date}
           >
-            <div className="border-b border-white/5 pb-3 text-center">
-              <p className="text-xs font-black uppercase tracking-wider text-zinc-600">{formatWeekday(day.date)}</p>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3 xl:block xl:text-center">
+              <p className="text-sm font-bold text-zinc-300 xl:text-xs xl:uppercase">
+                <span className="xl:hidden">{formatDisplayDate(day.date)}</span>
+                <span className="hidden xl:inline">{formatWeekday(day.date)}</span>
+              </p>
               <Link
                 aria-label={`Ver el día ${formatDisplayDate(day.date)}`}
-                className={cn("mt-1 inline-block rounded-lg px-2 text-xl font-black transition hover:bg-white/[0.06]", day.date === selectedDate ? "text-apple-300" : "text-white")}
+                className={cn("inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2 text-lg font-black transition hover:bg-white/[0.06] xl:mt-1", day.date === selectedDate ? "text-apple-300" : "text-white")}
                 href={agendaHref({ date: day.date, view: "day" })}
               >
                 {day.date.slice(8, 10)}
@@ -373,15 +365,16 @@ function WeekAgenda({
                   onClick={() => onSelect(appointment)}
                   type="button"
                 >
-                  <span className="flex flex-col items-start gap-2">
-                    <span className="text-xs font-black text-apple-300">{formatTime(appointment.startAt)}</span>
-                    <StatusBadge className="px-2 py-1 text-[0.65rem]" status={appointment.status} />
+                  <span className="flex flex-wrap items-center justify-between gap-2 xl:flex-col xl:items-start">
+                    <span className="text-sm font-black text-white">{formatTime(appointment.startAt)}–{formatTime(appointment.endAt)}</span>
+                    <StatusBadge className="px-2 py-1 text-xs" status={appointment.status} />
                   </span>
                   <span className="mt-1 block truncate text-sm font-bold text-white">{appointment.customerName}</span>
-                  <span className="mt-1 block truncate text-[0.7rem] text-zinc-600">{appointment.serviceName}</span>
+                  <span className="mt-1 block truncate text-xs text-zinc-400">{appointment.serviceName}</span>
+                  <span className="mt-1 block truncate text-xs text-zinc-400 xl:hidden">{appointment.vehicleLabel}</span>
                 </button>
               ))}
-              {appointments.length === 0 ? <p className="py-5 text-center text-xs text-zinc-700">Sin turnos</p> : null}
+              {appointments.length === 0 ? <p className="py-2 text-sm text-zinc-400 xl:py-5 xl:text-center xl:text-xs">Sin turnos</p> : null}
             </div>
           </div>
         );
@@ -434,4 +427,3 @@ function formatWeekRange(date: string): string {
 function formatWeekday(date: string): string {
   return formatWorkshopCalendarDate(date, { weekday: "short" }).replace(".", "");
 }
-

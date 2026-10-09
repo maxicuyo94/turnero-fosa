@@ -21,19 +21,21 @@ export function Toggle({ checked, type = "submit", disabled, pending = false, cl
   return (
     <button
       className={cn(
-        "flex h-7 w-12 items-center rounded-full p-1 transition",
-        checked ? "justify-end bg-apple-400" : "justify-start bg-zinc-600",
+        "flex h-11 w-12 shrink-0 items-center rounded-lg transition",
         (disabled || pending) && "cursor-not-allowed opacity-60",
         pending && "cursor-wait",
         className,
       )}
       aria-busy={pending || undefined}
+      aria-pressed={checked}
       disabled={disabled || pending}
       type={type}
       {...rest}
     >
-      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-950 text-apple-300 shadow">
-        {pending ? <Spinner className="h-3.5 w-3.5" /> : null}
+      <span className={cn("flex h-7 w-12 items-center rounded-full p-1", checked ? "justify-end bg-apple-400" : "justify-start bg-zinc-600")}>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-950 text-apple-300 shadow">
+          {pending ? <Spinner className="h-3.5 w-3.5" /> : null}
+        </span>
       </span>
     </button>
   );

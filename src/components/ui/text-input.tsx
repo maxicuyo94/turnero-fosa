@@ -9,7 +9,7 @@ export type TextInputProps = InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export const inputBaseClass =
-  "rounded-lg border border-white/10 bg-zinc-950 text-white outline-none transition focus:border-apple-300";
+  "min-h-control min-w-0 rounded-control border border-border-control bg-surface-control text-base text-text-primary placeholder:text-text-muted transition-colors enabled:hover:border-white/30 focus:border-focus aria-invalid:border-danger aria-invalid:focus:border-danger disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm";
 
 /**
  * The standard text field. Pair with `Field` for a labelled control.

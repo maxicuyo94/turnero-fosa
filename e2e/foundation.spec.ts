@@ -73,6 +73,7 @@ test("agenda navigation moves by day and by week and keeps the chosen view", asy
 
   // The week view travels in the URL, so a step back lands on the same weekday a week earlier.
   await page.getByRole("button", { name: "Semana" }).click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width);
   await expect(page).toHaveURL(/view=week/);
   await page.getByRole("link", { name: "Semana anterior" }).click();
   await expect(page).toHaveURL(/date=2026-07-14.*view=week/);
@@ -209,7 +210,20 @@ test("internal user changes an appointment status", async ({ page }) => {
   await page.goto(`/internal?date=${internalE2EDate}`);
   await expect(page.getByText("Internal E2E Rider")).toBeVisible();
 
-  await page.getByRole("button", { name: /Internal E2E Rider/ }).click();
+  const opener = page.getByRole("button", { name: /Internal E2E Rider/ });
+  await opener.press("Enter");
+  const detail = page.getByRole("dialog", { name: "Detalle del turno" });
+  const close = detail.getByRole("button", { name: "Cerrar detalle" });
+  await expect(close).toBeFocused();
+  await close.press("Shift+Tab");
+  await expect.poll(() => detail.evaluate((dialog) => dialog.contains(document.activeElement))).toBe(true);
+  await expect(detail.locator("summary").filter({ hasText: "Reprogramar turno" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(close).toBeFocused();
+  await close.press("Escape");
+  await expect(detail).not.toBeVisible();
+  await expect(opener).toBeFocused();
+  await opener.press("Enter");
   await page.getByLabel("Cambiar estado").selectOption("IN_PROGRESS");
   await page.getByRole("button", { name: "Actualizar estado" }).click();
 
@@ -242,6 +256,7 @@ test("internal user copies the code and corrects contact details with history", 
   await expect(page.getByRole("link", { name: "Llamar" })).toHaveAttribute("href", "tel:+5491199999999");
   await expect(page.getByRole("link", { name: "Abrir WhatsApp" })).toHaveAttribute("href", "https://wa.me/5491199999999");
 
+  await page.getByText("Corregir contacto y notas", { exact: true }).click();
   await page.getByLabel("Nombre del cliente").fill("Internal E2E Corregido");
   await page.getByLabel("Teléfono del cliente").fill("+54 9 11 8888-7777");
   await page.getByLabel("Email del cliente").fill("e2e-contact@example.invalid");
@@ -252,7 +267,7 @@ test("internal user copies the code and corrects contact details with history", 
   await page.getByRole("button", { name: /Internal E2E Corregido/ }).click();
   await expect(page.getByRole("link", { name: "Llamar" })).toHaveAttribute("href", "tel:+5491188887777");
   await expect(page.getByRole("link", { name: "Abrir WhatsApp" })).toHaveAttribute("href", "https://wa.me/5491188887777");
-  await expect(page.getByRole("heading", { name: "Historial de contacto y notas" })).toBeVisible();
+  await page.getByText("Historial de contacto y notas", { exact: true }).click();
   await expect(page.getByRole("listitem").filter({ hasText: "Sin dato → Llamar antes de recibir la moto." })).toBeVisible();
 
   const updated = await prisma.appointment.findUniqueOrThrow({
@@ -284,6 +299,7 @@ test("booking ignores injected payment and cancellation links and displays the s
 test("internal user safely reschedules an appointment", async ({ page }) => {
   test.slow();
   const appointmentId = await seedInternalE2EAppointment();
+  const targetDate = await findNextPublicBookingDate();
 
   await ensureE2EAdminUser();
   await page.goto("/internal/login");
@@ -296,15 +312,16 @@ test("internal user safely reschedules an appointment", async ({ page }) => {
 
   await expect(page.getByText("Internal E2E Rider")).toBeVisible();
   await page.getByRole("button", { name: /Internal E2E Rider/ }).click();
-  await page.getByLabel("Nueva fecha").fill("2026-07-22");
+  await page.getByText("Reprogramar turno", { exact: true }).click();
+  await page.getByLabel("Nueva fecha").fill(targetDate);
   await page.getByLabel(/Duración total/).fill("60");
   await expect(page.getByLabel(/Horario disponible/)).toBeEnabled();
   await page.getByLabel(/Horario disponible/).selectOption("10:00");
-  await expect(page.getByText("Intervalo final:")).toContainText("2026-07-22 · 10:00–11:00");
+  await expect(page.getByText("Intervalo final:")).toContainText(`${targetDate} · 10:00–11:00`);
   await page.getByLabel(/Motivo del cambio/).fill("Prueba E2E de reprogramacion.");
   await page.getByRole("button", { name: "Guardar reprogramación" }).click();
 
-  await expect(page).toHaveURL(/date=2026-07-22/);
+  await expect(page).toHaveURL(new RegExp(`date=${targetDate}`));
   await expect(page.getByText("El turno fue reprogramado correctamente.")).toBeVisible();
   await expect(page.getByRole("button", { name: /10:00.*Internal E2E Rider/ })).toBeVisible();
   await expect.poll(async () => {
@@ -318,8 +335,8 @@ test("internal user safely reschedules an appointment", async ({ page }) => {
       historyCount: appointment?.intervalHistory.length,
     };
   }).toEqual({
-    startAt: new Date("2026-07-22T10:00:00-03:00").toISOString(),
-    endAt: new Date("2026-07-22T11:00:00-03:00").toISOString(),
+    startAt: new Date(`${targetDate}T10:00:00-03:00`).toISOString(),
+    endAt: new Date(`${targetDate}T11:00:00-03:00`).toISOString(),
     historyCount: 1,
   });
 });

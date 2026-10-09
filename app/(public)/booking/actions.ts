@@ -8,6 +8,9 @@ import {
   deliverOutboxEmailsAfterResponse,
   depositCheckout,
   publicAppOrigin,
+  allowCodeRecoveryAttempt,
+  codeRecoveryRepository,
+  publicEmailDeliveryAvailable,
 } from "@/src/lib/composition";
 import { clientIpFromHeaders } from "@/src/lib/rate-limit";
 import { formOptionalNumber, formOptionalString, formString } from "@/src/lib/form-data";
@@ -15,6 +18,24 @@ import { getStaffMember } from "@/src/lib/staff-access";
 import { bookingOutcomeQuery, type BookingResultCode, type PaymentIssueCode } from "@/src/modules/booking/booking-outcome";
 import { cancelPublicAppointment, createPublicBooking } from "@/src/modules/booking/service";
 import { initiateAppointmentDeposit } from "@/src/modules/payments/service";
+import { recoverPublicCodes, recoveryEmailSchema, recoveryResponse } from "@/src/modules/booking/code-recovery";
+import type { RecoveryState } from "@/src/modules/booking/code-recovery-form";
+
+export async function recoverCodesAction(_state: RecoveryState, formData: FormData): Promise<RecoveryState> {
+  const parsed = recoveryEmailSchema.safeParse(formString(formData, "email"));
+  if (!parsed.success) return { error: true, message: "Ingresá un email válido." };
+  try {
+    if (!(await allowCodeRecoveryAttempt({ email: parsed.data, ip: clientIpFromHeaders(await headers()) }))) {
+      return { error: true, message: "Alcanzaste el límite de solicitudes. Probá dentro de una hora o comunicate con el taller." };
+    }
+    if (!(await publicEmailDeliveryAvailable())) return { error: true, message: "El envío de emails no está disponible por ahora. Comunicate con el taller para recuperar tu código." };
+    const queued = await recoverPublicCodes(codeRecoveryRepository(), { email: parsed.data, publicOrigin: await publicAppOrigin(), now: new Date() });
+    if (queued) deliverOutboxEmailsAfterResponse();
+    return { message: recoveryResponse };
+  } catch {
+    return { error: true, message: "No pudimos procesar la solicitud. Probá más tarde o comunicate con el taller." };
+  }
+}
 
 export async function createAppointmentAction(formData: FormData) {
   // La duración total la define el servicio, salvo que reserve alguien del taller.

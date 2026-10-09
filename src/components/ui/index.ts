@@ -5,6 +5,7 @@ export { Card, type CardPadding, type CardProps } from "./card";
 export { Chip, type ChipProps } from "./chip";
 export { CodeDisplay, type CodeDisplayProps } from "./code-display";
 export { DetailList, type DetailListItem, type DetailListProps } from "./detail-list";
+export { Disclosure, type DisclosureProps } from "./disclosure";
 export { EmptyState, type EmptyStateProps } from "./empty-state";
 export { Field, type FieldProps } from "./field";
 export { PageHeading, type PageHeadingProps, type PageHeadingSize } from "./page-heading";
@@ -23,6 +24,7 @@ export {
 export { TextInput, type TextInputProps } from "./text-input";
 export { Textarea, type TextareaProps } from "./textarea";
 export { Toggle, type ToggleProps } from "./toggle";
+export { TabNav, type TabNavProps, type TabNavItem } from "./tab-nav";
 
 export { cn } from "./cn";
 export type { LinkComponent, NavLinkProps } from "./link-component";

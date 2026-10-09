@@ -160,7 +160,7 @@ export function BarcodeScanner({ onDetected }: { onDetected: (code: string) => v
       </p>
       {state.kind === "scanning" && controls.zoom ? (
         <label className="grid gap-2 text-sm text-zinc-300">
-          <span>Zoom <span className="text-zinc-500">{controls.zoom.value.toFixed(1)}×</span></span>
+          <span>Zoom <span className="text-zinc-400">{controls.zoom.value.toFixed(1)}×</span></span>
           <input
             className="w-full accent-[#8EE000]"
             max={controls.zoom.max}

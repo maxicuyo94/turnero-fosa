@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/app/(internal)/internal/actions", () => ({
@@ -23,6 +23,21 @@ import { SettingsShell } from "@/src/modules/internal/settings-screen";
 import { workshopSeedConfig } from "@/src/modules/settings/defaults";
 
 describe("Configuración", () => {
+  it("submits edited and collapsed weekdays together", () => {
+    const { container } = render(<WeeklyScheduleCard agendaDate="2026-07-06" schedule={{ schedules: workshopSeedConfig.schedules, breaks: workshopSeedConfig.breaks }} />);
+    const monday = screen.getByLabelText("Lunes: abre").closest("details")!;
+    fireEvent.click(monday.querySelector("summary")!);
+    fireEvent.change(screen.getByLabelText("Lunes: abre"), { target: { value: "10:00" } });
+    fireEvent.change(screen.getByLabelText("Lunes: descanso 1 desde"), { target: { value: "13:30" } });
+    fireEvent.click(monday.querySelector("summary")!);
+    expect(monday).not.toHaveAttribute("open");
+    expect(monday.querySelector("summary")).toHaveTextContent("10:00–19:00 · descanso 13:30–15:00");
+    const data = new FormData(container.querySelector("form")!);
+    expect(data.get("opensAt-MONDAY")).toBe("10:00");
+    expect(data.get("break-MONDAY-0-startsAt")).toBe("13:30");
+    expect(data.get("opensAt-TUESDAY")).toBe("09:00");
+    expect([...data.keys()].filter((name) => name.startsWith("opensAt-"))).toHaveLength(7);
+  });
   it("renders editable opening hours and breaks for every weekday", () => {
     render(
       <WeeklyScheduleCard

@@ -31,14 +31,14 @@ export function VehicleListScreen({ vehicles, query, signedInUserName, canManage
           </Field>
           <SubmitButton size="sm" variant="ghost">Buscar</SubmitButton>
           {query ? (
-            <Link className="text-sm text-zinc-500 underline" href="/internal/vehicles">Limpiar</Link>
+            <Link className="text-sm text-zinc-400 underline" href="/internal/vehicles">Limpiar</Link>
           ) : null}
         </Form>
       </Card>
 
       <Card className="mt-6">
         {truncated ? (
-          <p className="mb-4 text-sm text-zinc-500">Se muestran las {vehicles.length} unidades más recientes. Buscá para encontrar las demás.</p>
+          <p className="mb-4 text-sm text-zinc-400">Se muestran las {vehicles.length} unidades más recientes. Buscá para encontrar las demás.</p>
         ) : null}
         {vehicles.length === 0 ? (
           <EmptyState>
@@ -56,11 +56,11 @@ export function VehicleListScreen({ vehicles, query, signedInUserName, canManage
                     <span className="block truncate font-black text-white">
                       {vehicle.brand} {vehicle.model}
                     </span>
-                    <span className="mt-1 block truncate text-xs text-zinc-500">
+                    <span className="mt-1 block truncate text-xs text-zinc-400">
                       {vehicle.licensePlate ?? "Sin patente"} · {vehicle.typeName} · {vehicle.ownerName}
                     </span>
                   </span>
-                  <span className="text-right text-xs text-zinc-500">
+                  <span className="text-right text-xs text-zinc-400">
                     <span className="block text-white">{vehicle.appointmentCount} turnos</span>
                     <span className="mt-1 block">
                       {vehicle.lastVisitAt ? `Ultimo: ${formatDate(vehicle.lastVisitAt)}` : "Sin visitas"}

@@ -1,58 +1,20 @@
 import { cancelAppointmentAction } from "@/app/(public)/booking/actions";
-import { Alert, Card, PageHeading, PageShell, type AlertTone } from "@/src/components/ui";
-import { SubmitButton } from "@/src/components/pending";
+import { bookingRepository, bookingSupport, workshopContactSettings } from "@/src/lib/composition";
+import { getPublicCancellationPreview } from "@/src/modules/booking/service";
+import { CancellationScreen } from "@/src/modules/booking/cancellation-screen";
 
-const cancellationOutcomes: Record<string, { tone: AlertTone; message: string } | undefined> = {
-  cancelled: { tone: "success", message: "Tu turno fue cancelado." },
-  unavailable: {
-    tone: "danger",
-    message: "Este turno no se puede cancelar online. Puede que ya haya pasado, que ya esté cancelado o que el enlace no sea válido. Comunicate con el taller.",
-  },
-};
-
-type CancellationPageProps = {
+export default async function CancellationPage({ searchParams }: {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
-};
-
-export default async function CancellationPage({ searchParams }: CancellationPageProps) {
+}) {
   const params = (await searchParams) ?? {};
   const appointmentId = stringParam(params.appointmentId) ?? "";
   const token = stringParam(params.token) ?? "";
-  const outcome = cancellationOutcomes[stringParam(params.result) ?? ""];
-
-  return (
-    <PageShell centered width="md">
-      <PageHeading
-        description="Podes cancelar este turno online si la politica del taller lo permite. La reprogramación online no está disponible por ahora."
-        eyebrow="Taller Express"
-        title="Cancelar turno"
-      />
-      {outcome ? (
-        <Alert className="mt-6" tone={outcome.tone}>
-          {outcome.message}
-        </Alert>
-      ) : null}
-      {appointmentId && token ? (
-        <Card className="mt-8" padding="sm">
-          <form action={cancelAppointmentAction}>
-            <input type="hidden" name="appointmentId" value={appointmentId} />
-            <input type="hidden" name="token" value={token} />
-            <SubmitButton size="lg">
-              Confirmar cancelación
-            </SubmitButton>
-          </form>
-        </Card>
-      ) : null}
-      <a
-        className="mt-8 text-sm font-semibold text-apple-300 underline-offset-4 hover:underline"
-        href="/booking"
-      >
-        Volver a turnos
-      </a>
-    </PageShell>
-  );
+  const preview = await getPublicCancellationPreview(bookingRepository(), { appointmentId, token, now: new Date() });
+  const [settings, payment] = await Promise.all([
+    workshopContactSettings(),
+    preview ? bookingSupport.getCancellationPaymentSummary(preview.appointment.id) : null,
+  ]);
+  return <CancellationScreen preview={preview} token={token} payment={payment} refundPolicy={settings.depositRefundPolicy} result={stringParam(params.result)} action={cancelAppointmentAction} />;
 }
 
-function stringParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
+function stringParam(value: string | string[] | undefined): string | undefined { return Array.isArray(value) ? value[0] : value; }

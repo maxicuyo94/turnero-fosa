@@ -8,7 +8,7 @@ import {
   updateAppointmentDetailsAction,
   updateAppointmentStatusAction,
 } from "@/app/(internal)/internal/actions";
-import { Button, Field, Select, Spinner, StatusBadge, Textarea, TextInput } from "@/src/components/ui";
+import { Button, Disclosure, Field, Select, Spinner, StatusBadge, Textarea, TextInput } from "@/src/components/ui";
 import { SubmitButton } from "@/src/components/pending";
 import { capitalizeLabel, formatWorkshopDateTime, workshopDate, workshopTime } from "@/src/lib/workshop-date";
 import type { AgendaView } from "@/src/modules/appointments/agenda-navigation";
@@ -45,8 +45,26 @@ export function AppointmentDrawer({
   ]);
   const [previewMessage, setPreviewMessage] = useState<string | null>(null);
   const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [showReschedule, setShowReschedule] = useState(false);
   const [isPreviewPending, startPreviewTransition] = useTransition();
   const previewRequest = useRef(0);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    dialog.showModal();
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
 
   const refreshAvailability = useCallback(() => {
     if (!/^\d{4}-\d{2}-\d{2}$/u.test(targetDate) || !Number.isInteger(duration) || duration <= 0) {
@@ -83,34 +101,71 @@ export function AppointmentDrawer({
   }, [appointment.id, duration, targetDate]);
 
   useEffect(() => {
+    if (!showReschedule) return;
     const timeout = window.setTimeout(refreshAvailability, 150);
     return () => window.clearTimeout(timeout);
-  }, [refreshAvailability]);
+  }, [refreshAvailability, showReschedule]);
 
   const selectedSlot = availableSlots.find((slot) => slot.startTime === startTime);
   const links = contactLinks(appointment.customerPhone);
 
   return (
-    <div aria-label="Detalle del turno" aria-modal="true" className="fixed inset-0 z-50 flex justify-end" role="dialog">
-      <button aria-label="Cerrar detalle" className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} type="button" />
+    <dialog
+      aria-label="Detalle del turno"
+      aria-modal="true"
+      className="fixed inset-0 m-0 flex h-dvh max-h-none w-full max-w-none justify-end border-0 bg-transparent p-0 text-inherit backdrop:bg-black/70 backdrop:backdrop-blur-sm [&:not([open])]:hidden"
+      onCancel={(event) => { event.preventDefault(); onClose(); }}
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+          "button, a[href], input, select, textarea, summary, [tabindex]",
+        )).filter((element) => element.tabIndex >= 0 && !element.matches(":disabled") && !element.closest("details:not([open]) > :not(summary)") && element.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }}
+      ref={dialogRef}
+    >
+      <button aria-hidden="true" className="absolute inset-0" onClick={onClose} tabIndex={-1} type="button" />
       <aside className="relative h-full w-full max-w-lg overflow-y-auto border-l border-white/10 bg-charcoal-950 p-5 shadow-2xl sm:p-7">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-apple-300">Detalle del turno</p>
             <h2 className="mt-2 text-2xl font-black text-white">{appointment.customerName}</h2>
           </div>
-          <Button aria-label="Cerrar detalle" onClick={onClose} type="button" variant="ghost">Cerrar</Button>
+          <Button aria-label="Cerrar detalle" onClick={onClose} ref={closeButtonRef} type="button" variant="ghost">Cerrar</Button>
         </div>
 
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-xl font-black text-white">{formatTime(appointment.startAt)}–{formatTime(appointment.endAt)}</p>
-              <p className="mt-1 text-sm text-zinc-500">{appointment.serviceName}</p>
+              <p className="mt-1 text-sm text-zinc-400">{appointment.serviceName}</p>
             </div>
             <StatusBadge status={appointment.status} />
           </div>
         </div>
+
+        <form action={updateAppointmentStatusAction} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+          <h3 className="mb-4 text-sm font-black text-white">Estado del trabajo</h3>
+          <input name="appointmentId" type="hidden" value={appointment.id} />
+          <input name="date" type="hidden" value={appointmentDate || agendaDate} />
+          <input name="view" type="hidden" value={agendaView} />
+          <Field label="Cambiar estado">
+            <Select defaultValue={appointment.status} density="sm" name="nextStatus">
+              {statusOptionsFor(appointment.status).map((option) => (
+                <option key={option} value={option}>{capitalizeLabel(statusLabel(option))}</option>
+              ))}
+            </Select>
+          </Field>
+          <SubmitButton className="mt-4" disabled={isTerminalStatus(appointment.status)} size="md">Actualizar estado</SubmitButton>
+        </form>
 
         <dl className="mt-6 grid gap-4 rounded-2xl border border-white/10 p-5 sm:grid-cols-2">
           <Detail className="sm:col-span-2" label="Código público" value={appointment.publicCode} />
@@ -122,7 +177,7 @@ export function AppointmentDrawer({
           <div className="sm:col-span-2">
             <Detail label="Vehículo / patente" value={appointment.vehicleLabel} />
             <Link
-              className="mt-1 inline-block text-sm text-lime-300 underline"
+              className="mt-1 inline-block text-sm text-apple-300 underline"
               href={`/internal/vehicles/${appointment.vehicleId}`}
             >
               Ver historial de la unidad
@@ -153,28 +208,28 @@ export function AppointmentDrawer({
         </div>
         {copyMessage ? <p className="mt-2 text-xs text-zinc-300" role="status">{copyMessage}</p> : null}
 
-        <form action={updateAppointmentDetailsAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-          <h3 className="text-sm font-black text-white">Corregir contacto y notas</h3>
-          <p className="mt-1 text-xs text-zinc-500">El contacto pertenece al cliente y se actualizará en todos sus turnos. Las notas pertenecen solo a este turno. Para WhatsApp, guardá el teléfono con código de país.</p>
-          <input name="appointmentId" type="hidden" value={appointment.id} />
-          <input name="date" type="hidden" value={agendaDate} />
-          <input name="view" type="hidden" value={agendaView} />
-          <input name="expectedCustomerUpdatedAt" type="hidden" value={appointment.customerUpdatedAt.toISOString()} />
-          <input name="expectedAppointmentUpdatedAt" type="hidden" value={appointment.updatedAt.toISOString()} />
-          <input name="expectedCustomerDetailVersion" type="hidden" value={appointment.customerDetailVersion} />
-          <input name="expectedAppointmentDetailVersion" type="hidden" value={appointment.detailVersion} />
-          <div className="mt-4 grid gap-4">
-            <Field label="Nombre del cliente"><TextInput defaultValue={appointment.customerName} maxLength={120} name="fullName" required /></Field>
-            <Field label="Teléfono del cliente"><TextInput defaultValue={appointment.customerPhone} inputMode="tel" maxLength={40} name="phone" required type="tel" /></Field>
-            <Field label="Email del cliente"><TextInput defaultValue={appointment.customerEmail ?? ""} maxLength={254} name="email" type="email" /></Field>
-            <Field label="Notas del turno"><Textarea defaultValue={appointment.notes ?? ""} maxLength={2000} name="notes" /></Field>
-          </div>
-          <SubmitButton className="mt-4" size="md">Guardar contacto y notas</SubmitButton>
-        </form>
+        <Disclosure className="mt-4" title="Corregir contacto y notas">
+          <form action={updateAppointmentDetailsAction}>
+            <p className="mt-1 text-xs text-zinc-400">El contacto pertenece al cliente y se actualizará en todos sus turnos. Las notas pertenecen solo a este turno. Para WhatsApp, guardá el teléfono con código de país.</p>
+            <input name="appointmentId" type="hidden" value={appointment.id} />
+            <input name="date" type="hidden" value={agendaDate} />
+            <input name="view" type="hidden" value={agendaView} />
+            <input name="expectedCustomerUpdatedAt" type="hidden" value={appointment.customerUpdatedAt.toISOString()} />
+            <input name="expectedAppointmentUpdatedAt" type="hidden" value={appointment.updatedAt.toISOString()} />
+            <input name="expectedCustomerDetailVersion" type="hidden" value={appointment.customerDetailVersion} />
+            <input name="expectedAppointmentDetailVersion" type="hidden" value={appointment.detailVersion} />
+            <div className="mt-4 grid gap-4">
+              <Field label="Nombre del cliente"><TextInput defaultValue={appointment.customerName} maxLength={120} name="fullName" required /></Field>
+              <Field label="Teléfono del cliente"><TextInput defaultValue={appointment.customerPhone} inputMode="tel" maxLength={40} name="phone" required type="tel" /></Field>
+              <Field label="Email del cliente"><TextInput defaultValue={appointment.customerEmail ?? ""} maxLength={254} name="email" type="email" /></Field>
+              <Field label="Notas del turno"><Textarea defaultValue={appointment.notes ?? ""} maxLength={2000} name="notes" /></Field>
+            </div>
+            <SubmitButton className="mt-4" size="md">Guardar contacto y notas</SubmitButton>
+          </form>
+        </Disclosure>
 
         {appointment.detailHistory.length > 0 ? (
-          <section className="mt-4 rounded-2xl border border-white/10 p-5">
-            <h3 className="text-sm font-black text-white">Historial de contacto y notas</h3>
+          <Disclosure className="mt-4" title="Historial de contacto y notas">
             <ol className="mt-4 grid gap-4">
               {appointment.detailHistory.map((item) => (
                 <li className="border-l-2 border-apple-400/30 pl-3 text-xs text-zinc-400" key={item.id}>
@@ -185,99 +240,88 @@ export function AppointmentDrawer({
                 </li>
               ))}
             </ol>
-          </section>
+          </Disclosure>
         ) : null}
 
-        <form action={updateAppointmentStatusAction} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-          <input name="appointmentId" type="hidden" value={appointment.id} />
-          <input name="date" type="hidden" value={appointmentDate || agendaDate} />
-          <input name="view" type="hidden" value={agendaView} />
-          <Field label="Cambiar estado">
-            <Select defaultValue={appointment.status} density="sm" name="nextStatus">
-              {statusOptionsFor(appointment.status).map((option) => (
-                <option key={option} value={option}>{capitalizeLabel(statusLabel(option))}</option>
-              ))}
-            </Select>
-          </Field>
-          <SubmitButton className="mt-4" disabled={isTerminalStatus(appointment.status)} size="md">Actualizar estado</SubmitButton>
-        </form>
 
-        <form action={rescheduleAppointmentAction} className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-5">
-          <input name="appointmentId" type="hidden" value={appointment.id} />
-          <input name="agendaDate" type="hidden" value={agendaDate} />
-          <input name="view" type="hidden" value={agendaView} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nueva fecha">
+
+        <Disclosure className="mt-4" title="Reprogramar turno" description="Elegí otra fecha, duración u horario." onToggle={(event) => setShowReschedule(event.currentTarget.open)}>
+          <form action={rescheduleAppointmentAction}>
+            <input name="appointmentId" type="hidden" value={appointment.id} />
+            <input name="agendaDate" type="hidden" value={agendaDate} />
+            <input name="view" type="hidden" value={agendaView} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Nueva fecha">
+                <TextInput
+                  disabled={isTerminalStatus(appointment.status)}
+                  name="targetDate"
+                  onChange={(event) => setTargetDate(event.target.value)}
+                  type="date"
+                  value={targetDate}
+                />
+              </Field>
+              <Field hint={isPreviewPending ? <span className="inline-flex items-center gap-1"><Spinner className="h-3 w-3" />consultando…</span> : undefined} label="Horario disponible">
+                <Select
+                  disabled={isTerminalStatus(appointment.status) || isPreviewPending || availableSlots.length === 0}
+                  name="startTime"
+                  onChange={(event) => setStartTime(event.target.value)}
+                  value={startTime}
+                >
+                  {availableSlots.map((slot) => (
+                    <option key={slot.startTime} value={slot.startTime}>
+                      {slot.startTime}–{slot.endTime} · {slot.remainingCapacity} lugar{slot.remainingCapacity === 1 ? "" : "es"}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <Field className="mt-4" hint={`(mínimo ${appointment.serviceDurationMinutes} min)`} label="Duración total">
               <TextInput
                 disabled={isTerminalStatus(appointment.status)}
-                name="targetDate"
-                onChange={(event) => setTargetDate(event.target.value)}
-                type="date"
-                value={targetDate}
+                min={appointment.serviceDurationMinutes}
+                name="durationMinutes"
+                onChange={(event) => setDuration(Number(event.target.value))}
+                step={slotStepMinutes}
+                type="number"
+                value={duration}
               />
             </Field>
-            <Field hint={isPreviewPending ? <span className="inline-flex items-center gap-1"><Spinner className="h-3 w-3" />consultando…</span> : undefined} label="Horario disponible">
-              <Select
-                disabled={isTerminalStatus(appointment.status) || isPreviewPending || availableSlots.length === 0}
-                name="startTime"
-                onChange={(event) => setStartTime(event.target.value)}
-                value={startTime}
-              >
-                {availableSlots.map((slot) => (
-                  <option key={slot.startTime} value={slot.startTime}>
-                    {slot.startTime}–{slot.endTime} · {slot.remainingCapacity} lugar{slot.remainingCapacity === 1 ? "" : "es"}
-                  </option>
-                ))}
-              </Select>
+            <Field className="mt-4" hint="(opcional)" label="Motivo del cambio">
+              <TextInput disabled={isTerminalStatus(appointment.status)} name="reason" placeholder="Ej. solicitado por el cliente" />
             </Field>
-          </div>
-          <Field className="mt-4" hint={`(mínimo ${appointment.serviceDurationMinutes} min)`} label="Duración total">
-            <TextInput
-              disabled={isTerminalStatus(appointment.status)}
-              min={appointment.serviceDurationMinutes}
-              name="durationMinutes"
-              onChange={(event) => setDuration(Number(event.target.value))}
-              step={slotStepMinutes}
-              type="number"
-              value={duration}
-            />
-          </Field>
-          <Field className="mt-4" hint="(opcional)" label="Motivo del cambio">
-            <TextInput disabled={isTerminalStatus(appointment.status)} name="reason" placeholder="Ej. solicitado por el cliente" />
-          </Field>
-          {previewMessage ? <p className="mt-4 text-sm font-bold text-amber-200" role="status">{previewMessage}</p> : null}
-          {selectedSlot ? (
-            <p className="mt-4 rounded-xl border border-apple-400/20 bg-apple-400/5 p-3 text-sm text-zinc-300">
-              Intervalo final: <strong className="text-white">{targetDate} · {selectedSlot.startTime}–{selectedSlot.endTime}</strong>
-            </p>
-          ) : null}
-          <p className="mt-4 text-xs text-zinc-500">Al guardar se vuelve a verificar horarios, descansos, feriados y capacidad dentro de la transacción.</p>
-          <SubmitButton className="mt-4" disabled={isTerminalStatus(appointment.status) || isPreviewPending || !selectedSlot} size="md">Guardar reprogramación</SubmitButton>
-        </form>
+            {previewMessage ? <p className="mt-4 text-sm font-bold text-amber-200" role="status">{previewMessage}</p> : null}
+            {selectedSlot ? (
+              <p className="mt-4 rounded-xl border border-apple-400/20 bg-apple-400/5 p-3 text-sm text-zinc-300">
+                Intervalo final: <strong className="text-white">{targetDate} · {selectedSlot.startTime}–{selectedSlot.endTime}</strong>
+              </p>
+            ) : null}
+            <p className="mt-4 text-xs text-zinc-400">Al guardar se vuelve a verificar horarios, descansos, feriados y capacidad dentro de la transacción.</p>
+            <SubmitButton className="mt-4" disabled={isTerminalStatus(appointment.status) || isPreviewPending || !selectedSlot} size="md">Guardar reprogramación</SubmitButton>
+          </form>
+        </Disclosure>
 
         {appointment.intervalHistory.length > 0 ? (
-          <section className="mt-4 rounded-2xl border border-white/10 p-5">
-            <h3 className="text-sm font-black text-white">Historial de reprogramaciones</h3>
+          <Disclosure className="mt-4" title="Historial de reprogramaciones">
             <ol className="mt-4 grid gap-4">
               {appointment.intervalHistory.map((item) => (
                 <li className="border-l-2 border-apple-400/30 pl-3 text-xs text-zinc-400" key={item.id}>
                   <p className="font-bold text-zinc-200">{formatInterval(item.previousStartAt, item.previousEndAt)} → {formatInterval(item.newStartAt, item.newEndAt)}</p>
                   <p className="mt-1">{item.changedByName ?? "Sistema"} · {formatDateTime(item.changedAt)}</p>
-                  {item.reason ? <p className="mt-1 text-zinc-500">{item.reason}</p> : null}
+                  {item.reason ? <p className="mt-1 text-zinc-400">{item.reason}</p> : null}
                 </li>
               ))}
             </ol>
-          </section>
+          </Disclosure>
         ) : null}
       </aside>
-    </div>
+    </dialog>
   );
 }
 
 function Detail({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className={className}>
-      <dt className="text-xs font-black uppercase tracking-wider text-zinc-600">{label}</dt>
+      <dt className="text-xs font-black uppercase tracking-wider text-zinc-400">{label}</dt>
       <dd className="mt-1 break-words text-sm text-zinc-200">{value}</dd>
     </div>
   );

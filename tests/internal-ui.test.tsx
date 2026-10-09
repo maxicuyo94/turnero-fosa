@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
 vi.mock("@/app/(internal)/internal/actions", () => ({
@@ -17,6 +17,16 @@ vi.mock("@/app/(internal)/internal/actions", () => ({
 }));
 
 import { InternalAgendaScreen } from "@/src/modules/internal/internal-agenda-screen";
+
+// jsdom has no native dialog methods. Browser coverage checks the actual modal focus behavior.
+beforeAll(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value() { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value() { this.open = false; } });
+});
+afterAll(() => {
+  Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+  Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+});
 
 describe("InternalAgendaScreen", () => {
   it("renders the daily appointment agenda with contact actions and editing", async () => {
@@ -57,8 +67,12 @@ describe("InternalAgendaScreen", () => {
     expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getAllByText("Service Esencial")).not.toHaveLength(0);
-    fireEvent.click(screen.getByRole("button", { name: /Ada Lovelace/i }));
+    const opener = screen.getByRole("button", { name: /Ada Lovelace/i });
+    opener.focus();
+    fireEvent.click(opener);
     expect(screen.getByRole("dialog", { name: "Detalle del turno" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar detalle" })).toHaveFocus();
+    expect(document.body.style.overflow).toBe("hidden");
     expect(screen.getByText("Código público")).toBeInTheDocument();
     expect(screen.getByText("ABCD234567")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copiar código" })).toBeInTheDocument();
@@ -67,15 +81,21 @@ describe("InternalAgendaScreen", () => {
     expect(writeText).toHaveBeenCalledWith("ABCD234567");
     expect(screen.getByRole("link", { name: "Llamar" })).toHaveAttribute("href", "tel:+5491112345678");
     expect(screen.getByRole("link", { name: "Abrir WhatsApp" })).toHaveAttribute("href", "https://wa.me/5491112345678");
+    fireEvent.click(screen.getByText("Corregir contacto y notas", { exact: true }));
     expect(screen.getByRole("textbox", { name: "Nombre del cliente" })).toHaveValue("Ada Lovelace");
     expect(screen.getByRole("textbox", { name: "Notas del turno" })).toHaveValue("Customer prefers morning.");
     expect(screen.getByRole("button", { name: "Guardar contacto y notas" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Actualizar estado" })).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Reprogramar turno", { exact: true }));
     expect(screen.getByLabelText("Nueva fecha")).toHaveValue("2026-07-06");
     expect(screen.getByLabelText(/Horario disponible/)).toHaveValue("09:00");
     expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toHaveValue(30);
     expect(screen.getByText(/Intervalo final:/)).toHaveTextContent("2026-07-06 · 09:00–09:30");
     expect(screen.getByRole("button", { name: "Guardar reprogramación" })).toBeInTheDocument();
+    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    expect(document.body.style.overflow).not.toBe("hidden");
   });
 
   it("renders an empty state for days without appointments", () => {
@@ -116,6 +136,7 @@ describe("InternalAgendaScreen", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /Turno Finalizado/i }));
+    fireEvent.click(screen.getByText("Reprogramar turno", { exact: true }));
     expect(screen.getByLabelText("Nueva fecha")).toBeDisabled();
     expect(screen.getByLabelText(/Horario disponible/)).toBeDisabled();
     expect(screen.getByRole("spinbutton", { name: /Duración total/i })).toBeDisabled();
