@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Taller Express Turnos",
+  title: "Taller Express Turnos by Maxi Mendez",
   description: "Turnos online y gestion interna para Taller de motos Express.",
 };
 
