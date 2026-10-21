@@ -1,4 +1,5 @@
 "use server";
+import { logServerError } from "@/src/lib/safe-logging";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -66,6 +67,6 @@ async function runOnCount(countId: string | undefined, view: string, operation: 
 function failureMessage(error: unknown) {
   if (error instanceof InventoryError) return error.message;
   if (error instanceof ZodError) return error.issues[0]?.message ?? "Revisá los datos ingresados.";
-  console.error("stock count action failed", error);
+  logServerError("stock count action failed", error);
   return "No se pudo guardar. Probá nuevamente.";
 }

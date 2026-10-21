@@ -1,0 +1,23 @@
+"use client";
+
+import Link from "next/link";
+import { useActionState, useState } from "react";
+import { Alert, Button, Card, Field, TextInput } from "@/src/components/ui";
+import { SubmitButton } from "@/src/components/pending";
+import { saveCatalogDetailsAction } from "@/app/(internal)/internal/shop/store-actions";
+import type { InventoryDetailProduct } from "./inventory-screen";
+
+export function CatalogDetailsForm({ product }: { product: InventoryDetailProduct }) {
+  const [state, action] = useActionState(saveCatalogDetailsAction, {});
+  const [images, setImages] = useState(product.images ?? []);
+  const [fitments, setFitments] = useState((product.fitments ?? []).map((f) => ({ brand: f.vehicleModel.brand, model: f.vehicleModel.model, variant: f.vehicleModel.variant, yearFrom: String(f.yearFrom ?? ""), yearTo: String(f.yearTo ?? "") })));
+  return <Card className="mt-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold text-text-primary">Ficha para compradores</h2>{product.isPublished && product.isActive ? <Link href={`/shop/product/${product.id}`} className="inline-flex min-h-11 items-center font-bold text-action">Ver ficha pública →</Link> : null}</div>
+    <p className="mt-2 text-sm leading-6 text-text-muted">Agregá fotos reales y modelos cuya compatibilidad hayas comprobado. El nombre, descripción, precio y stock se administran en la ficha de inventario.</p>
+    <form action={action} className="mt-6 space-y-6"><input type="hidden" name="id" value={product.id} /><input type="hidden" name="version" value={product.version} /><input type="hidden" name="images" value={JSON.stringify(images)} /><input type="hidden" name="fitments" value={JSON.stringify(fitments)} />
+      <fieldset><legend className="font-bold text-text-primary">Fotos del repuesto</legend><p className="mt-2 text-sm text-text-muted">La primera es la portada. Usá enlaces de Cloudinary, Unsplash o fotos en /images del sitio. Hasta 6 fotos.</p><div className="mt-4 space-y-4">{images.map((image, index) => <div key={index} className="grid gap-3 rounded-control border border-border-subtle p-4 sm:grid-cols-2"><Field label={`Enlace de la foto ${index + 1}`} htmlFor={`catalog-image-${index}`}><TextInput required maxLength={2000} value={image.url} onChange={(e) => setImages(images.map((row, i) => i === index ? { ...row, url: e.target.value } : row))} placeholder="https://res.cloudinary.com/…" /></Field><Field label="Qué muestra la foto" htmlFor={`catalog-alt-${index}`}><TextInput required maxLength={160} value={image.alt} onChange={(e) => setImages(images.map((row, i) => i === index ? { ...row, alt: e.target.value } : row))} /></Field><Button variant="ghost" onClick={() => setImages(images.filter((_, i) => i !== index))}>Quitar foto {index + 1}</Button></div>)}</div><Button variant="secondary" className="mt-4" disabled={images.length >= 6} onClick={() => setImages([...images, { url: "", alt: product.name }])}>Agregar foto</Button></fieldset>
+      <fieldset><legend className="font-bold text-text-primary">Modelos compatibles</legend><p className="mt-2 text-sm leading-6 text-text-muted">Especificá la versión si cambia la pieza. Los años son opcionales: dejalos vacíos sólo cuando no haya un límite de año. Hasta 20 modelos por ficha.</p><div className="mt-4 space-y-4">{fitments.map((f, index) => <div key={index} className="grid gap-3 rounded-control border border-border-subtle p-4 sm:grid-cols-2">{([['brand','Marca',80],['model','Modelo',100],['variant','Versión o motor',100],['yearFrom','Desde el año',4],['yearTo','Hasta el año',4]] as const).map(([key,label,max]) => <Field key={key} label={label} htmlFor={`fitment-${index}-${key}`} hint={key === "brand" || key === "model" ? undefined : "Opcional"}><TextInput required={key === "brand" || key === "model"} maxLength={max} inputMode={key.startsWith("year") ? "numeric" : "text"} value={f[key]} onChange={(e) => setFitments(fitments.map((row, i) => i === index ? { ...row, [key]: e.target.value } : row))} /></Field>)}<Button variant="ghost" onClick={() => setFitments(fitments.filter((_, i) => i !== index))}>Quitar modelo {index + 1}</Button></div>)}</div><Button variant="secondary" className="mt-4" disabled={fitments.length >= 20} onClick={() => setFitments([...fitments, { brand:"", model:"", variant:"", yearFrom:"", yearTo:"" }])}>Agregar modelo compatible</Button></fieldset>
+      <SubmitButton pendingLabel="Guardando ficha…">Guardar fotos y compatibilidades</SubmitButton>
+      {state.error ? <Alert tone="danger">{state.error}</Alert> : state.success ? <Alert tone="success">{state.success}</Alert> : null}
+    </form>
+  </Card>;
+}

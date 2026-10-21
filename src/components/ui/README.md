@@ -18,7 +18,7 @@ La referencia visual está en `/internal/design-system`, con acceso de administr
 | `radius-control`, `radius-action-lg`, `radius-panel` | Radios de controles, acciones grandes y tarjetas |
 | `spacing-control` | Altura mínima de interacción: 44 px |
 
-Se mantienen los colores `apple` y `charcoal` para composiciones de marca. La biblioteca comparte Arial/Helvetica y el foco visible. Texto de campos: 16 px en móvil para evitar zoom al ingresar datos. La preferencia de movimiento reducido desactiva animaciones y transiciones prolongadas.
+Se mantienen los colores `apple` y `charcoal` para composiciones de marca. La biblioteca comparte Inter y el foco visible. La aplicación sirve la fuente localmente mediante `next/font`, con Arial/Helvetica como respaldo. Texto de campos: 16 px en móvil para evitar zoom al ingresar datos. La preferencia de movimiento reducido desactiva animaciones y transiciones prolongadas.
 
 ## Acciones y navegación
 

@@ -301,8 +301,8 @@ export async function expireOverdueDepositReservations(
         for (const attempt of overdue.filter((item) => item.appointmentId === appointmentId)) {
           await reconcile(attempt.externalReference);
         }
-      } catch (error) {
-        console.error("deposit reconciliation failed; reservation kept for the next sweep", { appointmentId, error });
+      } catch {
+        console.error("deposit reconciliation failed; reservation kept for the next sweep", { appointmentId });
         continue;
       }
     }

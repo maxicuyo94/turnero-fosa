@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { createHash } from "node:crypto";
+import { isIP } from "node:net";
 
 /**
  * Attempt budgets counted in PostgreSQL, so every serverless instance shares them. Each attempt is
@@ -83,7 +84,7 @@ async function consumeAttempt(
 }
 
 export function loginThrottleKeys(input: { username: string; ip: string | null }): string[] {
-  return [`user:${input.username}`, ...(input.ip ? [`ip:${input.ip}`] : [])];
+  return [`user:${input.username}`, `ip:${input.ip ?? "unknown"}`];
 }
 
 /** Counts a sign-in attempt before the password is checked; false means refuse it. */
@@ -103,9 +104,17 @@ export async function recordLoginSuccess(store: RateLimitStore, keys: string[], 
   }
 }
 
-/** Counts a public booking submission; without a known address there is nothing to count against. */
+/** Unknown addresses share a fallback budget instead of bypassing the limit. */
 export function beginBookingAttempt(store: RateLimitStore, ip: string | null, now = new Date()): Promise<boolean> {
-  return ip ? consumeAttempt(store, [{ key: `booking-ip:${ip}`, policy: bookingRateLimit }], now) : Promise.resolve(true);
+  return consumeAttempt(store, [{ key: `booking-ip:${ip ?? "unknown"}`, policy: bookingRateLimit }], now);
+}
+
+export function beginPublicAccessAttempt(store: RateLimitStore, ip: string | null, now = new Date()): Promise<boolean> {
+  return consumeAttempt(store, [{ key: `public-access:${ip ?? "unknown"}`, policy: { windowMinutes: 15, lockMinutes: 15, maxAttempts: 60 } }], now);
+}
+
+export function beginShopAttempt(store: RateLimitStore, ip: string | null, now = new Date()): Promise<boolean> {
+  return consumeAttempt(store, [{ key: `shop-ip:${ip ?? "unknown"}`, policy: bookingRateLimit }], now);
 }
 
 /** A recipient budget also prevents mail flooding from several client addresses. */
@@ -146,6 +155,8 @@ export class PrismaRateLimitStore implements RateLimitStore {
 
 /** First hop of X-Forwarded-For, as set by the hosting proxy (Vercel), or null when unknown. */
 export function clientIpFromHeaders(headers: Headers | undefined): string | null {
-  const forwarded = headers?.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || headers?.get("x-real-ip")?.trim() || null;
+  // The ingress must overwrite these headers. Vercel supplies its own trusted header.
+  const forwarded = (process.env.VERCEL === "1" ? headers?.get("x-vercel-forwarded-for") : headers?.get("x-forwarded-for"))?.split(",")[0]?.trim();
+  const address = forwarded || (process.env.VERCEL === "1" ? null : headers?.get("x-real-ip")?.trim());
+  return address && isIP(address) ? address : null;
 }

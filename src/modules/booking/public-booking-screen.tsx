@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BotProtection } from "@/src/components/bot-protection";
 import {
   Alert,
   Card,
@@ -159,6 +160,7 @@ export function PublicBookingScreen({
             <input type="hidden" name="durationMinutes" value={selectedDurationMinutes} />
           ) : null}
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+          {!canEditDuration ? <BotProtection action="booking" /> : null}
 
           <Card>
             <div className="flex flex-col gap-2">

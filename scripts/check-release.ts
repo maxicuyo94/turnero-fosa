@@ -18,6 +18,32 @@ function check(ok: boolean, message: string) { console.log(`${ok ? "OK" : "PENDI
 async function main() {
   console.log(local ? "Revisión local (no acredita producción)" : "Comprobación previa a publicación");
   check((process.env.AUTH_SECRET?.length ?? 0) >= 32, "Secreto de sesiones configurado.");
+  check(/^[a-f0-9]{64}$/iu.test(process.env.DATA_ENCRYPTION_KEY ?? ""), "Clave de cifrado de datos configurada.");
+  check(Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && process.env.TURNSTILE_SECRET_KEY), "Protección contra bots configurada.");
+  check((process.env.CRON_SECRET?.length ?? 0) >= 32, "Tareas automáticas protegidas por un secreto fuerte.");
+  const [privileges] = await prisma.$queryRaw<Array<{ superuser: boolean; bypass: boolean; owns_tables: boolean; backend: boolean }>>`
+    SELECT r.rolsuper AS superuser, r.rolbypassrls AS bypass,
+      EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'public' AND c.relkind = 'r' AND pg_has_role(current_user, c.relowner, 'USAGE')) AS owns_tables,
+      EXISTS (SELECT 1 FROM pg_roles b WHERE b.rolname = 'fosa_backend' AND pg_has_role(current_user, b.oid, 'USAGE')) AS backend
+    FROM pg_roles r WHERE r.rolname = current_user`;
+  check(Boolean(privileges && !privileges.superuser && !privileges.bypass && !privileges.owns_tables && privileges.backend), "Conexión de aplicación sin privilegios de propietario ni bypass de RLS.");
+  const [{ unprotected }] = await prisma.$queryRaw<Array<{ unprotected: bigint }>>`
+    SELECT count(*) AS unprotected FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname <> '_prisma_migrations' AND NOT c.relrowsecurity`;
+  check(unprotected === BigInt(0), "RLS habilitado en todas las tablas de aplicación.");
+  const [{ plaintextEmails }] = await prisma.$queryRaw<Array<{ plaintextEmails: bigint }>>`
+    SELECT count(*) AS "plaintextEmails" FROM "EmailLog" WHERE recipient NOT LIKE 'enc:v1:%'
+      OR (subject IS NOT NULL AND subject NOT LIKE 'enc:v1:%') OR (body IS NOT NULL AND body NOT LIKE 'enc:v1:%')
+      OR ("errorMessage" IS NOT NULL AND "errorMessage" NOT LIKE 'enc:v1:%')`;
+  check(plaintextEmails === BigInt(0), "Correos históricos convertidos al almacenamiento cifrado.");
+  const [{ plaintextOrders }] = await prisma.$queryRaw<Array<{ plaintextOrders: bigint }>>`
+    SELECT count(*) AS "plaintextOrders" FROM "ShopOrder" WHERE "fullName" NOT LIKE 'enc:v1:%'
+      OR email NOT LIKE 'enc:v1:%' OR phone NOT LIKE 'enc:v1:%'
+      OR ("workshopName" IS NOT NULL AND "workshopName" NOT LIKE 'enc:v1:%')
+      OR (address IS NOT NULL AND address NOT LIKE 'enc:v1:%') OR (city IS NOT NULL AND city NOT LIKE 'enc:v1:%')
+      OR (province IS NOT NULL AND province NOT LIKE 'enc:v1:%') OR ("postalCode" IS NOT NULL AND "postalCode" NOT LIKE 'enc:v1:%')`;
+  check(plaintextOrders === BigInt(0), "Contactos de pedidos históricos convertidos al almacenamiento cifrado.");
   const settings = await prisma.workshopSettings.findFirst({ orderBy: { createdAt: "asc" }, include: { weeklySchedules: true, services: true } });
   check(Boolean(settings), "Configuración del taller cargada.");
   if (!settings) return;

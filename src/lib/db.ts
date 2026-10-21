@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import "server-only";
 import { SerializedPrismaPg } from "@/src/lib/prisma-adapter";
 import { getDatabaseUrl } from "@/src/lib/env";
 

@@ -5,7 +5,7 @@ import type { MercadoPagoPort } from "@/src/modules/payments/service";
 const apiBaseUrl = "https://api.mercadopago.com";
 
 export class MercadoPagoAdapter implements MercadoPagoPort {
-  constructor(private readonly env: MercadoPagoEnv) {}
+  constructor(private readonly env: MercadoPagoEnv, private readonly routing?: { returnUrl: string; notificationPath: string }) {}
 
   async createPreference(input: Parameters<MercadoPagoPort["createPreference"]>[0]) {
     const response = await this.request<{
@@ -77,7 +77,7 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
    * would answer Mercado Pago with Vercel's login page, so the automation bypass rides along.
    */
   private notificationUrl(): string {
-    const url = new URL("/api/mercado-pago/webhook", this.env.NEXT_PUBLIC_APP_URL);
+    const url = new URL(this.routing?.notificationPath ?? "/api/mercado-pago/webhook", this.env.NEXT_PUBLIC_APP_URL);
     url.searchParams.set("source_news", "webhooks");
     if (this.env.VERCEL_PROTECTION_BYPASS) url.searchParams.set("x-vercel-protection-bypass", this.env.VERCEL_PROTECTION_BYPASS);
     return url.toString();
@@ -93,6 +93,7 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
   }
 
   private returnUrl(externalReference: string): string {
+    if (this.routing) return this.routing.returnUrl;
     const url = new URL("/booking/payment", this.env.NEXT_PUBLIC_APP_URL);
     url.searchParams.set("reference", externalReference);
     return url.toString();
@@ -100,6 +101,7 @@ export class MercadoPagoAdapter implements MercadoPagoPort {
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(`${apiBaseUrl}${path}`, {
+      signal: AbortSignal.timeout(15_000),
       ...init,
       headers: {
         Authorization: `Bearer ${this.env.MERCADO_PAGO_ACCESS_TOKEN}`,
@@ -116,6 +118,7 @@ type ProviderPayment = {
   id: number | string;
   external_reference?: string | null;
   transaction_amount: number;
+  transaction_amount_refunded?: number;
   currency_id: string;
   status: string;
   status_detail?: string | null;
@@ -128,6 +131,7 @@ function mapPayment(payment: ProviderPayment) {
     id: String(payment.id),
     externalReference: payment.external_reference ?? null,
     amount: payment.transaction_amount,
+    ...(Number(payment.transaction_amount_refunded) > 0 ? { refundedAmount: Number(payment.transaction_amount_refunded) } : {}),
     currency: payment.currency_id,
     status: payment.status,
     statusDetail: payment.status_detail ?? null,

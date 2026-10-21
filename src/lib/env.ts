@@ -24,7 +24,21 @@ export type MercadoPagoEnv = {
 };
 
 export function getDatabaseUrl(input: Record<string, string | undefined> = process.env): string {
-  return envSchema.shape.DATABASE_URL.parse(input.DATABASE_URL);
+  const value = envSchema.shape.DATABASE_URL.parse(input.DATABASE_URL);
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error("DATABASE_URL must be a PostgreSQL URL."); }
+  if (!["postgres:", "postgresql:"].includes(url.protocol)) throw new Error("DATABASE_URL must be a PostgreSQL URL.");
+  if (input.NODE_ENV === "production" && !["require", "verify-ca", "verify-full"].includes(url.searchParams.get("sslmode") ?? "")) {
+    throw new Error("Production PostgreSQL connections must require TLS via sslmode.");
+  }
+  if (input.NODE_ENV === "production") {
+    // pg currently aliases require/verify-ca to verify-full. Preserve certificate/host verification
+    // explicitly when pg adopts libpq's weaker require semantics in its next major release.
+    url.searchParams.set("sslmode", "verify-full");
+    url.searchParams.delete("uselibpqcompat");
+    return url.toString();
+  }
+  return value;
 }
 
 export function getNotificationEnv(input: Record<string, string | undefined> = process.env): NotificationEnv | null {

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import ExcelJS from "exceljs";
 import { z } from "zod";
+import { validateXlsxArchive } from "@/src/lib/xlsx-security";
 import { createInventoryProductSchema } from "@/src/modules/shop/inventory-schemas";
 
 const MAX_FILE_BYTES = 3 * 1024 * 1024;
@@ -31,10 +32,14 @@ export async function parseInventoryExcel(file: File): Promise<z.input<typeof cr
   if (!(file instanceof File) || file.size === 0) throw new InventoryExcelError("Seleccioná un archivo Excel para importar.");
   if (file.size > MAX_FILE_BYTES) throw new InventoryExcelError("El archivo no puede superar 3 MB.");
   if (!file.name.toLowerCase().endsWith(".xlsx")) throw new InventoryExcelError("Usá un archivo .xlsx basado en la plantilla.");
+  if (file.type && !["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream", "application/zip"].includes(file.type)) throw new InventoryExcelError("El tipo de archivo no corresponde a un Excel .xlsx.");
 
   const workbook = new ExcelJS.Workbook();
+  const buffer = await file.arrayBuffer();
+  try { validateXlsxArchive(buffer); }
+  catch { throw new InventoryExcelError("No pudimos leer el Excel: contiene un archivo no permitido o supera el tamaño descomprimido permitido (20 MB)."); }
   try {
-    await workbook.xlsx.load(await file.arrayBuffer());
+    await workbook.xlsx.load(buffer);
   } catch {
     throw new InventoryExcelError("No pudimos leer el Excel. Descargá la plantilla y volvé a intentarlo.");
   }
@@ -105,7 +110,11 @@ function cellValue(cell: ExcelJS.Cell): unknown {
   if (value === null || value === undefined) return null;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
   if (value instanceof Date) return value.toISOString();
-  if ("result" in value) return value.result ?? null;
+  // ExcelJS never evaluates formulas. Only their previously calculated numeric value is accepted.
+  if ("formula" in value || "sharedFormula" in value) {
+    if (typeof value.result === "number" && Number.isFinite(value.result)) return value.result;
+    throw new InventoryExcelError("Las fórmulas deben tener un resultado numérico guardado. Pegá los valores antes de importar.");
+  }
   if ("richText" in value) return value.richText.map((part) => part.text).join("");
   if ("text" in value) return value.text;
   return cell.text;

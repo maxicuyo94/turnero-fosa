@@ -1,4 +1,5 @@
 "use server";
+import { logServerError } from "@/src/lib/safe-logging";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -139,6 +140,6 @@ function actionFailure(error: unknown, values: Record<string, string>): ShopActi
     const issue = error.issues[0];
     return { status: "error", message: issue?.message ?? "Revisá los datos ingresados.", values };
   }
-  console.error("shop inventory action failed", error);
+  logServerError("shop inventory action failed", error);
   return { status: "error", message: "No se pudo guardar. Probá nuevamente.", values };
 }

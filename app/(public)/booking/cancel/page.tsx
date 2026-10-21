@@ -1,4 +1,5 @@
 import { cancelAppointmentAction } from "@/app/(public)/booking/actions";
+import { guardPublicAccess } from "@/src/lib/public-access";
 import { bookingRepository, bookingSupport, workshopContactSettings } from "@/src/lib/composition";
 import { getPublicCancellationPreview } from "@/src/modules/booking/service";
 import { CancellationScreen } from "@/src/modules/booking/cancellation-screen";
@@ -9,6 +10,7 @@ export default async function CancellationPage({ searchParams }: {
   const params = (await searchParams) ?? {};
   const appointmentId = stringParam(params.appointmentId) ?? "";
   const token = stringParam(params.token) ?? "";
+  if (appointmentId || token) await guardPublicAccess();
   const preview = await getPublicCancellationPreview(bookingRepository(), { appointmentId, token, now: new Date() });
   const [settings, payment] = await Promise.all([
     workshopContactSettings(),

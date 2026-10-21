@@ -3,7 +3,7 @@
 import Form from "next/form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useTransition, type ReactNode } from "react";
+import { useActionState, useTransition } from "react";
 import { Alert, Card, Disclosure, EmptyState, Field, PageHeading, Select, Spinner, TextInput, Textarea } from "@/src/components/ui";
 import { SubmitButton } from "@/src/components/pending";
 import { formatWorkshopDateTime } from "@/src/lib/workshop-date";
@@ -18,7 +18,12 @@ import { BarcodeScanner } from "@/src/modules/shop/barcode-scanner";
 import { shopInitialActionState, type ShopActionState } from "@/src/modules/shop/inventory-action-state";
 import type { InventoryCodeMatch } from "@/src/modules/shop/inventory-code-service";
 import { inventoryFilterQuery, type InventoryFilters } from "@/src/modules/shop/inventory-filters";
-import { InternalBackLink, InternalShell, InternalSubNav } from "@/src/modules/internal/internal-shell";
+import { InternalBackLink } from "@/src/modules/internal/internal-shell";
+import { ShopShell } from "./shop-shell";
+export { ShopShell } from "./shop-shell";
+import { ShopPublicationForm } from "@/src/modules/shop/store-management-screen";
+import { CatalogDetailsForm } from "./catalog-details-form";
+import type { PublicProduct } from "./storefront-screen";
 
 export type InventoryListProduct = {
   id: string;
@@ -36,15 +41,18 @@ export type InventoryListProduct = {
 };
 
 export type InventoryDetailProduct = InventoryListProduct & {
+  isPublished?: boolean;
   description: string | null;
   compatibility: string | null;
   version: number;
   updatedAt: Date;
+  images?: PublicProduct["images"];
+  fitments?: PublicProduct["fitments"];
 };
 
 export type InventoryHistoryItem = {
   id: string;
-  kind: "INITIAL" | "RECEIPT" | "ADJUSTMENT" | "REPAIR";
+  kind: "INITIAL" | "RECEIPT" | "ADJUSTMENT" | "REPAIR" | "SALE";
   quantityDelta: number;
   stockBefore: number;
   stockAfter: number;
@@ -242,6 +250,8 @@ export function InventoryProductScreen({ product, history, historyLimit, movemen
       <InternalBackLink href="/internal/shop/inventory">Volver a inventario</InternalBackLink>
       <div className="mt-7 flex min-w-0 flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"><div className="min-w-0"><p className="break-all font-mono text-xs font-bold tracking-[0.18em] text-apple-300">{product.sku}</p><h1 className="mt-2 break-words text-4xl font-black tracking-[-0.04em] text-white sm:text-5xl">{product.name}</h1><p className="mt-3 break-words text-zinc-400">{product.category}{product.brand ? ` · ${product.brand}` : ""}{product.location ? ` · ${product.location}` : ""}</p></div><div className="flex items-center gap-4"><Link className="text-sm font-bold text-apple-300 hover:text-apple-200" href={`/internal/shop/inventory/labels?id=${encodeURIComponent(product.id)}`}>Imprimir etiqueta</Link><StatusChip active={product.isActive} /></div></div>
       {notice ? <Alert className="mt-6" tone="success">{notice}</Alert> : null}
+      <ShopPublicationForm id={product.id} version={product.version} isPublished={product.isPublished ?? false} />
+      <CatalogDetailsForm product={product} />
       <section className="mt-8 grid gap-4 sm:grid-cols-3" aria-label="Stock actual"><Metric label="Físico" value={product.stock} note="Unidades en taller" /><Metric label="Reservado" value={product.reservedStock} note="Para pedidos futuros" /><Metric label="Disponible" value={available} note={`Mínimo: ${product.minimumStock}`} alert={available <= product.minimumStock} /></section>
       <section className="mt-8 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <ProductForm product={product} />
@@ -320,22 +330,6 @@ export function InventoryCodeScreen({ code, matches, similar = [], linkCandidate
   );
 }
 
-export function ShopShell({ active, children, signedInUserName, canManageWorkshop }: { active: "summary" | "inventory" | "counts"; children: ReactNode; signedInUserName?: string | null; canManageWorkshop?: boolean }) {
-  return (
-    <InternalShell active="shop" canManageWorkshop={canManageWorkshop} signedInUserName={signedInUserName}>
-      <InternalSubNav
-        items={[
-          { label: "Resumen", href: "/internal/shop", active: active === "summary" },
-          { label: "Inventario", href: "/internal/shop/inventory", active: active === "inventory" },
-          { label: "Conteos", href: "/internal/shop/counts", active: active === "counts" },
-        ]}
-        label="Secciones de repuestos"
-      />
-      {children}
-    </InternalShell>
-  );
-}
-
 function NewProductForm({ requestKey, initialBarcode }: { requestKey: string; initialBarcode?: string }) {
   const [state, action] = useActionState(createInventoryProductAction, shopInitialActionState);
   return <Card className="mt-8 scroll-mt-6" aria-label="Nuevo repuesto"><div id="nuevo"><p className="text-xs font-semibold uppercase tracking-[0.28em] text-apple-300">Alta de inventario</p><h2 className="mt-3 text-2xl font-black text-white">Nuevo repuesto</h2><p className="mt-2 text-sm leading-6 text-zinc-400">El stock inicial crea un movimiento de auditoría. Después, usá la ficha para ajustar cantidades.</p></div><ProductFields defaults={initialBarcode ? { barcode: initialBarcode } : undefined} formAction={action} requestKey={requestKey} state={state} includeInitialStock /><ActionFeedback state={state} successHref={state.productId ? `/internal/shop/inventory/${state.productId}` : undefined} successLabel="Abrir ficha" /></Card>;
@@ -390,4 +384,4 @@ function formatPrice(value?: number) { return value === undefined ? "" : (value 
 function formatArs(value: number) { return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value / 100); }
 function number(value: number) { return new Intl.NumberFormat("es-AR").format(value); }
 function formatDate(value: Date) { return formatWorkshopDateTime(value, { dateStyle: "medium", timeStyle: "short" }); }
-function movementLabel(kind: InventoryHistoryItem["kind"]) { return ({ INITIAL: "Stock inicial", RECEIPT: "Entrada", ADJUSTMENT: "Ajuste", REPAIR: "Consumo en reparación" })[kind]; }
+function movementLabel(kind: InventoryHistoryItem["kind"]) { return ({ INITIAL: "Stock inicial", RECEIPT: "Entrada", ADJUSTMENT: "Ajuste", REPAIR: "Consumo en reparación", SALE: "Venta de repuestos" })[kind]; }

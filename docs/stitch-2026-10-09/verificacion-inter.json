@@ -1,0 +1,236 @@
+{
+  "recargado": true,
+  "pantallas": [
+    {
+      "id": "009e26f82a8c48a3bac6609a9bd90cf7",
+      "name": "ACTUAL · Horarios ADMIN",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "08981237be7a420a8eebcf051db73547",
+      "name": "ACTUAL · Mi pedido /shop/order",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "09c1d1cf236048a58626156222e3742e",
+      "name": "ACTUAL · Acceso al taller",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": null
+    },
+    {
+      "id": "148436d4e2f448d5bff609324628bf49",
+      "name": "ACTUAL · Agenda y turno",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "1bf76c3171b8430ea73eaa6fa12bb8d0",
+      "name": "ACTUAL · Compra móvil 390px",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": null
+    },
+    {
+      "id": "2229f0f246874b06b68e0e844d3e8f51",
+      "name": "ACTUAL · Compra 3 Revisar y pagar",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "225b01a049834ec9887ecf7050b8c198",
+      "name": "PROPUESTA · Mejoras útiles",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "26d63e0d3917482586bad4423e2e26f4",
+      "name": "ACTUAL · Conteo móvil y revisión",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "276c58959e024f83aa1829d149bb14b3",
+      "name": "ACTUAL · Tienda online ADMIN",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "2bd43f5c6621437d9589e8a919c12d85",
+      "name": "ACTUAL · Resumen de repuestos",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "2e596d98a1e84631a635a125d099b5b4",
+      "name": "ACTUAL · Repuestos /shop",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "3e27307db2934ccb9bfd3e7ca27a18c3",
+      "name": "ACTUAL · Inventario y alta",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "4196f9563c024ccf9fd5a5d1d0428528",
+      "name": "ACTUAL · Buscar código y etiquetas",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "47bdace620a74fb7bbb1c8fd2d6754ab",
+      "name": "ACTUAL · Compra 1 Carrito",
+      "body": "Arial, Helvetica, sans-serif",
+      "control": "Arial, Helvetica, sans-serif",
+      "heading": "Arial, Helvetica, sans-serif"
+    },
+    {
+      "id": "4872da887d6c4e289332f66b0301c088",
+      "name": "ACTUAL · Inicio",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "4b0ef8abf11343109cde8e7f8615ed1c",
+      "name": "ACTUAL · Reservas y señas ADMIN",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": null
+    },
+    {
+      "id": "4ec66ec15ece4be3b636719290481f54",
+      "name": "ACTUAL · Catálogo de servicios ADMIN",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "57a39015ee76484a99b44581af28ffc7",
+      "name": "ACTUAL · Compra 2 Entrega y datos",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "5e6dcf4e02b84670933fd92e35a6686f",
+      "name": "ACTUAL · Consulta de turno /booking/status",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "7f97f3fc4b934fd5b33124aeed240d44",
+      "name": "ACTUAL · Configuración General ADMIN",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": null
+    },
+    {
+      "id": "82efa3e8f76b4e8580dd8b2edcc6d258",
+      "name": "ACTUAL · Resultado y seña /booking/payment",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "9534b17824574eeaa1a8da6ca9bdf999",
+      "name": "ACTUAL · Inicio móvil 390px",
+      "body": "Inter, sans-serif",
+      "control": null,
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "996076bfd80f4fe78d55bc4e250fc2b4",
+      "name": "ACTUAL · Conteos",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "9be76eb4f20546dfac23a482e8fe6acd",
+      "name": "ACTUAL · Ficha de unidad",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "9ec2e1e338f444e08ed5db47f1c69d61",
+      "name": "ACTUAL · Sistema visual",
+      "body": "\"Arial, Helvetica, sans-serif\"",
+      "control": "\"Arial, Helvetica, sans-serif\"",
+      "heading": "\"Arial, Helvetica, sans-serif\""
+    },
+    {
+      "id": "a2fe77b7179a402ba913a13f23611568",
+      "name": "ACTUAL · Catálogo móvil 390px",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "acb5715e2f344e18b6ae35d209d23409",
+      "name": "ACTUAL · Reservar turno /booking",
+      "body": "Arial, Helvetica, sans-serif",
+      "control": "Arial, Helvetica, sans-serif",
+      "heading": "Arial, Helvetica, sans-serif"
+    },
+    {
+      "id": "c2c2309ba6fe4aceadd41d6013e611d5",
+      "name": "ACTUAL · Cancelar turno /booking/cancel",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "c32c6f94bf98427c9e3bb42d1286cad1",
+      "name": "ACTUAL · Detalle de repuesto",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "cab8b1dd6cbe40bd96ff4bcc9e9e7280",
+      "name": "ACTUAL · Unidades e historial",
+      "body": "\"Arial, Helvetica, sans-serif\"",
+      "control": "\"Arial, Helvetica, sans-serif\"",
+      "heading": "\"Arial, Helvetica, sans-serif\""
+    },
+    {
+      "id": "cd3d5d173f5e4de4a5e63bd357762969",
+      "name": "ACTUAL · Ficha de inventario y publicación",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "f3e8ee1d7d9a427795bcc2bd06a91641",
+      "name": "ACTUAL · Pedidos internos",
+      "body": "Inter, sans-serif",
+      "control": "Inter, sans-serif",
+      "heading": "Inter, sans-serif"
+    },
+    {
+      "id": "ff3f11aa6bd94e6ca85dce084a4ca588",
+      "name": "ACTUAL · Mi cuenta",
+      "body": "\"Arial, Helvetica, sans-serif\"",
+      "control": "\"Arial, Helvetica, sans-serif\"",
+      "heading": "\"Arial, Helvetica, sans-serif\""
+    }
+  ]
+}

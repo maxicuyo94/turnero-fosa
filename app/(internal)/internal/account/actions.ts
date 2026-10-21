@@ -1,4 +1,5 @@
 "use server";
+import { logServerError } from "@/src/lib/safe-logging";
 
 import { signOut } from "@/src/lib/auth";
 import { staffAccount } from "@/src/lib/composition";
@@ -18,7 +19,7 @@ export async function changePasswordAction(_previous: AccountActionState, formDa
     });
   } catch (error) {
     if (error instanceof AccountError) return { status: "error", message: error.message, field: error.field };
-    console.error("internal password change failed", error);
+    logServerError("internal password change failed", error);
     return { status: "error", message: "No se pudo cambiar la contraseña. Probá nuevamente." };
   }
   // The change closed every session, this one included: the login page explains why.

@@ -35,6 +35,7 @@ export default async function HomePage() {
           </aside>
         </section>
 
+        <Card className="mt-6"><p className="text-xs font-bold uppercase tracking-widest text-apple-300">Para mecánicos y particulares</p><h2 className="mt-3 text-2xl font-black text-white">Repuestos para tu moto</h2><p className="mt-2 text-zinc-300">Consultá el catálogo del taller y armá tu compra online.</p><Link className="mt-4 inline-flex min-h-11 items-center font-bold text-apple-300" href="/shop">Explorar repuestos →</Link></Card>
         <div className="mt-8 flex flex-wrap gap-3">
           <Chip>Turnos programados</Chip>
           {policy ? (

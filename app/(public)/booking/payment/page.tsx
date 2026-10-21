@@ -1,4 +1,6 @@
 import { retryDepositAction } from "@/app/(public)/booking/actions";
+import { guardPublicAccess } from "@/src/lib/public-access";
+import { logServerError } from "@/src/lib/safe-logging";
 import { PaymentReturnScreen } from "@/src/modules/booking/payment-return-screen";
 import { depositPaymentRepository, reconcileReturnedDeposit } from "@/src/lib/composition";
 
@@ -8,6 +10,7 @@ export default async function PaymentReturnPage({
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const params = (await searchParams) ?? {};
+  await guardPublicAccess();
   const reference = first(params.reference) ?? first(params.external_reference) ?? "";
   await reconcileOnReturn(first(params.payment_id) ?? first(params.collection_id), reference);
   const attempt = reference
@@ -26,7 +29,7 @@ async function reconcileOnReturn(paymentId: string | undefined, reference: strin
   try {
     await reconcileReturnedDeposit({ paymentId: paymentId && paymentId !== "null" ? paymentId : undefined, reference });
   } catch (error) {
-    console.error("payment return reconciliation failed", error);
+    logServerError("payment return reconciliation failed", error);
   }
 }
 

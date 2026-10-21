@@ -23,7 +23,7 @@
   --color-action-text: var(--color-zinc-950);
   --color-focus: var(--color-apple-300);
   --color-danger: var(--color-red-300);
-  --font-sans: Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-inter, "Inter"), Arial, Helvetica, sans-serif;
   --radius-control: 0.625rem;
   --radius-action-lg: 0.875rem;
   --radius-panel: 1.5rem;

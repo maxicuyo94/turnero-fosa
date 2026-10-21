@@ -17,7 +17,14 @@ export class TooManyLoginAttemptsError extends CredentialsSignin {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
+  useSecureCookies: process.env.NODE_ENV === "production",
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" ? "__Host-authjs.session-token" : "authjs.session-token",
+      options: { httpOnly: true, sameSite: "lax", path: "/", secure: process.env.NODE_ENV === "production" },
+    },
+  },
   pages: { signIn: "/internal/login" },
   providers: [
     Credentials({
@@ -28,7 +35,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials, request) {
         const username = typeof credentials.username === "string" ? credentials.username.trim().toLowerCase() : "";
         const password = typeof credentials.password === "string" ? credentials.password : "";
-        if (!username || !password) return null;
+        if (!username || username.length > 128 || !password || password.length > 128) return null;
 
         const { db } = await import("@/src/lib/db");
         const throttle = new PrismaRateLimitStore(db);
@@ -36,7 +43,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // Counted before the password check, so parallel guesses cannot all slip in under the limit.
         if (!(await beginLoginAttempt(throttle, keys))) throw new TooManyLoginAttemptsError();
 
-        const user = await db.user.findUnique({ where: { username } });
+        const user = await db.user.findUnique({ where: { username }, select: { id: true, email: true, name: true, username: true, sessionVersion: true, passwordHash: true } });
         // Unknown users still pay for a scrypt run, so response time does not reveal valid usernames.
         const valid = user?.passwordHash
           ? await verifyPassword(password, user.passwordHash)

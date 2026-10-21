@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { guardPublicAccess } from "@/src/lib/public-access";
 import { createAppointmentAction, retryDepositAction } from "@/app/(public)/booking/actions";
 import { bookingRepository, depositPaymentRepository, settleOverdueDepositsAfterResponse } from "@/src/lib/composition";
 import { getStaffMember } from "@/src/lib/staff-access";
@@ -20,6 +21,7 @@ type BookingPageProps = {
 
 export default async function BookingPage({ searchParams }: BookingPageProps) {
   const params = (await searchParams) ?? {};
+  if (params.code) await guardPublicAccess();
   const staff = await getStaffMember();
   const repository = bookingRepository();
   // Availability already treats lapsed deposit holds as free; releasing them waits for the response.

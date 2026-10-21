@@ -371,6 +371,7 @@ enum InventoryMovementKind {
   RECEIPT
   ADJUSTMENT
   REPAIR
+  SALE
 }
 
 model ShopProduct {
@@ -388,14 +389,160 @@ model ShopProduct {
   reservedStock Int      @default(0)
   minimumStock  Int      @default(0)
   isActive      Boolean  @default(true)
+  isPublished   Boolean  @default(false)
   version       Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   movements     InventoryMovement[]
   countLines    StockCountLine[]
+  orderItems    ShopOrderItem[]
+  images        ShopProductImage[]
+  fitments      ShopProductFitment[]
 
   @@index([isActive, name])
   @@index([category])
+  @@index([isActive, isPublished, category])
+}
+
+/// Ordered photos belong to the same SKU that inventory and orders use.
+model ShopProductImage {
+  id        String @id @default(cuid())
+  productId String
+  url       String
+  alt       String
+  position  Int @default(0)
+  product   ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, position])
+}
+
+/// Catalog models are not customers' registered vehicles.
+model ShopVehicleModel {
+  id       String @id @default(cuid())
+  brand    String
+  model    String
+  variant  String @default("")
+  fitments ShopProductFitment[]
+
+  @@unique([brand, model, variant])
+}
+
+/// Only workshop-confirmed fitments are entered here; free text is retained separately.
+model ShopProductFitment {
+  id             String @id @default(cuid())
+  productId      String
+  vehicleModelId String
+  yearFrom       Int?
+  yearTo         Int?
+  product        ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  vehicleModel   ShopVehicleModel @relation(fields: [vehicleModelId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, vehicleModelId])
+  @@index([vehicleModelId])
+}
+
+model ShopSettings {
+  id                  String  @id @default("shop")
+  checkoutEnabled     Boolean @default(false)
+  shippingEnabled     Boolean @default(false)
+  shippingFeeCents     Int     @default(0)
+  shippingPostalCodes String[] @default([])
+  pickupInstructions  String  @default("")
+  updatedAt           DateTime @updatedAt
+}
+
+enum ShopBuyerKind {
+  INDIVIDUAL
+  MECHANIC
+}
+
+enum ShopDeliveryKind {
+  PICKUP
+  SHIPPING
+}
+
+enum ShopOrderStatus {
+  AWAITING_PAYMENT
+  PAID
+  READY
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+  PAYMENT_REVIEW
+}
+
+model ShopOrder {
+  id                String @id @default(uuid())
+  code              String @unique
+  accessTokenHash    String @unique
+  requestKey        String @unique
+  fingerprint       String
+  buyerKind         ShopBuyerKind
+  fullName          String
+  email             String
+  phone             String
+  workshopName      String?
+  deliveryKind      ShopDeliveryKind
+  address           String?
+  city              String?
+  province          String?
+  postalCode        String?
+  subtotalCents     Int
+  shippingFeeCents  Int
+  totalCents        Int
+  status            ShopOrderStatus @default(AWAITING_PAYMENT)
+  reservationHeld   Boolean @default(true)
+  expiresAt         DateTime
+  preferenceId      String?
+  checkoutUrl       String?
+  tracking          String?
+  reviewReason      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  items             ShopOrderItem[]
+  payments          ShopPayment[]
+  events            ShopOrderEvent[]
+
+  @@index([status, expiresAt])
+  @@index([createdAt])
+}
+
+model ShopOrderItem {
+  id             String @id @default(cuid())
+  orderId        String
+  productId      String
+  name           String
+  sku            String
+  unitPriceCents Int
+  quantity       Int
+  order          ShopOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product        ShopProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([orderId, productId])
+}
+
+model ShopPayment {
+  id           String @id
+  orderId      String
+  status       String
+  amountCents  Int
+  updatedAt    DateTime @updatedAt
+  order        ShopOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+model ShopOrderEvent {
+  id        String @id @default(cuid())
+  orderId   String
+  status    ShopOrderStatus
+  note      String
+  actorId   String?
+  createdAt DateTime @default(now())
+  order     ShopOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
 }
 
 model InventoryMovement {

@@ -60,7 +60,9 @@ export function findInventoryProductDetail(prisma: InventoryReader, id: string, 
     select: {
       id: true, sku: true, barcode: true, name: true, description: true, category: true, brand: true,
       compatibility: true, location: true, priceCents: true, stock: true, reservedStock: true,
-      minimumStock: true, isActive: true, version: true, updatedAt: true,
+      minimumStock: true, isActive: true, isPublished: true, version: true, updatedAt: true,
+      images: { orderBy: { position: "asc" }, select: { url: true, alt: true } },
+      fitments: { select: { yearFrom: true, yearTo: true, vehicleModel: { select: { id: true, brand: true, model: true, variant: true } } } },
       movements: {
         take: historyLimit,
         orderBy: { createdAt: "desc" },

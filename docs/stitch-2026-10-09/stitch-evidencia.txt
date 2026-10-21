@@ -1,0 +1,1209 @@
+Browser tab: 803102364, Title: "Stitch - Projects", URL: "https://stitch.withgoogle.com/projects/595898897177555314?pli=1".
+0 AXWebArea Stitch - Projects, URL: stitch.withgoogle.com/projects/595898897177555314?pli=1
+	1 container Description: Stitch - Design with AI, ID: I0_1791565918314
+		2 AXWebArea Stitch, URL: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#id=I0_1791565918314&_gfid=I0_1791565918314&parent=https%3A%2F%2Fstitch.withgoogle.com&pfname=&rpctoken=19868254
+			3 container
+				4 container
+					5 container
+						6 pop up button (collapsed) Secondary Actions: Expand
+							7 image
+						8 button Motorcycle Ecommerce Home Page
+						9 button
+							10 image
+					11 container
+						12 button
+							13 image
+						14 button Export
+							15 image
+							16 text Export
+						17 button Share
+							18 image
+							19 text Share
+						20 pop up button (collapsed) Description: Account Menu, Secondary Actions: Expand
+							21 image Profile image for Maximiliano Méndez
+					22 button
+						23 image
+					24 button
+						25 image
+					26 button
+						27 image
+					28 button
+						29 image
+					30 container
+						31 button Elegir archivos
+						32 button
+							33 image
+					34 button
+						35 image
+					36 button
+						37 image
+					38 button (disabled) Undo
+					39 button (disabled) Redo
+					40 pop up button (collapsed) 17%, Secondary Actions: Expand
+					41 pop up button (collapsed) Description: Helpful Links, Secondary Actions: Expand
+						42 image
+					43 button Elegir archivos
+					44 container
+						45 container
+							46 text Motorcycle Ecommerce Home Page
+							47 container
+								48 AXWebArea MOTO PARTS - High Performance Components, URL: about:srcdoc
+									49 container
+										50 text settings_suggest MOTO PARTS
+										51 link Description: PARTS, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										52 link Description: ACCESSORIES, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										53 link Description: TIRES, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										54 link Description: GARAGE, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										55 text garage My Garage: 2022 Yamaha R1
+										56 button shopping_cart
+											57 text shopping_cart
+										58 button account_circle
+									59 container
+										60 container
+											61 text PERFORMANCE UPGRADES
+											62 heading ENGINEERED FOR PERFECTION, Value: 1
+												63 text ENGINEERED FOR
+												64 text PERFECTION
+											65 text Find the exact parts for your machine. From engine internals to braking systems, we stock premium components for serious riders.
+											66 heading motorcycle FIND PARTS FOR YOUR BIKE, Value: 3
+												67 text motorcycle FIND PARTS FOR YOUR BIKE
+											68 pop up button (collapsed, settable) Value: Year, Secondary Actions: Expand
+												69 menu
+													70 (disabled) Year
+													71 2024
+													72 2023
+													73 2022
+													74 2021
+											75 text expand_more
+											76 pop up button (collapsed, settable) Value: Make, Secondary Actions: Expand
+												77 menu
+													78 (disabled) Make
+													79 Yamaha
+													80 Ducati
+													81 Kawasaki
+													82 BMW
+											83 text expand_more
+											84 pop up button (collapsed, settable) Value: Model, Secondary Actions: Expand
+												85 menu
+													86 (disabled) Model
+													87 YZF-R1
+													88 Panigale V4
+													89 Ninja H2
+													90 S1000RR
+											91 text expand_more
+											92 button SEARCH PARTS search
+												93 text SEARCH PARTS
+												94 text search
+										95 container
+											96 text CATEGORIES keyboard_arrow_down
+										97 text verified GENUINE PARTS Direct from manufacturers local_shipping FAST SHIPPING Next day delivery available handyman EXPERT SUPPORT Technical advice for fitting
+										98 heading SHOP BY CATEGORY, Value: 2
+											99 text SHOP BY CATEGORY
+										100 text Upgrade every aspect of your ride with our comprehensive catalog.
+										101 link Description: VIEW ALL CATEGORIES arrow_forward, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										102 link Description: settings_applications ENGINE PARTS Pistons, Valves, Camshafts & more, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										103 link Description: disc_full BRAKES Pads, Rotors, Calipers & Lines, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										104 link Description: tire_repair TIRES Slicks, Sport, Touring & Off-road, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										105 link Description: swap_calls TRANSMISSION Chains, Sprockets & Clutch Kits, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										106 heading BEST SELLERS, Value: 2
+											107 text BEST SELLERS
+										108 link Description: View All, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										109 container
+											110 text SALE
+											111 image Exhaust system
+										112 heading Titanium Slip-On Exhaust, Value: 4
+											113 text Titanium Slip-On Exhaust
+										114 text Exhaust Systems $499.00
+										115 image Brembo Caliper
+										116 heading Radial Monoblock Caliper, Value: 4
+											117 text Radial Monoblock Caliper
+										118 text Brakes $850.00
+										119 image Oil Filter
+										120 heading Performance Oil Filter Kit, Value: 4
+											121 text Performance Oil Filter Kit
+										122 text Maintenance $24.99
+										123 image Chain kit
+										124 heading Gold X-Ring Chain Set, Value: 4
+											125 text Gold X-Ring Chain Set
+										126 text Drivetrain $189.95 GARAGE UPDATES
+										127 heading NEVER MISS A DEAL, Value: 2
+											128 text NEVER MISS A DEAL
+										129 text Get notified about discounts on parts for your specific bike model and new arrival alerts.
+										130 container
+											131 text field (settable)
+											132 button SUBSCRIBE
+									133 container
+										134 text settings_suggest MOTO PARTS The ultimate destination for motorcycle enthusiasts. High-quality parts, expert advice, and worldwide shipping.
+										135 link Description: Twitter, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										136 link Description: Instagram, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										137 link Description: YouTube, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										138 heading CATEGORIES, Value: 4
+											139 text CATEGORIES
+										140 content list
+											141 link Description: Engine Components, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+											142 link Description: Braking Systems, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+											143 link Description: Tires & Wheels, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+											144 link Description: Suspension, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+										145 heading MY GARAGE, Value: 4
+											146 text MY GARAGE
+										147 content list
+											148 link Description: My Saved Bikes, Value: app-companion-430619.appspot.com/projects/595898897177555314?pli=1&usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#
+											149 link Description: Order History, Value: …
+											150 link Description: Wishlist, Value: …
+											151 link Description: Returns, Value: …
+										152 heading SUPPORT, Value: 4
+											153 text SUPPORT
+										154 content list
+											155 link Description: Fitment Guide, Value: …
+											156 link Description: Shipping Policy, Value: …
+											157 link Description: Track Order, Value: …
+											158 link Description: Contact Us, Value: …
+										159 text © 2024 MOTO PARTS Inc. All rights reserved.
+										160 link Description: Privacy Policy, Value: …
+										161 link Description: Terms of Service, Value: …
+						162 container
+							163 text Motorcycle Inventory Listing
+							164 container
+								165 AXWebArea Spare Parts Inventory Listing, URL: about:srcdoc
+									166 container
+										167 link Description: settings_suggest MotoParts, Value: …
+										168 link Description: PARTS, Value: …
+										169 link Description: ACCESSORIES, Value: …
+										170 link Description: OIL & LUBE, Value: …
+										171 link Description: TOOLS, Value: …
+										172 text search
+										173 text field (settable)
+										174 button shopping_cart
+										175 button person
+									176 container
+										177 heading FILTERS, Value: 3
+											178 text FILTERS
+										179 button Reset All
+										180 heading PART TYPE, Value: 4
+											181 text PART TYPE
+										182 checkbox (settable, integer) Description: Brake Pads, Value: 1
+										183 text Brake Pads
+										184 checkbox (settable, integer) Description: Air Filters, Value: 0
+										185 text Air Filters
+										186 checkbox (settable, integer) Description: Spark Plugs, Value: 0
+										187 text Spark Plugs
+										188 checkbox (settable, integer) Description: Oil Filters, Value: 0
+										189 text Oil Filters
+										190 checkbox (settable, integer) Description: Chains & Sprockets, Value: 0
+										191 text Chains & Sprockets
+										192 heading BRAND, Value: 4
+											193 text BRAND
+										194 checkbox (settable, integer) Description: Brembo (24), Value: 0
+										195 text Brembo  (24)
+										196 checkbox (settable, integer) Description: K&N (18), Value: 0
+										197 text K&N  (18)
+										198 checkbox (settable, integer) Description: NGK (32), Value: 0
+										199 text NGK  (32)
+										200 checkbox (settable, integer) Description: EBC (12), Value: 0
+										201 text EBC  (12)
+										202 checkbox (settable, integer) Description: Akrapovic (45), Value: 0
+										203 text Akrapovic  (45)
+										204 heading PRICE RANGE, Value: 4
+											205 text PRICE RANGE
+										206 text $10 - $500
+										207 slider (settable, integer) 50
+										208 heading COMPATIBILITY, Value: 4
+											209 text COMPATIBILITY
+										210 button UNIVERSAL
+										211 button OEM SPECIFIC
+										212 button RACE ONLY
+									213 container
+										214 link Description: Home, Value: …
+										215 text chevron_right
+										216 link Description: Parts, Value: …
+										217 text chevron_right Braking System
+										218 heading Spare Parts (458), Value: 1
+											219 text Spare Parts  (458)
+										220 text Sort by:
+										221 button Relevance sort
+											222 text Relevance
+											223 text sort
+										224 text Part Type: Brake Pads
+										225 button close
+										226 text Brand: Brembo
+										227 button close
+										228 container
+											229 image Brembo Brake Pads Package
+											230 button favorite
+											231 text IN STOCK
+										232 text Brembo
+										233 heading Sintered Street Brake Pads - Front, Value: 3
+											234 text Sintered Street Brake Pads - Front
+										235 text $45.99
+										236 text Pair
+										237 button ADD TO CART shopping_cart
+											238 text ADD TO CART
+											239 text shopping_cart
+										240 container
+											241 image K&N High Flow Air Filter
+											242 button favorite
+											243 text IN STOCK
+										244 text K&N Filters
+										245 heading High-Flow Replacement Air Filter, Value: 3
+											246 text High-Flow Replacement Air Filter
+										247 text $72.50
+										248 text Each
+										249 button ADD TO CART shopping_cart
+											250 text ADD TO CART
+											251 text shopping_cart
+										252 container
+											253 image NGK Iridium Spark Plug Box
+											254 button favorite
+											255 text IN STOCK
+										256 text NGK
+										257 heading Iridium IX Spark Plug CR9EIX, Value: 3
+											258 text Iridium IX Spark Plug CR9EIX
+										259 text $12.95
+										260 text Each
+										261 button ADD TO CART shopping_cart
+											262 text ADD TO CART
+											263 text shopping_cart
+										264 container
+											265 image Generic Oil Filter Black
+											266 button favorite
+											267 text LOW STOCK
+										268 text Hiflofiltro
+										269 heading Premium Oil Filter HF204, Value: 3
+											270 text Premium Oil Filter HF204
+										271 text $14.50
+										272 text Each
+										273 button ADD TO CART shopping_cart
+											274 text ADD TO CART
+											275 text shopping_cart
+										276 container
+											277 image Drive Chain Gold
+											278 button favorite
+											279 text IN STOCK
+										280 text D.I.D Chain
+										281 heading 520 VX3 Series X-Ring Chain (Gold), Value: 3
+											282 text 520 VX3 Series X-Ring Chain (Gold)
+										283 text $115.00
+										284 text 120 Links
+										285 button ADD TO CART shopping_cart
+											286 text ADD TO CART
+											287 text shopping_cart
+										288 container
+											289 image Motul 300V Oil Bottle
+											290 button favorite
+											291 text SALE
+										292 text Motul
+										293 heading 300V Factory Line 10W-40 Synthetic Oil, Value: 3
+											294 text 300V Factory Line 10W-40 Synthetic Oil
+										295 text $24.99
+										296 text $19.99
+										297 text 1 Liter
+										298 button ADD TO CART shopping_cart
+											299 text ADD TO CART
+											300 text shopping_cart
+										301 button chevron_left
+										302 button 1
+										303 button 2
+										304 button 3
+										305 text ...
+										306 button 8
+										307 button chevron_right
+						308 container
+							309 text Motorcycle Product Detail View
+							310 container
+								311 AXWebArea Streetfighter X-900 - MotoX, URL: about:srcdoc
+									312 container
+										313 text two_wheeler
+										314 heading MotoX, Value: 2
+											315 text MotoX
+										316 container
+											317 link Description: Models, Value: …
+											318 link Description: Technology, Value: …
+											319 link Description: Racing, Value: …
+											320 link Description: Shop, Value: …
+										321 container
+											322 text search
+											323 text field (settable) search
+										324 button Log In
+										325 button shopping_cart Cart
+											326 text shopping_cart
+											327 text Cart
+										328 link Description: Home, Value: …
+										329 text /
+										330 link Description: Motorcycles, Value: …
+										331 text / Streetfighter X-900
+										332 container
+											333 text NEW MODEL
+											334 button 360
+										335 button
+										336 button
+										337 button
+										338 button
+										339 text speed
+										340 heading Top Speed, Value: 4
+											341 text Top Speed
+										342 text 280 km/h electronically limited for safety.
+										343 text bolt
+										344 heading Quick Shifter, Value: 4
+											345 text Quick Shifter
+										346 text Bi-directional quick shifter for seamless gear changes.
+										347 text security
+										348 heading ABS Cornering, Value: 4
+											349 text ABS Cornering
+										350 text Advanced Bosch 9.1 MP cornering ABS system.
+										351 heading X-900, Value: 1
+											352 text X-900
+										353 button favorite
+										354 heading Streetfighter Series, Value: 2
+											355 text Streetfighter Series
+										356 text $14,999 $16,200 PRE-ORDER local_gas_station 120 HP settings_motion_mode 85 NM scale 180 KG
+										357 text Dominate the asphalt. The X-900 combines raw power with precision engineering for the ultimate urban riding experience. Featuring a liquid-cooled twin engine and lightweight trellis frame.
+										358 text SELECT COLOR
+										359 radio button (settable, integer) 1
+										360 radio button (settable, integer) 0
+										361 radio button (settable, integer) 0
+										362 text TRIM LEVEL
+										363 container
+											364 radio button (settable, integer) Description: Standard Base configuration, Value: 1
+											365 text Standard Base configuration
+										366 container
+											367 radio button (settable, integer) Description: Carbon Pro +$2k Carbon fiber upgrades, Value: 0
+											368 text Carbon Pro +$2k Carbon fiber upgrades
+										369 button PRE-ORDER NOW arrow_forward
+											370 text PRE-ORDER NOW
+											371 text arrow_forward
+										372 button FIND A DEALER
+										373 container
+											374 text Estimated delivery:  October 2023 . Free shipping included.
+										375 container
+											376 button (expanded) ENGINE SPECS expand_more, Secondary Actions: Collapse
+												377 text ENGINE SPECS
+												378 text expand_more
+											379 text Type Liquid-cooled, 4-stroke, Parallel Twin Displacement 890 cc Bore x Stroke 88.0 x 62.1 mm Compression 11.5:1
+										380 button (collapsed) DIMENSIONS expand_more, Secondary Actions: Expand
+											381 text DIMENSIONS
+											382 text expand_more
+										383 button (collapsed) ELECTRONICS expand_more, Secondary Actions: Expand
+											384 text ELECTRONICS
+											385 text expand_more
+										386 container
+											387 heading You Might Also Like, Value: 3
+												388 text You Might Also Like
+											389 text Similar models in the Streetfighter category
+											390 link Description: View all models arrow_forward, Value: …
+											391 heading Moto Z-700, Value: 4
+												392 text Moto Z-700
+											393 text 700cc • 75 HP
+											394 text $9,499
+											395 button add
+											396 heading Retro Cafe 900, Value: 4
+												397 text Retro Cafe 900
+											398 text 900cc • 95 HP
+											399 text $12,299
+											400 button add
+											401 heading Dirt X-450, Value: 4
+												402 text Dirt X-450
+											403 text 450cc • 55 HP
+											404 text $8,999
+											405 button add
+											406 heading Electric E-1, Value: 4
+												407 text Electric E-1
+											408 text Electric • 150 km range
+											409 text $15,499
+											410 button add
+										411 text two_wheeler MotoX
+										412 text Engineered for the fearless. Designed for the future.
+										413 heading Shop, Value: 5
+											414 text Shop
+										415 content list
+											416 link Description: Motorcycles, Value: …
+											417 link Description: Apparel, Value: …
+											418 link Description: Accessories, Value: …
+											419 link Description: Parts, Value: …
+										420 heading Support, Value: 5
+											421 text Support
+										422 content list
+											423 link Description: Find a Dealer, Value: …
+											424 link Description: Owner's Manuals, Value: …
+											425 link Description: Contact Us, Value: …
+											426 link Description: Warranty, Value: …
+										427 heading Newsletter, Value: 5
+											428 text Newsletter
+										429 container
+											430 text field (settable)
+											431 button Join
+										432 text © 2023 MotoX Inc. All rights reserved.
+										433 link Description: Privacy Policy, Value: …
+										434 link Description: Terms of Service, Value: …
+						435 container
+							436 text Motorcycle Inventory Listing
+							437 container
+								438 AXWebArea Motorcycle Inventory Listing, URL: about:srcdoc
+									439 container
+										440 link Description: two_wheeler MotoMarket, Value: …
+										441 link Description: BIKES, Value: …
+										442 link Description: GEAR, Value: …
+										443 link Description: PARTS, Value: …
+										444 link Description: SERVICE, Value: …
+										445 text search
+										446 text field (settable)
+										447 button shopping_cart
+										448 button person
+									449 container
+										450 heading FILTERS, Value: 3
+											451 text FILTERS
+										452 button Reset All
+										453 heading CONDITION, Value: 4
+											454 text CONDITION
+										455 checkbox (settable, integer) Description: New (2024+), Value: 0
+										456 text New (2024+)
+										457 checkbox (settable, integer) Description: Used, Value: 1
+										458 text Used
+										459 heading MAKE, Value: 4
+											460 text MAKE
+										461 checkbox (settable, integer) Description: Ducati (24), Value: 0
+										462 text Ducati  (24)
+										463 checkbox (settable, integer) Description: Yamaha (18), Value: 0
+										464 text Yamaha  (18)
+										465 checkbox (settable, integer) Description: Kawasaki (32), Value: 0
+										466 text Kawasaki  (32)
+										467 checkbox (settable, integer) Description: BMW (12), Value: 0
+										468 text BMW  (12)
+										469 checkbox (settable, integer) Description: Honda (45), Value: 0
+										470 text Honda  (45)
+										471 heading PRICE RANGE, Value: 4
+											472 text PRICE RANGE
+										473 text $10k - $60k
+										474 slider (settable, integer) 50
+										475 heading TYPE, Value: 4
+											476 text TYPE
+										477 button SPORT
+										478 button CRUISER
+										479 button TOURING
+										480 button NAKED
+									481 container
+										482 link Description: Home, Value: …
+										483 text chevron_right
+										484 link Description: Inventory, Value: …
+										485 text chevron_right Sport Bikes
+										486 heading Sport Bikes (124), Value: 1
+											487 text Sport Bikes  (124)
+										488 text Sort by:
+										489 button Newest Listed sort
+											490 text Newest Listed
+											491 text sort
+										492 text Type: Sport
+										493 button close
+										494 text Year: 2020+
+										495 button close
+										496 container
+											497 image Red Ducati motorcycle side view studio shot
+											498 button favorite
+											499 text NEW ARRIVAL
+										500 heading 2024 Ducati Panigale V4 S, Value: 3
+											501 text 2024 Ducati Panigale V4 S
+										502 text speed 1103cc confirmation_number 0 mi calendar_today 2024
+										503 text $32,500
+										504 button DETAILS arrow_forward
+											505 text DETAILS
+											506 text arrow_forward
+										507 container
+											508 image Blue Yamaha sport motorcycle studio lighting
+											509 button favorite
+										510 heading 2023 Yamaha YZF-R1M, Value: 3
+											511 text 2023 Yamaha YZF-R1M
+										512 text speed 998cc confirmation_number 1.2k mi calendar_today 2023
+										513 text $27,900
+										514 button DETAILS arrow_forward
+											515 text DETAILS
+											516 text arrow_forward
+										517 container
+											518 image Black Kawasaki Ninja H2 carbon fiber detail
+											519 button favorite
+											520 text RARE FIND
+										521 heading 2024 Kawasaki Ninja H2, Value: 3
+											522 text 2024 Kawasaki Ninja H2
+										523 text speed 998cc confirmation_number 0 mi calendar_today 2024
+										524 text $58,100
+										525 button DETAILS arrow_forward
+											526 text DETAILS
+											527 text arrow_forward
+										528 container
+											529 image White BMW S 1000 RR sport bike
+											530 button favorite
+										531 heading 2023 BMW S 1000 RR, Value: 3
+											532 text 2023 BMW S 1000 RR
+										533 text speed 999cc confirmation_number 450 mi calendar_today 2023
+										534 text $26,400
+										535 button DETAILS arrow_forward
+											536 text DETAILS
+											537 text arrow_forward
+										538 container
+											539 image Red Honda CBR1000RR in studio
+											540 button favorite
+										541 heading 2024 Honda CBR1000RR-R, Value: 3
+											542 text 2024 Honda CBR1000RR-R
+										543 text speed 1000cc confirmation_number 100 mi calendar_today 2024
+										544 text $29,500
+										545 button DETAILS arrow_forward
+											546 text DETAILS
+											547 text arrow_forward
+										548 container
+											549 image Aprilia RSV4 Factory motorcycle dark background
+											550 button favorite
+											551 text SALE
+										552 heading 2023 Aprilia RSV4 Factory, Value: 3
+											553 text 2023 Aprilia RSV4 Factory
+										554 text speed 1099cc confirmation_number 2.1k mi calendar_today 2023 $28,500
+										555 text $26,900
+										556 button DETAILS arrow_forward
+											557 text DETAILS
+											558 text arrow_forward
+										559 button chevron_left
+										560 button 1
+										561 button 2
+										562 button 3
+										563 text ...
+										564 button 8
+										565 button chevron_right
+						566 container
+							567 text Motorcycle Product Detail View
+							568 container
+								569 AXWebArea Titanium Slip-On Exhaust - MotoX Parts, URL: about:srcdoc
+									570 container
+										571 text two_wheeler
+										572 heading MotoX Parts, Value: 2
+											573 text MotoX Parts
+										574 container
+											575 link Description: Parts, Value: …
+											576 link Description: Gear, Value: …
+											577 link Description: Garage, Value: …
+											578 link Description: Sale, Value: …
+										579 container
+											580 text search
+											581 text field (settable) search
+										582 button Log In
+										583 button shopping_cart Cart (2)
+											584 text shopping_cart
+											585 text Cart (2)
+										586 link Description: Home, Value: …
+										587 text /
+										588 link Description: Performance Parts, Value: …
+										589 text /
+										590 link Description: Exhaust Systems, Value: …
+										591 text / Apex Titanium Slip-On
+										592 container
+											593 text BEST SELLER
+											594 button zoom_in
+										595 button
+										596 button
+										597 button
+										598 button
+										599 text construction
+										600 heading Material, Value: 4
+											601 text Material
+										602 text Aerospace Grade Titanium
+										603 text High strength-to-weight ratio.
+										604 text scale
+										605 heading Weight Reduction, Value: 4
+											606 text Weight Reduction
+										607 text -3.5 kg / -7.7 lbs
+										608 text Compared to stock exhaust.
+										609 text checklist
+										610 heading Compatibility List, Value: 4
+											611 text Compatibility List
+										612 text Multi-Model Fit
+										613 text Streetfighter X-900, Z-700 & more.
+										614 heading APEX TITANIUM SLIP-ON, Value: 1
+											615 text APEX TITANIUM SLIP-ON
+										616 button favorite
+										617 heading Performance Series • SKU: EX-TI-900, Value: 2
+											618 text Performance Series • SKU: EX-TI-900
+										619 text $849.00 $920.00 IN STOCK check
+										620 text VERIFIED FIT
+										621 container
+											622 text Fits your  2023 Streetfighter X-900
+										623 button Change bike
+										624 text trending_up +5.2 HP GAIN bolt +3.8 NM TORQUE volume_up 102 DB SOUND
+										625 text Unleash the full potential of your engine. The Apex Titanium Slip-On is precision-engineered to improve airflow, reduce weight significantly, and deliver that signature deep racing growl. Easy bolt-on installation with included hardware.
+										626 text FINISH OPTION
+										627 container
+											628 radio button (settable, integer) Description: Brushed Titanium Raw metal look, Value: 1
+											629 text Brushed Titanium Raw metal look
+										630 container
+											631 radio button (settable, integer) Description: Black Ceramic +$50 Stealth matte finish, Value: 0
+											632 text Black Ceramic +$50 Stealth matte finish
+										633 button shopping_cart BUY NOW
+											634 text shopping_cart
+											635 text BUY NOW
+										636 button add_circle ADD TO WISHLIST
+											637 text add_circle
+											638 text ADD TO WISHLIST
+										639 text local_shipping
+										640 container
+											641 text Free shipping on orders over $100. Delivered by  Friday, Oct 27 .
+										642 container
+											643 button (expanded) TECHNICAL SPECS expand_more, Secondary Actions: Collapse
+												644 text TECHNICAL SPECS
+												645 text expand_more
+											646 text Material Titanium / Carbon Fiber Weight 1.8 kg (3.9 lbs) Inlet Diameter 60 mm Certification EPA / CARB Compliant
+										647 button (collapsed) WHAT'S IN THE BOX expand_more, Secondary Actions: Expand
+											648 text WHAT'S IN THE BOX
+											649 text expand_more
+										650 button (collapsed) COMPATIBILITY LIST expand_more, Secondary Actions: Expand
+											651 text COMPATIBILITY LIST
+											652 text expand_more
+										653 container
+											654 heading Complete Your Build, Value: 3
+												655 text Complete Your Build
+											656 text Recommended parts frequently bought together
+											657 link Description: View all parts arrow_forward, Value: …
+											658 heading High-Flow Air Filter, Value: 4
+												659 text High-Flow Air Filter
+											660 text Performance Intake
+											661 text $89.99
+											662 button add
+											663 heading Stage 1 ECU Tune, Value: 4
+												664 text Stage 1 ECU Tune
+											665 text Plug & Play Module
+											666 text $349.00
+											667 button add
+											668 heading Carbon Fender, Value: 4
+												669 text Carbon Fender
+											670 text Weight Reduction
+											671 text $220.00
+											672 button add
+											673 heading Frame Sliders, Value: 4
+												674 text Frame Sliders
+											675 text Crash Protection
+											676 text $129.99
+											677 button add
+										678 text two_wheeler MotoX Parts
+										679 text Premium aftermarket parts for the fearless rider.
+										680 heading Shop, Value: 5
+											681 text Shop
+										682 content list
+											683 link Description: Exhausts, Value: …
+											684 link Description: Brakes, Value: …
+											685 link Description: Bodywork, Value: …
+											686 link Description: Electronics, Value: …
+										687 heading Support, Value: 5
+											688 text Support
+										689 content list
+											690 link Description: Fitment Guide, Value: …
+											691 link Description: Installation Videos, Value: …
+											692 link Description: Returns, Value: …
+											693 link Description: Warranty, Value: …
+										694 heading Newsletter, Value: 5
+											695 text Newsletter
+										696 container
+											697 text field (settable)
+											698 button Join
+										699 text © 2023 MotoX Parts Inc. All rights reserved.
+										700 link Description: Privacy Policy, Value: …
+										701 link Description: Terms of Service, Value: …
+						702 container
+							703 text Motorcycle Ecommerce Home Page
+							704 container
+								705 AXWebArea MOTO - High Performance Motorcycles, URL: about:srcdoc
+									706 container
+										707 text two_wheeler MOTO
+										708 link Description: SHOP, Value: …
+										709 link Description: MODELS, Value: …
+										710 link Description: GEAR, Value: …
+										711 link Description: ABOUT, Value: …
+										712 text search
+										713 text field (settable)
+										714 button shopping_cart
+											715 text shopping_cart
+										716 button account_circle
+									717 container
+										718 container
+											719 text NEW RELEASE 2024
+											720 heading UNLEASH THE FUTURE, Value: 1
+												721 text UNLEASH
+												722 text THE  FUTURE
+											723 text The all-new V-Raptor 1000. Precision engineering meets raw electric power. Experience 0-60 in 2.8s.
+											724 button PRE-ORDER NOW arrow_forward
+												725 text PRE-ORDER NOW
+												726 text arrow_forward
+											727 button VIEW SPECS
+										728 container
+											729 text SCROLL keyboard_arrow_down
+										730 text ACCELERATION 2.8s  0-60 MPH POWER 215  HP TOP SPEED 190  MPH
+										731 heading FEATURED MODELS, Value: 2
+											732 text FEATURED MODELS
+										733 text Explore our latest lineup of high-performance machines designed for the track and the street.
+										734 link Description: VIEW ALL MODELS arrow_forward, Value: …
+										735 container
+											736 text BEST SELLER
+											737 heading Street Fighter X, Value: 3
+												738 text Street Fighter X
+											739 text $14,999 Aggressive styling meets urban agility. The perfect companion for city streets and canyon carving.
+											740 button VIEW SPECS
+										741 container
+											742 heading Touring Master, Value: 3
+												743 text Touring Master
+											744 text $18,500 Built for the long haul. Uncompromising comfort without sacrificing the thrill of the ride.
+											745 button VIEW SPECS
+										746 container
+											747 text TRACK ONLY
+											748 heading Track Edition R, Value: 3
+												749 text Track Edition R
+											750 text $22,000 Pure racing DNA. Carbon fiber frame, slick tires, and engine mapping for the circuit.
+											751 button VIEW SPECS
+										752 container
+											753 heading RIDING GEAR, Value: 3
+												754 text RIDING GEAR
+											755 text Premium protection meets style. Shop helmets, jackets, and gloves.
+											756 link Description: SHOP COLLECTION arrow_outward, Value: …
+										757 container
+											758 heading PARTS & ACCESSORIES, Value: 3
+												759 text PARTS & ACCESSORIES
+											760 link Description: BROWSE CATALOG arrow_outward, Value: …
+										761 container
+											762 text build
+											763 heading BOOK A SERVICE, Value: 3
+												764 text BOOK A SERVICE
+											765 text Keep your machine running at peak performance with our certified technicians.
+											766 button FIND DEALER
+										767 text STAY UPDATED
+										768 heading JOIN THE REVOLUTION, Value: 2
+											769 text JOIN THE REVOLUTION
+										770 text Get exclusive access to new model releases, gear drops, and track day events.
+										771 container
+											772 text field (settable)
+											773 button SUBSCRIBE
+									774 container
+										775 text two_wheeler MOTO Redefining performance for the modern rider. Engineered for speed, designed for adrenaline.
+										776 link Description: Twitter, Value: …
+										777 link Description: Instagram, Value: …
+										778 link Description: YouTube, Value: …
+										779 heading SHOP, Value: 4
+											780 text SHOP
+										781 content list
+											782 link Description: Motorcycles, Value: …
+											783 link Description: Apparel, Value: …
+											784 link Description: Accessories, Value: …
+											785 link Description: Parts, Value: …
+										786 heading COMPANY, Value: 4
+											787 text COMPANY
+										788 content list
+											789 link Description: About Us, Value: …
+											790 link Description: Careers, Value: …
+											791 link Description: Press, Value: …
+											792 link Description: Dealers, Value: …
+										793 heading SUPPORT, Value: 4
+											794 text SUPPORT
+										795 content list
+											796 link Description: Contact Us, Value: …
+											797 link Description: Shipping, Value: …
+											798 link Description: Returns, Value: …
+											799 link Description: Warranty, Value: …
+										800 text © 2024 MOTO Inc. All rights reserved.
+										801 link Description: Privacy Policy, Value: …
+										802 link Description: Terms of Service, Value: …
+					803 image
+					804 image
+					805 image
+					806 image
+					807 container
+						808 text entry area (settable) 
+
+							809 container
+								810 text What would you like to change or create?
+						811 button Elegir archivos
+						812 pop up button (collapsed) Secondary Actions: Expand
+							813 image
+						814 pop up button (collapsed) Secondary Actions: Expand
+							815 image
+								816 text /
+						817 button
+							818 image
+						819 pop up button (collapsed) Secondary Actions: Expand
+							820 image
+						821 pop up button (collapsed) Balanced, Secondary Actions: Expand
+							822 text Balanced
+							823 image
+						824 button
+							825 image
+						826 button (disabled)
+							827 image
+					828 pop up button (collapsed) Secondary Actions: Expand
+						829 container
+							830 image
+							831 text Agent log
+							832 image
+					833 container
+						834 button Collapse panel
+							835 image
+						836 container
+							837 container
+								838 image Maximiliano Méndez
+								839 text Ajustá el diagnóstico: la versión de tienda revisada es LOCAL, no certificada en producción. La app YA muestra alerta de pagos deshabilitados en catálogo Y checkout, YA tiene botón Copiar enlace de mi pedido, YA tiene checkout en tres etapas y cobertura Salta. Son fortalezas existentes, no funciones a crear. Conservá paleta REAL #090d0b/#101611/#8ee000/#b8ff58 con Arial. No hay mantenimiento oficial, catálogo de fabricante verificado, IVA declarado, transferencia ni pago al retiro implementado: no proponer esos textos como hechos. El código REP identifica pero NO recupera acceso digital: requiere token privado; no sugerir que anotar código sustituye enlace. El enlace es secreto: no recomendar envío automático por WhatsApp ni compartir con terceros; como propuesta futura, email privado con consentimiento y copia explícita del cliente. Estados reales: esperando pago -> pago acreditado; RETIRO -> listo para retirar -> entregado; ENVÍO -> enviado -> entregado. El stock se descuenta al RETIRAR/DESPACHAR, no al entregar envío; listo retiro no aplica a envíos. Registré en móvil 390px que la cabecera/beneficios/alerta/filtros consumen el primer viewport antes de mostrar productos: priorizar compactar. La consulta carga hasta1000 productos y filtra en cliente: más allá de ese límite quedan fuera sin paginación; panel solo100 pedidos, anteriores fuera. Unit tests339/340 en suite: fallo de foco error, aislado6/6 pasa (posible inestabilidad, no bug probado). Tipos/lint pasan. Devuelve una matriz corregida y un plan enfocado en mejoras verdaderamente faltantes. Separá errores de MAQUETAS frente a problemas APP ACTUAL. SOLO TEXTO, no cambies pantallas.
+							840 button Copy prompt
+								841 image
+							842 button Mostrar más
+								843 image
+							844 container
+								845 heading Diagnóstico Técnico y UX Corregido — Taller Express (Entorno Local), Value: 1
+									846 text Diagnóstico Técnico y UX Corregido — Taller Express (Entorno Local)
+								847 container
+									848 text Precisiones del entorno:  Esta versión corrige y reemplaza las suposiciones del diagnóstico previo. Se audita el código real en entorno  LOCAL  (Next.js 16 / React 19 / PostgreSQL) frente a las maquetas visuales desalineadas del canvas. Se reconocen las  fortalezas ya implementadas , se fijan los  estados reales de pedido y descuento de stock , se respeta la  confidencialidad del token privado , y se adopta la  paleta cromática y tipográfica exacta  ( #090d0b ,  #101611 ,  #8ee000 ,  #b8ff58  con Arial).
+								849 heading 1. Deslinde Estricto: Errores del Canvas vs. Fortalezas vs. Problemas Reales, Value: 2
+									850 text 1. Deslinde Estricto: Errores del Canvas vs. Fortalezas vs. Problemas Reales
+								851 text +──────────────────────────────────────────────────────────────────────────────────────────────────+
+|  CANVAS (Maquetas Desalineadas)                                                                  |
+|  - Motos completas en venta en lugar de repuestos.                                               |
+|  - Textos en inglés ("BUY NOW", "PRE-ORDER", "SPECS").                                           |
+|  - Moneda extranjera/USD ($849.00, $14,999) y badges ficticios ("VERIFIED FIT", "BEST SELLER").  |
+|  - Promesas falsas de envío internacional ("Free shipping over $100").                           |
++──────────────────────────────────────────────────────────────────────────────────────────────────+
+                                          ▼ CONTRASTE CON
++──────────────────────────────────────────────────────────────────────────────────────────────────+
+|  APP ACTUAL (Fortalezas Existentes que NO deben reinventarse)                                    |
+|  ✓ Alerta explícita de pagos online deshabilitados ya visible en catálogo y checkout.            |
+|  ✓ Checkout lineal en 3 etapas (Carrito / Entrega y datos / Revisar y pagar) ya funcional.       |
+|  ✓ Cobertura restringida a Salta Capital (CP 4400) o retiro en taller ya validada.               |
+|  ✓ Botón "Copiar enlace de mi pedido" ya implementado en la pantalla de pedido.                 |
+|  ✓ Suite técnica sólida: 339/340 unit tests, tipos y lint pasando en verde.                      |
++──────────────────────────────────────────────────────────────────────────────────────────────────+
+                                          ▼ FOCO DE MEJORA
++──────────────────────────────────────────────────────────────────────────────────────────────────+
+|  PROBLEMAS REALES DE LA APLICACIÓN LOCAL (Gaps UX y de Arquitectura)                             |
+|  ! Cabecera, alerta, beneficios y filtros consumen todo el viewport inicial en 390px móvil.      |
+|  ! Consulta limitada a 1.000 productos filtrados en cliente (invisibilidad de catálogo > 1.000).  |
+|  ! Panel de ventas limitado a 100 tarjetas sin filtros/paginación (pedidos 101+ inaccesibles).    |
+|  ! Pérdida irreversible de token privado si el usuario no copia el link (sin portal ni email).   |
++──────────────────────────────────────────────────────────────────────────────────────────────────+
+
+								852 heading 2. Matriz Corregida de Hallazgos y Priorización (P1 / P2 / P3), Value: 2
+									853 text 2. Matriz Corregida de Hallazgos y Priorización (P1 / P2 / P3)
+								854 table
+									855 row
+										856 cell
+											857 text Prioridad
+										858 cell
+											859 text Problema detectado
+										860 cell
+											861 text Evidencia en la app actual (Local)
+										862 cell
+											863 text Propuesta de resolución UX / Técnica
+										864 cell
+											865 text Impacto esperado
+									866 row
+										867 cell
+											868 text P1
+										869 cell
+											870 text Bloqueo del primer viewport en móvil (390px)
+										871 cell
+											872 text Cabecera + barra de beneficios + alerta de pagos deshabilitados + bloque de filtros colapsados ocupan > 750px de altura; el primer repuesto queda completamente fuera de pantalla.
+										873 cell
+											874 text 1. Condensar cabecera y unificar alerta en una cinta compacta (
+											875 text inline banner
+											876 text  dismissible o de 32px máx.).
+											877 text <br>
+											878 text 2. Ocultar tira de beneficios en móvil si hay filtros activos o condensarla en un carrusel/píldoras de 24px.
+											879 text <br>
+											880 text 3. Botón flotante o barra colapsable compacta: 
+											881 text «Filtros (N) • Buscar por moto»
+											882 text  que deje asomar al menos la primera tarjeta de producto en el 
+											883 text fold
+											884 text  inicial.
+										885 cell
+											886 text Reduce el abandono inmediato en móvil permitiendo ver producto y precio sin necesidad de scroll ciego.
+									887 row
+										888 cell
+											889 text P1
+										890 cell
+											891 text Riesgo crítico de pérdida del enlace privado de pedido
+										892 cell
+											893 text El código 
+											894 text REP-XXXX
+											895 text  es un identificador administrativo pero 
+											896 text no permite reingresar a la URL privada
+											897 text  ni recuperar el estado digital. No hay portal de clientes ni emails salientes.
+										898 cell
+											899 text 1. Redoblar la jerarquía de advertencia en pantalla de confirmación: 
+											900 text «Guardá este enlace en tus favoritos. Es tu único acceso para ver el estado de tu compra»
+											901 text .
+											902 text <br>
+											903 text 2. Mejorar la visibilidad y feedback visual del botón existente 
+											904 text «Copiar enlace»
+											905 text  (toast de confirmación explícito + estado copiado persistente).
+											906 text <br>
+											907 text 3. 
+											908 text Hoja de ruta futura:
+											909 text  Habilitar campo opcional de email con consentimiento explícito del cliente para despacho de token privado sin intermediarios.
+										910 cell
+											911 text Evita reclamos y fricción en mostrador de clientes que anotaron solo el código 
+											912 text REP
+											913 text  creyendo que podían reabrir la web.
+									914 row
+										915 cell
+											916 text P1
+										917 cell
+											918 text Tope duro de 1.000 repuestos con filtrado en cliente
+										919 cell
+											920 text La API entrega hasta 1.000 registros y la UI filtra en frontend; cualquier producto por encima del ID 1.000 queda invisible e ilocalizable.
+										921 cell
+											922 text Planificar transición a paginación o cursor en servidor (
+											923 text limit
+											924 text  / 
+											925 text offset
+											926 text  o 
+											927 text cursor-based pagination
+											928 text  en PostgreSQL) preservando los filtros en los search params de la URL. Mientras tanto, advertir si el set de resultados excede el corte.
+										929 cell
+											930 text Escalabilidad del inventario y certeza de que el cliente encuentra todas las piezas cargadas en la base.
+									931 row
+										932 cell
+											933 text P2
+										934 cell
+											935 text Ceguera operativa en pedidos > 100 en panel Staff
+										936 cell
+											937 text El panel muestra únicamente las últimas 100 tarjetas. Si ingresan nuevos pedidos o se acumulan órdenes anteriores, quedan fuera de la vista del personal.
+										938 cell
+											939 text 1. Implementar filtros rápidos en cabecera por estado (
+											940 text Esperando pago
+											941 text , 
+											942 text Pago acreditado
+											943 text , 
+											944 text Listo para retirar
+											945 text , 
+											946 text Enviado
+											947 text , 
+											948 text Entregado
+											949 text ).
+											950 text <br>
+											951 text 2. Paginación o scroll infinito sobre el endpoint de staff.
+											952 text <br>
+											953 text 3. Buscador indexado por código 
+											954 text REP
+											955 text  o teléfono del cliente.
+										956 cell
+											957 text Operatividad fluida en mostrador; ninguna orden queda «sepultada» detrás de las 100 más recientes.
+									958 row
+										959 cell
+											960 text P2
+										961 cell
+											962 text Desbalance en jerarquía del Home
+										963 cell
+											964 text La tarjeta 
+											965 text «¿Trabajás en el taller?»
+											966 text  compite visualmente con el servicio principal de turnos, y la sección de repuestos queda relegada al fondo sin catálogo visual.
+										967 cell
+											968 text 1. Reducir el acceso de taller/staff a un enlace discreto en la barra superior o en el footer institucional.
+											969 text <br>
+											970 text 2. Presentar una portada equilibrada 50/50: 
+											971 text «Turnos en Taller»
+											972 text  y 
+											973 text «Repuestos para tu moto»
+											974 text .
+											975 text <br>
+											976 text 3. Incorporar buscador directo por compatibilidad de moto en el home sin sobrecargar la pantalla.
+										977 cell
+											978 text Claridad inmediata para el cliente particular; profesionalismo institucional.
+									979 row
+										980 cell
+											981 text P3
+										982 cell
+											983 text Inestabilidad potencial en suite de pruebas (foco de error)
+										984 cell
+											985 text 339 de 340 tests pasando; el test de foco de error falla en ejecución completa pero pasa 6/6 de forma aislada.
+										986 cell
+											987 text Investigar posible race condition en limpieza de DOM (JSDOM/React Testing Library) o fuga de estado entre tests concurrentes (
+											988 text cleanup
+											989 text , temporizadores o renderizado asíncrono).
+										990 cell
+											991 text 100% de reproducibilidad en integración continua (CI) y estabilidad de despliegue.
+								992 heading 3. Arquitectura del Flujo y Estados Reales de Venta, Value: 2
+									993 text 3. Arquitectura del Flujo y Estados Reales de Venta
+								994 heading A. Trazabilidad de Estados y Momento Exacto de Descuento de Stock, Value: 3
+									995 text A. Trazabilidad de Estados y Momento Exacto de Descuento de Stock
+								996 text El sistema opera bajo dos bifurcaciones estrictas según el método de entrega acordado:
+								997 text [ PREDETALLE: Confirmación de Pedido ]
+Stock reservado temporalmente por 30 min
+                │
+                ▼
+      [ ESPERANDO PAGO ]
+                │
+                ▼ (Se registra seña / pago en Mercado Pago)
+      [ PAGO ACREDITADO ]
+                │
+       ┌────────┴──────────────────────────┐
+       ▼                                   ▼
+ [ MODO: RETIRO EN TALLER ]       [ MODO: ENVÍO SALTA CP 4400 ]
+       │                                   │
+       ▼                                   │ (Listo para retiro NO aplica)
+ [ LISTO PARA RETIRAR ]                    ▼
+       │                             [ ENVIADO ] ──► *DESCUENTO DEFINITIVO DE STOCK*
+       │                                   │
+       ▼                                   ▼
+  [ ENTREGADO ]                      [ ENTREGADO ]
+  *DESCUENTO DEFINITIVO DE STOCK*
+
+								998 content list
+									999 container
+										1000 AXListMarker • 
+										1001 text Regla de stock auditada:  El stock  no  se descuenta al entregar un envío, sino al momento en que sale del local ( despachado/enviado ). En retiro en taller, se descuenta al momento físico de la entrega en mostrador ( entregado ).
+									1002 container
+										1003 AXListMarker • 
+										1004 text Consistencia terminológica:  No prometer «mantenimiento oficial», «catálogo de fabricante verificado», «IVA desglosado», «transferencia bancaria automática» ni «pago en mostrador»: reflejar únicamente los textos validados por el sistema operativo.
+								1005 heading B. Gestión de Seguridad del Enlace Privado, Value: 3
+									1006 text B. Gestión de Seguridad del Enlace Privado
+								1007 content list
+									1008 container
+										1009 AXListMarker • 
+										1010 text El token en la URL es el  único mecanismo de autenticación del cliente .
+									1011 container
+										1012 AXListMarker • 
+										1013 text Directriz de privacidad:  No se debe recomendar el envío automático o abierto del enlace por WhatsApp a terceros. La responsabilidad de resguardo es del usuario mediante la función existente de  «Copiar enlace de mi pedido» .
+									1014 container
+										1015 AXListMarker • 
+										1016 text Microcopy honesto recomendado para la pantalla de éxito:
+										1017 text «Pedido registrado: REP-XXXX. Tu enlace privado es confidencial. Copialo y guardalo en tus notas o marcadores para consultar el avance de tu pedido. El código REP sirve únicamente como referencia para el personal del taller.»
+								1018 heading 4. Solución UX: Optimización Móvil (Viewport 390px), Value: 2
+									1019 text 4. Solución UX: Optimización Móvil (Viewport 390px)
+								1020 text Para evitar que el usuario deba desplazarse más de una pantalla para ver el primer producto en catálogo:
+								1021 text VISTA ACTUAL (Saturada en 390px)                  VISTA COMPACTADA PROPUESTA (390px)
++─────────────────────────────────+             +─────────────────────────────────+
+| [Header Taller Express]  (64px) |             | [Logo] Taller Express      [🛒] | (48px)
++─────────────────────────────────+             +─────────────────────────────────+
+| [Alerta grande pago online]     |             | ⚠️ Pagos online pausados (info) | (32px)
+| (80px)                          |             +─────────────────────────────────+
++─────────────────────────────────+             | [Filtros]  [Mi Moto: Seleccionar]| (44px)
+| [Barra beneficios 3 cajas]      |             +─────────────────────────────────+
+| (140px)                         |             | REPOSITORIO DE REPUESTOS        |
++─────────────────────────────────+             | ┌────────┐ Pastilla Freno       |
+| [Buscador + Selects Moto]       |             | │  FOTO  │ $ 18.500 ARS         |
+| (180px)                         |             | │ PEND.  │ [ Agregar + ]        |
++─────────────────────────────────+             | └────────┘                      |
+| [Filtros: Categoría / Checkbox] |             |                                 |
+| (160px)                         |             | ┌────────┐ Filtro Aceite        |
++─────────────────────────────────+             | │  FOTO  │ $ 9.200 ARS          |
+| (Recién aquí asoma producto...) |             | │ PEND.  │ [ Agregar + ]        |
++─────────────────────────────────+             +─────────────────────────────────+
+  Total ocupado: > 620px (Sin producto)           Total cabecera: ~124px -> Producto visible
+
+								1022 content list
+									1023 container
+										1024 AXListMarker • 
+										1025 text Colapso de beneficios:  Mover las políticas generales (cobertura Salta, retiro en taller) a un banner rotativo ultra fino o directamente al pie de página/checkout.
+									1026 container
+										1027 AXListMarker • 
+										1028 text Botón flotante / Drawer para filtros:  Sustituir los selectores fijos extensos por una barra de controles táctiles de 44px que abra los filtros en un modal o cajón inferior ( bottom sheet ).
+									1029 container
+										1030 AXListMarker • 
+										1031 text Tarjeta compacta horizontal:  Imagen con silueta neutra (para ítems con foto pendiente) a la izquierda de 72×72 px, datos técnicos, SKU y precio en  $ ARS  a la derecha, con botón  + Agregar  de fácil pulsación.
+								1032 heading 5. Plan de Trabajo Enfocado en Mejoras Faltantes (3 Fases), Value: 2
+									1033 text 5. Plan de Trabajo Enfocado en Mejoras Faltantes (3 Fases)
+								1034 text Este plan descarta tareas ya hechas (checkout en 3 fases, validación CP 4400, botón copiar link, avisos de pago pausado) y se enfoca exclusivamente en resolver la deuda técnica y de usabilidad:
+								1035 heading Fase 1: Ergonomía Móvil y Saneamiento del Viewport (Catálogo y Home), Value: 3
+									1036 text Fase 1: Ergonomía Móvil y Saneamiento del Viewport (Catálogo y Home)
+								1037 content list
+									1038 container
+										1039 AXListMarker • 
+										1040 text Objetivos:
+										1041 content list
+											1042 container
+												1043 AXListMarker • 
+												1044 text Reorganizar la cabecera del catálogo en resolución móvil (390px) para que el primer repuesto sea visible en el primer scroll.
+											1045 container
+												1046 AXListMarker • 
+												1047 text Colapsar la barra de beneficios y convertir la alerta de pagos en un aviso compacto.
+											1048 container
+												1049 AXListMarker • 
+												1050 text Reequilibrar el Home: balancear Turnos y Repuestos; relegar el acceso de Staff a un enlace secundario y discreto.
+											1051 container
+												1052 AXListMarker • 
+												1053 text Aplicar de forma estricta los tokens cromáticos reales:
+												1054 content list
+													1055 container
+														1056 AXListMarker • 
+														1057 text Fondo principal:  #090d0b
+													1058 container
+														1059 AXListMarker • 
+														1060 text Contenedores y tarjetas:  #101611
+													1061 container
+														1062 AXListMarker • 
+														1063 text Acentos y bordes activos:  #8ee000
+													1064 container
+														1065 AXListMarker • 
+														1066 text Botones primarios y estados interactivos:  #b8ff58
+													1067 container
+														1068 AXListMarker • 
+														1069 text Tipografía:  Arial, sans-serif
+									1070 container
+										1071 AXListMarker • 
+										1072 text Criterios de Aceptación:
+										1073 content list
+											1074 container
+												1075 AXListMarker • 
+												1076 text En pantalla de 390×844 px, al menos 1 tarjeta completa de repuesto es visible sin hacer scroll.
+											1077 container
+												1078 AXListMarker • 
+												1079 text Todos los controles interactivos conservan un área táctil mínima de 44×44 px.
+											1080 container
+												1081 AXListMarker • 
+												1082 text No existen textos en inglés ni alusiones a venta de motos completas.
+								1083 heading Fase 2: Robustez de Datos y Escalabilidad del Inventario, Value: 3
+									1084 text Fase 2: Robustez de Datos y Escalabilidad del Inventario
+								1085 content list
+									1086 container
+										1087 AXListMarker • 
+										1088 text Objetivos:
+										1089 content list
+											1090 container
+												1091 AXListMarker • 
+												1092 text Diagnosticar y resolver el límite de 1.000 repuestos en la consulta SQL/API, definiendo la estrategia de paginación o carga controlada con filtros en servidor.
+											1093 container
+												1094 AXListMarker • 
+												1095 text Notificar al usuario cuando una búsqueda arroja resultados que exceden la ventana de visualización.
+											1096 container
+												1097 AXListMarker • 
+												1098 text Normalizar la ficha técnica de producto con microcopy que transparente las compatibilidades registradas sin afirmar certificaciones de fábrica.
+									1099 container
+										1100 AXListMarker • 
+										1101 text Criterios de Aceptación:
+										1102 content list
+											1103 container
+												1104 AXListMarker • 
+												1105 text El catálogo soporta más de 1.000 registros sin ocultar productos ni degradar la memoria del navegador.
+											1106 container
+												1107 AXListMarker • 
+												1108 text Los selectores de moto ( Marca > Modelo > Versión ) aplican los filtros de forma reactiva y preservan el estado en la URL.
+								1109 heading Fase 3: Operatividad del Panel Staff y Resiliencia del Token Privado, Value: 3
+									1110 text Fase 3: Operatividad del Panel Staff y Resiliencia del Token Privado
+								1111 content list
+									1112 container
+										1113 AXListMarker • 
+										1114 text Objetivos:
+										1115 content list
+											1116 container
+												1117 AXListMarker • 
+												1118 text Refactorizar el panel de administración de ventas: reemplazar el visor fijo de 100 tarjetas por un listado con filtros por estado real ( Esperando pago ,  Pago acreditado ,  Listo para retirar ,  Enviado ,  Entregado ) y buscador por código  REP  o teléfono.
+											1119 container
+												1120 AXListMarker • 
+												1121 text Asegurar la lógica de descuento de stock auditado: descuento al pasar a  Enviado  (en envíos) o al pasar a  Entregado  (en retiros en mostrador).
+											1122 container
+												1123 AXListMarker • 
+												1124 text Reforzar en la pantalla de confirmación la naturaleza intransferible y única del enlace copiado, agregando feedback visual inmediato (tooltip/toast «Enlace copiado al portapapeles»).
+											1125 container
+												1126 AXListMarker • 
+												1127 text Aislar la prueba unitaria intermitente de foco para garantizar 340/340 tests estables en la suite.
+									1128 container
+										1129 AXListMarker • 
+										1130 text Criterios de Aceptación:
+										1131 content list
+											1132 container
+												1133 AXListMarker • 
+												1134 text El personal del taller puede consultar pedidos históricos anteriores a los últimos 100 mediante filtros o búsqueda.
+											1135 container
+												1136 AXListMarker • 
+												1137 text El stock se descuenta una sola vez y en el estado operativo exacto correspondiente a cada modalidad de entrega.
+											1138 container
+												1139 AXListMarker • 
+												1140 text La suite de pruebas ejecuta 340/340 pruebas en verde de manera determinista y repetible.
+			1141 container No se ha podido reproducir el contenido multimedia.
+
+The focused UI element is 826 button (disabled)

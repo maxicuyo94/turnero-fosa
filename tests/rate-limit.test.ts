@@ -118,6 +118,7 @@ describe("internal login throttle", () => {
     expect(clientIpFromHeaders(new Headers({ "x-forwarded-for": "203.0.113.7, 10.0.0.1" }))).toBe("203.0.113.7");
     expect(clientIpFromHeaders(new Headers({ "x-real-ip": "198.51.100.2" }))).toBe("198.51.100.2");
     expect(clientIpFromHeaders(new Headers())).toBeNull();
+    expect(clientIpFromHeaders(new Headers({ "x-forwarded-for": "attacker-controlled-id" }))).toBeNull();
   });
 
   it("always rejects the dummy password check used for unknown users", async () => {
@@ -136,9 +137,10 @@ describe("public booking rate limit", () => {
     expect(await beginBookingAttempt(store, "203.0.113.7", at(20 + bookingRateLimit.lockMinutes + 1))).toBe(true);
   });
 
-  it("does not count requests without a known address", async () => {
+  it("limits requests without a known address under a shared fallback budget", async () => {
     const store = new InMemoryRateLimitStore();
     expect(await beginBookingAttempt(store, null, at(0))).toBe(true);
-    expect(store.records.size).toBe(0);
+    for (let attempt = 1; attempt < bookingRateLimit.maxAttempts; attempt++) expect(await beginBookingAttempt(store, null, at(0))).toBe(true);
+    expect(await beginBookingAttempt(store, null, at(0))).toBe(false);
   });
 });

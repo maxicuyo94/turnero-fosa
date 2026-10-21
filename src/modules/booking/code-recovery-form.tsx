@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { BotProtection } from "@/src/components/bot-protection";
 import { Alert, Field, TextInput } from "@/src/components/ui";
 import { SubmitButton } from "@/src/components/pending";
 
@@ -11,6 +12,7 @@ export function CodeRecoveryForm({ action }: { action: (state: RecoveryState, fo
   return <form action={formAction} className="mt-4 grid gap-4">
     <p className="text-sm text-zinc-400">Usá el email que dejaste al reservar. Te enviaremos los códigos de tus turnos próximos. Si reservaste sin email, comunicate con el taller.</p>
     <Field label="Email de la reserva"><TextInput name="email" type="email" autoComplete="email" required maxLength={254} /></Field>
+    <BotProtection action="recovery" resetSignal={state} />
     <SubmitButton>Enviar códigos por email</SubmitButton>
     {state.message ? <Alert tone={state.error ? "danger" : "success"}>{state.message}</Alert> : null}
   </form>;

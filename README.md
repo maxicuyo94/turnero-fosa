@@ -7,7 +7,50 @@ This repository contains the Taller de motos Express appointment scheduler MVP: 
 The shop is being built in [independently verifiable deliveries](openspec/changes/spare-parts-shop/deliverables.md).
 E1 (internal inventory and Excel import) was published in production. E2 (scanning,
 labels and stock counts) is implemented and was verified in Preview on 2026-09-24.
-Customer accounts, counter sales, quotes, storefront, checkout and shipping are later deliveries.
+The public storefront, online orders and Mercado Pago checkout with pickup or manually dispatched shipping
+are now implemented locally. Customer accounts, counter sales, quotes and carrier integrations remain later deliveries.
+
+### Public spare-parts store
+
+For local examples, run `pnpm shop:demo`. It creates 12 published `DEMO-SHOP-…` products
+with audited opening stock, including two out-of-stock items and one last-unit item. The loader
+refuses non-local/production targets and preserves existing products on repeat runs. If shop settings
+are absent it adds clearly marked pickup/shipping examples without activating payments. The cart can
+be tried while checkout remains disabled. Sample prices, brands and compatibility are fictional.
+
+- `/shop`: published products, search by name/brand/compatibility/SKU, categories, persistent cart,
+  mechanic or individual buyer, pickup or covered postal-code shipping.
+- `/shop/order?token=…`: private order link, hosted payment, verified status and tracking. Keep this
+  link; guest checkout currently has no account portal or confirmation email. Order access requires
+  a random 256-bit token; only its hash is stored. Public pages expose no buyer contact details.
+- `/internal/shop/orders`: last 100 orders, contact and delivery details, payment reconciliation,
+  ready-for-pickup, dispatch and delivery. Only an administrator can close payment reviews after
+  Mercado Pago confirms a refund/chargeback; shipped goods are not automatically returned to stock.
+- `/internal/shop/store`: administrator-only activation, pickup address/hours, shipping coverage
+  by four-digit Argentine postal code and one fixed ARS fee for that coverage. Carrier booking is manual.
+- Product detail: **Publicado en la tienda** controls visibility. Existing/imported/new products
+  start unpublished; an inactive product never appears publicly.
+
+Migration `20261009180000_shop_storefront` is additive. Apply with `pnpm db:migrate`; do not reseed.
+The catalog starts from the workshop's actual inventory, without demo products. Checkout starts
+disabled. Configure Mercado Pago credentials and a public HTTPS origin using the existing payment
+settings, enter pickup details and any shipping fee/coverage, verify a test purchase, then enable it.
+Shop payments have their own references and `/api/shop/payments/webhook`, separate from appointment deposits.
+The implementation follows the provider's [preference API](https://www.mercadopago.com.ar/developers/es/reference/online-payments/checkout-pro-preferences/create-preference/post)
+and [signed notifications](https://www.mercadopago.com.ar/developers/en/docs/checkout-pro-preferences/payment-notifications).
+
+Checkout recalculates prices and shipping on the server and rejects unaccepted changes. Orders reserve
+stock for 30 minutes. Payment verification checks amount, currency and environment; it does not trust
+return-page query parameters. Pickup/dispatch deduct physical stock once and record an audited `SALE`.
+Expired/cancelled orders release reservations once. Late/additional payments enter review and cannot
+be delivered automatically. A failed provider lookup preserves the reservation.
+
+Configure an external scheduler to call `GET /api/cron/shop` with `Authorization: Bearer $CRON_SECRET`
+regularly (for example, every five minutes); no scheduler is installed by this change. It reconciles
+up to 50 expired orders per call before freeing unpaid stock. Staff can also reconcile from Pedidos;
+customers can update their own order status. Without reconciliation, expired stock remains reserved.
+No shipping quote API, automatic refund, tax invoice, wholesale pricing or multi-seller functionality
+is included. Mechanics and individuals currently pay the same displayed price.
 
 - `/internal/shop`: inventory totals, availability, low-stock alerts and recent products.
 - `/internal/shop/inventory`: search/filter and create products with SKU, optional barcode, ARS price, physical location and opening stock.

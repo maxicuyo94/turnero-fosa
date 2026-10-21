@@ -11,6 +11,7 @@ import {
   allowCodeRecoveryAttempt,
   codeRecoveryRepository,
   publicEmailDeliveryAvailable,
+  allowPublicAccessAttempt,
 } from "@/src/lib/composition";
 import { clientIpFromHeaders } from "@/src/lib/rate-limit";
 import { formOptionalNumber, formOptionalString, formString } from "@/src/lib/form-data";
@@ -20,6 +21,7 @@ import { cancelPublicAppointment, createPublicBooking } from "@/src/modules/book
 import { initiateAppointmentDeposit } from "@/src/modules/payments/service";
 import { recoverPublicCodes, recoveryEmailSchema, recoveryResponse } from "@/src/modules/booking/code-recovery";
 import type { RecoveryState } from "@/src/modules/booking/code-recovery-form";
+import { verifyBotProtection } from "@/src/lib/bot-protection";
 
 export async function recoverCodesAction(_state: RecoveryState, formData: FormData): Promise<RecoveryState> {
   const parsed = recoveryEmailSchema.safeParse(formString(formData, "email"));
@@ -29,6 +31,7 @@ export async function recoverCodesAction(_state: RecoveryState, formData: FormDa
       return { error: true, message: "Alcanzaste el límite de solicitudes. Probá dentro de una hora o comunicate con el taller." };
     }
     if (!(await publicEmailDeliveryAvailable())) return { error: true, message: "El envío de emails no está disponible por ahora. Comunicate con el taller para recuperar tu código." };
+    if (!await verifyBotProtection(formData, "recovery")) return { error: true, message: "Completá la verificación y volvé a intentar." };
     const queued = await recoverPublicCodes(codeRecoveryRepository(), { email: parsed.data, publicOrigin: await publicAppOrigin(), now: new Date() });
     if (queued) deliverOutboxEmailsAfterResponse();
     return { message: recoveryResponse };
@@ -47,6 +50,7 @@ export async function createAppointmentAction(formData: FormData) {
     query.set("date", formString(formData, "date"));
     redirect(`/booking?${query.toString()}`);
   }
+  if (!canEditDuration && !await verifyBotProtection(formData, "booking")) redirect("/booking?result=invalid");
   const result = await createPublicBooking(bookingRepository(), {
     serviceId: formString(formData, "serviceId"),
     date: formString(formData, "date"),
@@ -90,6 +94,7 @@ export async function createAppointmentAction(formData: FormData) {
 }
 
 export async function retryDepositAction(formData: FormData) {
+  if (!await allowPublicAccessAttempt(clientIpFromHeaders(await headers()))) redirect("/booking?result=rate-limited");
   const publicCode = formString(formData, "publicCode").trim().toUpperCase();
   const appointment = await bookingRepository().findByPublicCode(publicCode);
   if (!appointment) {
@@ -116,6 +121,7 @@ function bookingFailureCode(result: Extract<Awaited<ReturnType<typeof createPubl
 }
 
 export async function cancelAppointmentAction(formData: FormData) {
+  if (!await allowPublicAccessAttempt(clientIpFromHeaders(await headers()))) redirect("/booking/cancel?result=unavailable");
   const result = await cancelPublicAppointment(bookingRepository(), {
     appointmentId: formString(formData, "appointmentId"),
     token: formString(formData, "token"),

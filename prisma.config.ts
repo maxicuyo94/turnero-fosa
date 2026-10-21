@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
-const databaseUrl = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/turnero_fosa";
+const databaseUrl = process.env.MIGRATION_DATABASE_URL?.trim() || process.env.DATABASE_URL || "postgresql://postgres:postgres@localhost:5432/turnero_fosa";
 
 export default defineConfig({
   schema: "prisma/schema.prisma",

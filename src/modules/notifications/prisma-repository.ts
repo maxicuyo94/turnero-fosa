@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { encryptSensitive, decryptSensitive } from "@/src/lib/data-encryption";
 import type {
   EmailDeliveryRepository,
   EmailNotificationDraft,
@@ -10,9 +11,9 @@ import type {
 export function emailOutboxEntry(draft: EmailNotificationDraft) {
   return {
     event: draft.event,
-    recipient: draft.recipient,
-    subject: draft.subject,
-    body: draft.text,
+    recipient: encryptSensitive(draft.recipient, "email-recipient"),
+    subject: encryptSensitive(draft.subject, "email-subject"),
+    body: encryptSensitive(draft.text, "email-body"),
     status: "PENDING" as const,
   };
 }
@@ -49,9 +50,9 @@ export class PrismaEmailDeliveryRepository implements EmailDeliveryRepository {
       id: row.id,
       appointmentId: row.appointmentId,
       event: row.event as EmailNotificationEvent,
-      recipient: row.recipient,
-      subject: row.subject ?? "",
-      text: row.body ?? "",
+      recipient: decryptSensitive(row.recipient, "email-recipient"),
+      subject: decryptSensitive(row.subject ?? "", "email-subject"),
+      text: decryptSensitive(row.body ?? "", "email-body"),
       attempts: row.attempts,
       createdAt: row.createdAt,
     }));
@@ -62,10 +63,10 @@ export class PrismaEmailDeliveryRepository implements EmailDeliveryRepository {
   }
 
   async markRetry(id: string, errorMessage: string, nextAttemptAt: Date): Promise<void> {
-    await this.prisma.emailLog.update({ where: { id }, data: { errorMessage, nextAttemptAt } });
+    await this.prisma.emailLog.update({ where: { id }, data: { errorMessage: encryptSensitive(errorMessage.slice(0, 2000), "email-error"), nextAttemptAt } });
   }
 
   async markFailed(id: string, errorMessage: string): Promise<void> {
-    await this.prisma.emailLog.update({ where: { id }, data: { status: "FAILED", errorMessage } });
+    await this.prisma.emailLog.update({ where: { id }, data: { status: "FAILED", errorMessage: encryptSensitive(errorMessage.slice(0, 2000), "email-error") } });
   }
 }

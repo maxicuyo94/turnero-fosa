@@ -2,7 +2,7 @@ import { cn } from "./cn";
 import type { LinkComponent } from "./link-component";
 import { Button } from "./button";
 
-export type SiteHeaderSection = "home" | "booking" | "internal";
+export type SiteHeaderSection = "home" | "booking" | "shop" | "internal";
 
 export type SiteHeaderProps = {
   /** Which nav entry gets the lime underline. */
@@ -51,6 +51,9 @@ export function SiteHeader({
           </Link>
           <Link aria-current={active === "booking" ? "page" : undefined} className={navClass(active === "booking")} href="/booking">
             Reservar
+          </Link>
+          <Link aria-current={active === "shop" ? "page" : undefined} className={navClass(active === "shop")} href="/shop">
+            Repuestos
           </Link>
           <Link className={navClass(false)} href="/internal">
             Acceso al taller

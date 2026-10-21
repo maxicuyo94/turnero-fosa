@@ -1,4 +1,6 @@
 import { after } from "next/server";
+import "server-only";
+import { logServerError } from "@/src/lib/safe-logging";
 import type { PrismaClient } from "@prisma/client";
 import { db } from "@/src/lib/db";
 import type { MercadoPagoEnv } from "@/src/lib/env";
@@ -17,7 +19,10 @@ import { PrismaWorkshopSettingsRepository } from "@/src/modules/settings/prisma-
 import { getWorkshopNotificationEnv, getWorkshopPaymentEnv, getWorkshopPublicOrigin } from "@/src/modules/settings/runtime-settings";
 import { findWorkshopSettingsRow } from "@/src/modules/settings/workshop-settings-row";
 import { findStaffProfile, changeInternalPassword } from "@/src/modules/internal/account-service";
-import { PrismaRateLimitStore, beginBookingAttempt, beginRecoveryAttempt } from "@/src/lib/rate-limit";
+import { PrismaRateLimitStore, beginBookingAttempt, beginRecoveryAttempt, beginShopAttempt, beginPublicAccessAttempt } from "@/src/lib/rate-limit";
+import { internalOrders, publicCatalog, publicOrder, shopConfiguration } from "@/src/modules/shop/storefront-queries";
+import { publishShopProduct, saveShopConfiguration } from "@/src/modules/shop/storefront-service";
+import { applyShopPayment, closeReviewedShopOrder, closeUnpaidOrder, fulfillShopOrder, reconcileShopOrder, reserveShopOrder, ShopOrderError, startShopPayment } from "@/src/modules/shop/order-service";
 import { PrismaCodeRecoveryRepository, getCancellationPaymentSummary } from "@/src/modules/booking/support-repository";
 import { PrismaVehicleRepository } from "@/src/modules/vehicles/prisma-repository";
 import {
@@ -98,6 +103,42 @@ export const stockCounts = bindDb({
 });
 
 export const staffAccount = bindDb({ findStaffProfile, changeInternalPassword });
+export const shop = bindDb({ publicCatalog, publicOrder, shopConfiguration, internalOrders, publishShopProduct, saveShopConfiguration, reserveShopOrder, fulfillShopOrder });
+
+export function allowShopAttempt(ip: string | null) { return beginShopAttempt(new PrismaRateLimitStore(db), ip); }
+export async function shopPaymentAvailable() {
+  return Boolean(await getWorkshopPaymentEnv(db).catch(() => null));
+}
+export async function shopCheckout(token: string) {
+  const env = await getWorkshopPaymentEnv(db);
+  if (!env) throw new ShopOrderError("El pago online todavía no está configurado. Contactá al taller.");
+  const url = new URL("/shop/order", env.NEXT_PUBLIC_APP_URL);
+  url.searchParams.set("token", token);
+  return startShopPayment(db, new MercadoPagoAdapter(env, { returnUrl: url.toString(), notificationPath: "/api/shop/payments/webhook" }), token);
+}
+export async function processShopPaymentNotification(env: MercadoPagoEnv, id: string) {
+  const payment = await new MercadoPagoAdapter(env).getPayment(id);
+  return applyShopPayment(db, payment, expectedPaymentLiveMode(env));
+}
+export async function syncShopOrder(id: string) {
+  const env = await getWorkshopPaymentEnv(db);
+  if (!env) throw new ShopOrderError("El pago online no está configurado.");
+  await reconcileShopOrder(db, new MercadoPagoAdapter(env), id, expectedPaymentLiveMode(env));
+}
+export async function cancelShopOrder(id: string, actorId: string) {
+  // Refresh payment first; a credited order may not be cancelled through the unpaid-order action.
+  await syncShopOrder(id);
+  await closeUnpaidOrder(db, id, "CANCELLED", actorId);
+}
+export async function closeShopPaymentReview(id: string, actorId: string) {
+  await syncShopOrder(id);
+  await closeReviewedShopOrder(db, id, actorId);
+}
+export async function settleShopOrders() {
+  const orders = await db.shopOrder.findMany({ where: { status: "AWAITING_PAYMENT", expiresAt: { lte: new Date() } }, select: { id: true }, take: 50 });
+  for (const order of orders) await syncShopOrder(order.id);
+  return orders.length;
+}
 export const appointmentDetails = bindDb({ updateAppointmentDetails });
 export const bookingSupport = bindDb({ getCancellationPaymentSummary });
 
@@ -136,6 +177,10 @@ export async function publicAppOrigin(): Promise<string | undefined> {
 /** Counts a public booking submission from `ip`; false once the address is over its budget. */
 export function allowPublicBookingAttempt(ip: string | null): Promise<boolean> {
   return beginBookingAttempt(new PrismaRateLimitStore(db), ip);
+}
+
+export function allowPublicAccessAttempt(ip: string | null): Promise<boolean> {
+  return beginPublicAccessAttempt(new PrismaRateLimitStore(db), ip);
 }
 
 export function bookingRepository(): PrismaBookingRepository {
@@ -208,7 +253,7 @@ export function deliverOutboxEmailsAfterResponse(): void {
     try {
       await deliverOutboxEmails();
     } catch (error) {
-      console.error("email outbox delivery failed; the next request or cron sweep retries it", error);
+      logServerError("email outbox delivery failed; the next request or cron sweep retries it", error);
     }
   });
 }
@@ -222,7 +267,7 @@ export function settleOverdueDepositsAfterResponse(): void {
     try {
       await settleOverdueDeposits(db);
     } catch (error) {
-      console.error("deposit sweep failed; it runs again on the next request or cron call", error);
+      logServerError("deposit sweep failed; it runs again on the next request or cron call", error);
     }
   });
 }

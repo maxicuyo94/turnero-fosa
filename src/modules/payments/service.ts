@@ -73,6 +73,7 @@ export type ProviderPayment = {
   id: string;
   externalReference: string | null;
   amount: number;
+  refundedAmount?: number;
   currency: string;
   status: string;
   statusDetail: string | null;

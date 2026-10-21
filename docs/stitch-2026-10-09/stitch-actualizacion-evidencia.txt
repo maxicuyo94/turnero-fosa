@@ -1,0 +1,209 @@
+Browser tab: 803102383, Title: "Stitch - Projects", URL: "https://stitch.withgoogle.com/projects/595898897177555314".
+0 AXWebArea Stitch - Projects, URL: stitch.withgoogle.com/projects/595898897177555314
+	1 container Description: Stitch - Design with AI, ID: I0_1791568028123
+		2 AXWebArea Stitch, URL: app-companion-430619.appspot.com/projects/595898897177555314?usegapi=1&jsh=m%3B%2F_%2Fscs%2Fabc-static%2F_%2Fjs%2Fk%3Dgapi.lb.es.TUQXukiluKE.O%2Fd%3D1%2Frs%3DAHpOoo8oBcosocsOBlLjNfe-2z0OPMPm3A%2Fm%3D__features__#id=I0_1791568028123&_gfid=I0_1791568028123&parent=https%3A%2F%2Fstitch.withgoogle.com&pfname=&rpctoken=24762943
+			3 container
+				4 container
+					5 container
+						6 container
+							7 pop up button (collapsed) Secondary Actions: Expand
+								8 image
+							9 button Taller Express — aplicación actual
+							10 button
+								11 image
+						12 container
+							13 button Export
+								14 image
+								15 text Export
+							16 button Share
+								17 image
+								18 text Share
+							19 pop up button (collapsed) Description: Account Menu, Secondary Actions: Expand
+								20 image Profile image for Maximiliano Méndez
+						21 button
+							22 image
+						23 button
+							24 image
+						25 button
+							26 image
+						27 button
+							28 image
+						29 container
+							30 button Elegir archivos
+							31 button
+								32 image
+						33 button
+							34 image
+						35 button
+							36 image
+						37 button (disabled) Undo
+						38 button (disabled) Redo
+						39 pop up button (collapsed) 41%, Secondary Actions: Expand
+						40 pop up button (collapsed) Description: Helpful Links, Secondary Actions: Expand
+							41 image
+						42 button Elegir archivos
+						43 container
+							44 container
+								45 text Generating Screen...
+							46 container
+								47 text Generating Screen...
+							48 container
+								49 text Generating Screen...
+							50 container
+								51 text Generating Screen...
+							52 container
+								53 text Generating Screen...
+							54 container
+								55 text Generating Screen...
+							56 container
+								57 text Generating Screen...
+							58 container
+								59 text Motorcycle Ecommerce Home Page
+							60 container
+								61 text Motorcycle Inventory Listing
+							62 container
+								63 text Motorcycle Product Detail View
+							64 container
+								65 text Generating Screen...
+							66 container
+								67 text Generating Screen...
+							68 container
+								69 text Motorcycle Inventory Listing
+							70 container
+								71 text Generating Screen...
+							72 container
+								73 text Generating Screen...
+							74 container
+								75 text Motorcycle Product Detail View
+							76 container
+								77 text Generating Screen...
+							78 container
+								79 text Motorcycle Ecommerce Home Page
+							80 container
+								81 text Generating Screen...
+							82 container
+								83 text Generating Screen...
+							84 container
+								85 text Taller Express
+								86 text Primary
+								87 text #8EE000
+								88 text Secondary
+								89 text #B8FF58
+								90 text Tertiary
+								91 text #1A251C
+								92 text Neutral
+								93 text #090D0B
+								94 container
+									95 text Headline Arimo Aa
+								96 button Primary
+								97 button Secondary
+								98 button Inverted
+								99 button Outlined
+								100 text search Search
+								101 container
+									102 text Body Arimo Aa
+								103 text home search person
+								104 container
+									105 text Label Arimo Aa
+								106 text edit edit Label auto_fix_high category sell delete
+							107 container
+								108 text Generating Screen...
+							109 container
+								110 text Generating Screen...
+							111 container
+								112 text Generating Screen...
+								113 button
+									114 image
+								115 button
+									116 image
+								117 button
+									118 image
+							119 container
+								120 text Generating Screen...
+							121 container
+								122 text ACTUAL · Horarios ADMIN
+							123 container
+								124 text ACTUAL · Catálogo de servicios ADMIN
+							125 container
+								126 text ACTUAL · Reservas y señas ADMIN
+							127 container
+								128 text ACTUAL · Sistema visual
+						129 image
+						130 image
+						131 image
+						132 image
+						133 container
+							134 container
+								135 text entry area (settable) 
+
+									136 container
+										137 text What would you like to change or create?
+								138 button Elegir archivos
+								139 pop up button (collapsed) Secondary Actions: Expand
+									140 image
+								141 pop up button (collapsed) Secondary Actions: Expand
+									142 image
+										143 text /
+								144 button
+									145 image
+								146 pop up button (collapsed) Secondary Actions: Expand
+									147 image
+									148 image
+								149 pop up button (collapsed) Balanced, Secondary Actions: Expand
+									150 text Balanced
+									151 image
+								152 button
+									153 image
+								154 button (disabled)
+									155 image
+						156 container
+							157 pop up button (expanded) Secondary Actions: Collapse
+								158 container
+									159 image
+									160 text Agent log
+									161 image
+							162 menu Agent log
+								163 container
+									164 ID: base-ui-_r_93_, Cuarto lote de la actualización visual del MISMO proyecto Taller Express. Generá pantallas efectivas en canvas; no responder solo con análisis. Conservá las pantallas públicas y de gestión anteriores. Prefijo ACTUAL en todos los nombres. Fondo #090d0b, paneles #101611, CTA #8ee000, foco #b8ff58, Arial/Helvetica, texto blanco/zinc, ARS con centavos, controles de al menos 44px. Datos ficticios Demo, sin datos privados ni credenciales reales. Navegación interna Agenda | Configuración solo ADMIN | Unidades | Repuestos | Mi cuenta. Dentro de Repuestos: Resumen | Inventario | Conteos | Pedidos | Tienda online solo ADMIN. STAFF puede operar inventario y pedidos; configuración comercial solo ADMIN. Estas pantallas representan funciones implementadas, no una activación real de pagos. GENERÁ 9 pantallas: 1 ACTUAL · Resumen de repuestos: productos activos, stock físico/reservado/disponible, mínimos y seis productos recientes. Sin gráficos de ingresos, utilidades, ventas por período ni métricas no implementadas. Los pedidos se gestionan en su sección. 2 ACTUAL · Inventario y alta: buscar nombre/SKU/marca, categoría, ubicación, stock y activo; lista nombre/SKU/precioARS/físico/reservado/disponible/mínimo. Crear repuesto: nombre, SKU opcional automático, código de barras opcional, marca, categoría, ubicación, precio, stock inicial y mínimo. Acceso importación Excel XLSX hasta3MB/1000filas, plantilla y errores por fila/duplicados. Sin modificar stock directamente en la lista ni agregar scanner de facturas inexistente. 3 ACTUAL · Ficha de inventario y publicación: editar datos/versionado, activo/publicado, mínimo/precio/descripción; stock físico/reservado/disponible. Registrar recepción, ajuste con motivo o consumo en reparación mediante movimiento trazable; historial últimas50 operaciones. Ficha compradores: hasta6 fotos por URL permitida y descripción alternativa (primera portada), hasta20 compatibilidades con marca/modelo requeridos, versión/años opcionales; agregar/quitar y Guardar fotos y compatibilidades. Ver ficha pública cuando activo/publicado. No fingir upload de cámara, certificación o actualización directa de stock. 4 ACTUAL · Buscar código y etiquetas: buscar/escaneo de código con cámara o lector, resultado producto/SKU/ubicación/stock; permiso de cámara como estado de diseño sin conceder permisos reales. Seleccionar etiquetas y cantidades, vista imprimible QR/código/SKU/nombre. Sin automatización de impresora inexistente. 5 ACTUAL · Conteos: nuevo conteo todo inventario o ubicación y nombre opcional; snapshot de stock registrado. Lista recientes con abierto/aplicado/cancelado y progreso. Nada cambia hasta revisar y aplicar. 6 ACTUAL · Conteo móvil y revisión: diseño390px, escanear/buscar producto, físico esperado, reservado y cantidad contada, guardar. Filtros Todos/Sin contar/Con diferencia/Para revisar y totales. Si hubo movimiento después de snapshot, recontar; si contado menor que reservado, revisión. Aplicar solo con revisión resuelta; cancelar con motivo. Mostrar feedback y controles44px. 7 ACTUAL · Pedidos internos: lista de últimos100 pedidos sin búsqueda/paginación ni estadísticas inexistentes; tarjetas con código REP, fecha, cliente demo Particular/Mecánico y taller opcional, email/teléfono/dirección solo interno, retiro/envío, items/subtotal/envío/totalARS, estado de pago/pedido, tracking e historial. Selector de acción y Aplicar existentes, con texto claro de efecto. Esperando pago: verificar/sincronizar o cancelar impago. Pagado retiro: listo o entregar; listo: entregar. Pagado envío: despachar con tracking obligatorio; enviado: entregar. Pago en revisión: ADMIN sincroniza/cierra después de confirmar devolución/contracargo con proveedor; STAFF ve advertencia y deriva. No inventar reembolso automático ni nuevas búsquedas o tableros. Reglas de stock en ayuda de estado: creación reserva30min sin restar físico; pago acreditado conserva reserva; retiro descuenta una vez al entregar; envío descuenta una vez al despachar y no vuelve a descontar al entregar; cancelación/vencimiento impago libera reserva después de verificar proveedor; pago tardío/adicional/refund/chargeback exige revisión, sin devolución automática de mercadería despachada. 8 ACTUAL · Tienda online ADMIN: estado MercadoPago No configurado en entorno actual; habilitar compra bloqueado sin configuración. Retiro dirección/horarios/instrucciones configurables. Envío toggle exclusivamente SaltaCapital CP4400 readonly, tarifa fijaARS centavos, transportista manual. Guardar y feedback. Publicación por producto va en ficha. No campos secretos ni botón que conecte credenciales inventadas. 9 ACTUAL · Compra móvil 390px: tres pasos Carrito/Entrega y datos/Revisar con resumen compacto, cantidades y actualizar si cambió stock/precio, cobertura CP antes de contacto, Particular/Mecánico mismo precio, email compra obligatorio, acciones inferior44px. Estado principal cobros no habilitados y confirmación deshabilitada. Variante configurada explícitamente rotulada, no pago real. Al finalizar ordená el canvas por Público (inicio, catálogo, detalle, compra, pedido), Turnos (reserva, consulta, seña, cancelación), Taller (acceso, cuenta, agenda, unidades, configuración), Repuestos internos (inventario, conteos, pedidos, tienda) y Sistema visual. Conservá diseños antiguos como referencia histórica claramente separados; no borrar permanentemente. Asegurá nombres ACTUAL visibles en todas las pantallas finalizadas, sin restos MOTO/MotoX/inglés/wholesale/newsletter/favoritos/cupones en el conjunto ACTUAL. Cuarto lote de la actualización visual del MISMO proyecto Taller Express. Generá pantallas efectivas en canvas; no responder solo con análisis. Conservá las pantallas públicas y de gestión anteriores. Prefijo ACTUAL en todos los nombres. Fondo #090d0b, paneles #101611, CTA #8ee000, foco #b8ff58, Arial/Helvetica, texto blanco/zinc, ARS con centavos, controles de al menos 44px. Datos ficticios Demo, sin datos privados ni credenciales reales. Navegación interna Agenda | Configuración solo ADMIN | Unidades | Repuestos | Mi cuenta. Dentro de Repuestos: Resumen | Inventario | Conteos | Pedidos | Tienda online solo ADMIN. STAFF puede operar inventario y pedidos; configuración comercial solo ADMIN. Estas pantallas representan funciones implementadas, no una activación real de pagos. GENERÁ 9 pantallas: 1 ACTUAL · Resumen de repuestos: productos activos, stock físico/reservado/disponible, mínimos y seis productos recientes. Sin gráficos de ingresos, utilidades, ventas por período ni métricas no implementadas. Los pedidos se gestionan en su sección. 2 ACTUAL · Inventario y alta: buscar nombre/SKU/marca, categoría, ubicación, stock y activo; lista nombre/SKU/precioARS/físico/reservado/disponible/mínimo. Crear repuesto: nombre, SKU opcional automático, código de barras opcional, marca, categoría, ubicación, precio, stock inicial y mínimo. Acceso importación Excel XLSX hasta3MB/1000filas, plantilla y errores por fila/duplicados. Sin modificar stock directamente en la lista ni agregar scanner de facturas inexistente. 3 ACTUAL · Ficha de inventario y publicación: editar datos/versionado, activo/publicado, mínimo/precio/descripción; stock físico/reservado/disponible. Registrar recepción, ajuste con motivo o consumo en reparación mediante movimiento trazable; historial últimas50 operaciones. Ficha compradores: hasta6 fotos por URL permitida y descripción alternativa (primera portada), hasta20 compatibilidades con marca/modelo requeridos, versión/años opcionales; agregar/quitar y Guardar fotos y compatibilidades. Ver ficha pública cuando activo/publicado. No fingir upload de cámara, certificación o actualización directa de stock. 4 ACTUAL · Buscar código y etiquetas: buscar/escaneo de código con cámara o lector, resultado producto/SKU/ubicación/stock; permiso de cámara como estado de diseño sin conceder permisos reales. Seleccionar etiquetas y cantidades, vista imprimible QR/código/SKU/nombre. Sin automatización de impresora inexistente. 5 ACTUAL · Conteos: nuevo conteo todo inventario o ubicación y nombre opcional; snapshot de stock registrado. Lista recientes con abierto/aplicado/cancelado y progreso. Nada cambia hasta revisar y aplicar. 6 ACTUAL · Conteo móvil y revisión: diseño390px, escanear/buscar producto, físico esperado, reservado y cantidad contada, guardar. Filtros Todos/Sin contar/Con diferencia/Para revisar y totales. Si hubo movimiento después de snapshot, recontar; si contado menor que reservado, revisión. Aplicar solo con revisión resuelta; cancelar con motivo. Mostrar feedback y controles44px. 7 ACTUAL · Pedidos internos: lista de últimos100 pedidos sin búsqueda/paginación ni estadísticas inexistentes; tarjetas con código REP, fecha, cliente demo Particular/Mecánico y taller opcional, email/teléfono/dirección solo interno, retiro/envío, items/subtotal/envío/totalARS, estado de pago/pedido, tracking e historial. Selector de acción y Aplicar existentes, con texto claro de efecto. Esperando pago: verificar/sincronizar o cancelar impago. Pagado retiro: listo o entregar; listo: entregar. Pagado envío: despachar con tracking obligatorio; enviado: entregar. Pago en revisión: ADMIN sincroniza/cierra después de confirmar devolución/contracargo con proveedor; STAFF ve advertencia y deriva. No inventar reembolso automático ni nuevas búsquedas o tableros. Reglas de stock en ayuda de estado: creación reserva30min sin restar físico; pago acreditado conserva reserva; retiro descuenta una vez al entregar; envío descuenta una vez al despachar y no vuelve a descontar al entregar; cancelación/vencimiento impago libera reserva después de verificar proveedor; pago tardío/adicional/refund/chargeback exige revisión, sin devolución automática de mercadería despachada. 8 ACTUAL · Tienda online ADMIN: estado MercadoPago No configurado en entorno actual; habilitar compra bloqueado sin configuración. Retiro dirección/horarios/instrucciones configurables. Envío toggle exclusivamente SaltaCapital CP4400 readonly, tarifa fijaARS centavos, transportista manual. Guardar y feedback. Publicación por producto va en ficha. No campos secretos ni botón que conecte credenciales inventadas. 9 ACTUAL · Compra móvil 390px: tres pasos Carrito/Entrega y datos/Revisar con resumen compacto, cantidades y actualizar si cambió stock/precio, cobertura CP antes de contacto, Particular/Mecánico mismo precio, email compra obligatorio, acciones inferior44px. Estado principal cobros no habilitados y confirmación deshabilitada. Variante configurada explícitamente rotulada, no pago real. Al finalizar ordená el canvas por Público (inicio, catálogo, detalle, compra, pedido), Turnos (reserva, consulta, seña, cancelación), Taller (acceso, cuenta, agenda, unidades, configuración), Repuestos internos (inventario, conteos, pedidos, tienda) y Sistema visual. Conservá diseños antiguos como referencia histórica claramente separados; no borrar permanentemente. Asegurá nombres ACTUAL visibles en todas las pantallas finalizadas, sin restos MOTO/MotoX/inglés/wholesale/newsletter/favoritos/cupones en el conjunto ACTUAL.
+										165 container
+											166 text Cuarto lote de la actualización visual del MISMO proyecto Taller Express. Generá pantallas efectivas en canvas; no responder solo con análisis. Conservá las pantallas públicas y de gestión anteriores. Prefijo ACTUAL en todos los nombres. Fondo #090d0b, paneles #101611, CTA #8ee000, foco #b8ff58, Arial/Helvetica, texto blanco/zinc, ARS con centavos, controles de al menos 44px. Datos ficticios Demo, sin datos privados ni credenciales reales. Navegación interna Agenda | Configuración solo ADMIN | Unidades | Repuestos | Mi cuenta. Dentro de Repuestos: Resumen | Inventario | Conteos | Pedidos | Tienda online solo ADMIN. STAFF puede operar inventario y pedidos; configuración comercial solo ADMIN. Estas pantallas representan funciones implementadas, no una activación real de pagos. GENERÁ 9 pantallas: 1 ACTUAL · Resumen de repuestos: productos activos, stock físico/reservado/disponible, mínimos y seis productos recientes. Sin gráficos de ingresos, utilidades, ventas por período ni métricas no implementadas. Los pedidos se gestionan en su sección. 2 ACTUAL · Inventario y alta: buscar nombre/SKU/marca, categoría, ubicación, stock y activo; lista nombre/SKU/precioARS/físico/reservado/disponible/mínimo. Crear repuesto: nombre, SKU opcional automático, código de barras opcional, marca, categoría, ubicación, precio, stock inicial y mínimo. Acceso importación Excel XLSX hasta3MB/1000filas, plantilla y errores por fila/duplicados. Sin modificar stock directamente en la lista ni agregar scanner de facturas inexistente. 3 ACTUAL · Ficha de inventario y publicación: editar datos/versionado, activo/publicado, mínimo/precio/descripción; stock físico/reservado/disponible. Registrar recepción, ajuste con motivo o consumo en reparación mediante movimiento trazable; historial últimas50 operaciones. Ficha compradores: hasta6 fotos por URL permitida y descripción alternativa (primera portada), hasta20 compatibilidades con marca/modelo requeridos, versión/años opcionales; agregar/quitar y Guardar fotos y compatibilidades. Ver ficha pública cuando activo/publicado. No fingir upload de cámara, certificación o actualización directa de stock. 4 ACTUAL · Buscar código y etiquetas: buscar/escaneo de código con cámara o lector, resultado producto/SKU/ubicación/stock; permiso de cámara como estado de diseño sin conceder permisos reales. Seleccionar etiquetas y cantidades, vista imprimible QR/código/SKU/nombre. Sin automatización de impresora inexistente. 5 ACTUAL · Conteos: nuevo conteo todo inventario o ubicación y nombre opcional; snapshot de stock registrado. Lista recientes con abierto/aplicado/cancelado y progreso. Nada cambia hasta revisar y aplicar. 6 ACTUAL · Conteo móvil y revisión: diseño390px, escanear/buscar producto, físico esperado, reservado y cantidad contada, guardar. Filtros Todos/Sin contar/Con diferencia/Para revisar y totales. Si hubo movimiento después de snapshot, recontar; si contado menor que reservado, revisión. Aplicar solo con revisión resuelta; cancelar con motivo. Mostrar feedback y controles44px. 7 ACTUAL · Pedidos internos: lista de últimos100 pedidos sin búsqueda/paginación ni estadísticas inexistentes; tarjetas con código REP, fecha, cliente demo Particular/Mecánico y taller opcional, email/teléfono/dirección solo interno, retiro/envío, items/subtotal/envío/totalARS, estado de pago/pedido, tracking e historial. Selector de acción y Aplicar existentes, con texto claro de efecto. Esperando pago: verificar/sincronizar o cancelar impago. Pagado retiro: listo o entregar; listo: entregar. Pagado envío: despachar con tracking obligatorio; enviado: entregar. Pago en revisión: ADMIN sincroniza/cierra después de confirmar devolución/contracargo con proveedor; STAFF ve advertencia y deriva. No inventar reembolso automático ni nuevas búsquedas o tableros. Reglas de stock en ayuda de estado: creación reserva30min sin restar físico; pago acreditado conserva reserva; retiro descuenta una vez al entregar; envío descuenta una vez al despachar y no vuelve a descontar al entregar; cancelación/vencimiento impago libera reserva después de verificar proveedor; pago tardío/adicional/refund/chargeback exige revisión, sin devolución automática de mercadería despachada. 8 ACTUAL · Tienda online ADMIN: estado MercadoPago No configurado en entorno actual; habilitar compra bloqueado sin configuración. Retiro dirección/horarios/instrucciones configurables. Envío toggle exclusivamente SaltaCapital CP4400 readonly, tarifa fijaARS centavos, transportista manual. Guardar y feedback. Publicación por producto va en ficha. No campos secretos ni botón que conecte credenciales inventadas. 9 ACTUAL · Compra móvil 390px: tres pasos Carrito/Entrega y datos/Revisar con resumen compacto, cantidades y actualizar si cambió stock/precio, cobertura CP antes de contacto, Particular/Mecánico mismo precio, email compra obligatorio, acciones inferior44px. Estado principal cobros no habilitados y confirmación deshabilitada. Variante configurada explícitamente rotulada, no pago real. Al finalizar ordená el canvas por Público (inicio, catálogo, detalle, compra, pedido), Turnos (reserva, consulta, seña, cancelación), Taller (acceso, cuenta, agenda, unidades, configuración), Repuestos internos (inventario, conteos, pedidos, tienda) y Sistema visual. Conservá diseños antiguos como referencia histórica claramente separados; no borrar permanentemente. Asegurá nombres ACTUAL visibles en todas las pantallas finalizadas, sin restos MOTO/MotoX/inglés/wholesale/newsletter/favoritos/cupones en el conjunto ACTUAL. Cuarto lote de la actualización visual del MISMO proyecto Taller Express. Generá pantallas efectivas en canvas; no responder solo con análisis. Conservá las pantallas públicas y de gestión anteriores. Prefijo ACTUAL en todos los nombres. Fondo #090d0b, paneles #101611, CTA #8ee000, foco #b8ff58, Arial/Helvetica, texto blanco/zinc, ARS con centavos, controles de al menos 44px. Datos ficticios Demo, sin datos privados ni credenciales reales. Navegación interna Agenda | Configuración solo ADMIN | Unidades | Repuestos | Mi cuenta. Dentro de Repuestos: Resumen | Inventario | Conteos | Pedidos | Tienda online solo ADMIN. STAFF puede operar inventario y pedidos; configuración comercial solo ADMIN. Estas pantallas representan funciones implementadas, no una activación real de pagos. GENERÁ 9 pantallas: 1 ACTUAL · Resumen de repuestos: productos activos, stock físico/reservado/disponible, mínimos y seis productos recientes. Sin gráficos de ingresos, utilidades, ventas por período ni métricas no implementadas. Los pedidos se gestionan en su sección. 2 ACTUAL · Inventario y alta: buscar nombre/SKU/marca, categoría, ubicación, stock y activo; lista nombre/SKU/precioARS/físico/reservado/disponible/mínimo. Crear repuesto: nombre, SKU opcional automático, código de barras opcional, marca, categoría, ubicación, precio, stock inicial y mínimo. Acceso importación Excel XLSX hasta3MB/1000filas, plantilla y errores por fila/duplicados. Sin modificar stock directamente en la lista ni agregar scanner de facturas inexistente. 3 ACTUAL · Ficha de inventario y publicación: editar datos/versionado, activo/publicado, mínimo/precio/descripción; stock físico/reservado/disponible. Registrar recepción, ajuste con motivo o consumo en reparación mediante movimiento trazable; historial últimas50 operaciones. Ficha compradores: hasta6 fotos por URL permitida y descripción alternativa (primera portada), hasta20 compatibilidades con marca/modelo requeridos, versión/años opcionales; agregar/quitar y Guardar fotos y compatibilidades. Ver ficha pública cuando activo/publicado. No fingir upload de cámara, certificación o actualización directa de stock. 4 ACTUAL · Buscar código y etiquetas: buscar/escaneo de código con cámara o lector, resultado producto/SKU/ubicación/stock; permiso de cámara como estado de diseño sin conceder permisos reales. Seleccionar etiquetas y cantidades, vista imprimible QR/código/SKU/nombre. Sin automatización de impresora inexistente. 5 ACTUAL · Conteos: nuevo conteo todo inventario o ubicación y nombre opcional; snapshot de stock registrado. Lista recientes con abierto/aplicado/cancelado y progreso. Nada cambia hasta revisar y aplicar. 6 ACTUAL · Conteo móvil y revisión: diseño390px, escanear/buscar producto, físico esperado, reservado y cantidad contada, guardar. Filtros Todos/Sin contar/Con diferencia/Para revisar y totales. Si hubo movimiento después de snapshot, recontar; si contado menor que reservado, revisión. Aplicar solo con revisión resuelta; cancelar con motivo. Mostrar feedback y controles44px. 7 ACTUAL · Pedidos internos: lista de últimos100 pedidos sin búsqueda/paginación ni estadísticas inexistentes; tarjetas con código REP, fecha, cliente demo Particular/Mecánico y taller opcional, email/teléfono/dirección solo interno, retiro/envío, items/subtotal/envío/totalARS, estado de pago/pedido, tracking e historial. Selector de acción y Aplicar existentes, con texto claro de efecto. Esperando pago: verificar/sincronizar o cancelar impago. Pagado retiro: listo o entregar; listo: entregar. Pagado envío: despachar con tracking obligatorio; enviado: entregar. Pago en revisión: ADMIN sincroniza/cierra después de confirmar devolución/contracargo con proveedor; STAFF ve advertencia y deriva. No inventar reembolso automático ni nuevas búsquedas o tableros. Reglas de stock en ayuda de estado: creación reserva30min sin restar físico; pago acreditado conserva reserva; retiro descuenta una vez al entregar; envío descuenta una vez al despachar y no vuelve a descontar al entregar; cancelación/vencimiento impago libera reserva después de verificar proveedor; pago tardío/adicional/refund/chargeback exige revisión, sin devolución automática de mercadería despachada. 8 ACTUAL · Tienda online ADMIN: estado MercadoPago No configurado en entorno actual; habilitar compra bloqueado sin configuración. Retiro dirección/horarios/instrucciones configurables. Envío toggle exclusivamente SaltaCapital CP4400 readonly, tarifa fijaARS centavos, transportista manual. Guardar y feedback. Publicación por producto va en ficha. No campos secretos ni botón que conecte credenciales inventadas. 9 ACTUAL · Compra móvil 390px: tres pasos Carrito/Entrega y datos/Revisar con resumen compacto, cantidades y actualizar si cambió stock/precio, cobertura CP antes de contacto, Particular/Mecánico mismo precio, email compra obligatorio, acciones inferior44px. Estado principal cobros no habilitados y confirmación deshabilitada. Variante configurada explícitamente rotulada, no pago real. Al finalizar ordená el canvas por Público (inicio, catálogo, detalle, compra, pedido), Turnos (reserva, consulta, seña, cancelación), Taller (acceso, cuenta, agenda, unidades, configuración), Repuestos internos (inventario, conteos, pedidos, tienda) y Sistema visual. Conservá diseños antiguos como referencia histórica claramente separados; no borrar permanentemente. Asegurá nombres ACTUAL visibles en todas las pantallas finalizadas, sin restos MOTO/MotoX/inglés/wholesale/newsletter/favoritos/cupones en el conjunto ACTUAL.
+										167 button
+											168 image
+									169 Tercer lote de la actualización del MISMO proyecto..., ID: base-ui-_r_95_
+										170 image
+										171 text Tercer lote de la actualización del MISMO proyecto...
+									172 Continuá la ACTUALIZACIÓN VISUAL del mismo proyect..., ID: base-ui-_r_96_
+										173 image
+										174 text Continuá la ACTUALIZACIÓN VISUAL del mismo proyect...
+									175 ACTUALIZACIÓN REAL DEL DISEÑO. Ahora sí creá/actua..., ID: base-ui-_r_97_
+										176 image
+										177 text ACTUALIZACIÓN REAL DEL DISEÑO. Ahora sí creá/actua...
+									178 Ajustá el diagnóstico: la versión de tienda revisa..., ID: base-ui-_r_98_
+										179 image
+										180 text Ajustá el diagnóstico: la versión de tienda revisa...
+									181 Auditoría UX en español de TODO el proyecto Taller..., ID: base-ui-_r_99_
+										182 image
+										183 text Auditoría UX en español de TODO el proyecto Taller...
+									184 es de repuestos para motos, ID: base-ui-_r_9a_
+										185 image
+										186 text es de repuestos para motos
+									187 ecomerce de motos con colores negros u obscuros y ..., ID: base-ui-_r_9b_
+										188 image
+										189 text ecomerce de motos con colores negros u obscuros y ...
+						190 container
+							191 button Collapse panel
+								192 image
+							193 container
+								194 container
+									195 image Maximiliano Méndez
+									196 text Cuarto lote de la actualización visual del MISMO proyecto Taller Express. Generá pantallas efectivas en canvas; no responder solo con análisis. Conservá las pantallas públicas y de gestión anteriores. Prefijo ACTUAL en todos los nombres. Fondo #090d0b, paneles #101611, CTA #8ee000, foco #b8ff58, Arial/Helvetica, texto blanco/zinc, ARS con centavos, controles de al menos 44px. Datos ficticios Demo, sin datos privados ni credenciales reales. Navegación interna Agenda | Configuración solo ADMIN | Unidades | Repuestos | Mi cuenta. Dentro de Repuestos: Resumen | Inventario | Conteos | Pedidos | Tienda online solo ADMIN. STAFF puede operar inventario y pedidos; configuración comercial solo ADMIN. Estas pantallas representan funciones implementadas, no una activación real de pagos. GENERÁ 9 pantallas: 1 ACTUAL · Resumen de repuestos: productos activos, stock físico/reservado/disponible, mínimos y seis productos recientes. Sin gráficos de ingresos, utilidades, ventas por período ni métricas no implementadas. Los pedidos se gestionan en su sección. 2 ACTUAL · Inventario y alta: buscar nombre/SKU/marca, categoría, ubicación, stock y activo; lista nombre/SKU/precioARS/físico/reservado/disponible/mínimo. Crear repuesto: nombre, SKU opcional automático, código de barras opcional, marca, categoría, ubicación, precio, stock inicial y mínimo. Acceso importación Excel XLSX hasta3MB/1000filas, plantilla y errores por fila/duplicados. Sin modificar stock directamente en la lista ni agregar scanner de facturas inexistente. 3 ACTUAL · Ficha de inventario y publicación: editar datos/versionado, activo/publicado, mínimo/precio/descripción; stock físico/reservado/disponible. Registrar recepción, ajuste con motivo o consumo en reparación mediante movimiento trazable; historial últimas50 operaciones. Ficha compradores: hasta6 fotos por URL permitida y descripción alternativa (primera portada), hasta20 compatibilidades con marca/modelo requeridos, versión/años opcionales; agregar/quitar y Guardar fotos y compatibilidades. Ver ficha pública cuando activo/publicado. No fingir upload de cámara, certificación o actualización directa de stock. 4 ACTUAL · Buscar código y etiquetas: buscar/escaneo de código con cámara o lector, resultado producto/SKU/ubicación/stock; permiso de cámara como estado de diseño sin conceder permisos reales. Seleccionar etiquetas y cantidades, vista imprimible QR/código/SKU/nombre. Sin automatización de impresora inexistente. 5 ACTUAL · Conteos: nuevo conteo todo inventario o ubicación y nombre opcional; snapshot de stock registrado. Lista recientes con abierto/aplicado/cancelado y progreso. Nada cambia hasta revisar y aplicar. 6 ACTUAL · Conteo móvil y revisión: diseño390px, escanear/buscar producto, físico esperado, reservado y cantidad contada, guardar. Filtros Todos/Sin contar/Con diferencia/Para revisar y totales. Si hubo movimiento después de snapshot, recontar; si contado menor que reservado, revisión. Aplicar solo con revisión resuelta; cancelar con motivo. Mostrar feedback y controles44px. 7 ACTUAL · Pedidos internos: lista de últimos100 pedidos sin búsqueda/paginación ni estadísticas inexistentes; tarjetas con código REP, fecha, cliente demo Particular/Mecánico y taller opcional, email/teléfono/dirección solo interno, retiro/envío, items/subtotal/envío/totalARS, estado de pago/pedido, tracking e historial. Selector de acción y Aplicar existentes, con texto claro de efecto. Esperando pago: verificar/sincronizar o cancelar impago. Pagado retiro: listo o entregar; listo: entregar. Pagado envío: despachar con tracking obligatorio; enviado: entregar. Pago en revisión: ADMIN sincroniza/cierra después de confirmar devolución/contracargo con proveedor; STAFF ve advertencia y deriva. No inventar reembolso automático ni nuevas búsquedas o tableros. Reglas de stock en ayuda de estado: creación reserva30min sin restar físico; pago acreditado conserva reserva; retiro descuenta una vez al entregar; envío descuenta una vez al despachar y no vuelve a descontar al entregar; cancelación/vencimiento impago libera reserva después de verificar proveedor; pago tardío/adicional/refund/chargeback exige revisión, sin devolución automática de mercadería despachada. 8 ACTUAL · Tienda online ADMIN: estado MercadoPago No configurado en entorno actual; habilitar compra bloqueado sin configuración. Retiro dirección/horarios/instrucciones configurables. Envío toggle exclusivamente SaltaCapital CP4400 readonly, tarifa fijaARS centavos, transportista manual. Guardar y feedback. Publicación por producto va en ficha. No campos secretos ni botón que conecte credenciales inventadas. 9 ACTUAL · Compra móvil 390px: tres pasos Carrito/Entrega y datos/Revisar con resumen compacto, cantidades y actualizar si cambió stock/precio, cobertura CP antes de contacto, Particular/Mecánico mismo precio, email compra obligatorio, acciones inferior44px. Estado principal cobros no habilitados y confirmación deshabilitada. Variante configurada explícitamente rotulada, no pago real. Al finalizar ordená el canvas por Público (inicio, catálogo, detalle, compra, pedido), Turnos (reserva, consulta, seña, cancelación), Taller (acceso, cuenta, agenda, unidades, configuración), Repuestos internos (inventario, conteos, pedidos, tienda) y Sistema visual. Conservá diseños antiguos como referencia histórica claramente separados; no borrar permanentemente. Asegurá nombres ACTUAL visibles en todas las pantallas finalizadas, sin restos MOTO/MotoX/inglés/wholesale/newsletter/favoritos/cupones en el conjunto ACTUAL.
+								197 button Copy prompt
+									198 image
+								199 button Mostrar más
+									200 image
+								201 text Iniciando la generación del cuarto lote de 9 pantallas internas y móviles para Taller Express, asegurando el sistema visual oficial (#090d0b, #101611, #8ee000, Arial, ARS con centavos y controles ≥44px).
+								202 image
+								203 text Building the app skeleton ( 2 / 2 )
+				204 container No se ha podido reproducir el contenido multimedia.
+
+The focused UI element is 162 menu Agent log

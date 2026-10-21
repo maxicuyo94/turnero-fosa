@@ -18,11 +18,11 @@ export function findStaffProfile(prisma: Pick<PrismaClient, "user">, userId: str
 }
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, "Ingresá tu contraseña actual."),
+  currentPassword: z.string().min(1, "Ingresá tu contraseña actual.").max(MAX_PASSWORD_LENGTH),
   newPassword: z.string()
     .min(MIN_PASSWORD_LENGTH, `La contraseña nueva debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`)
     .max(MAX_PASSWORD_LENGTH, `La contraseña nueva no puede superar ${MAX_PASSWORD_LENGTH} caracteres.`),
-  confirmPassword: z.string(),
+  confirmPassword: z.string().max(MAX_PASSWORD_LENGTH),
 });
 
 /**

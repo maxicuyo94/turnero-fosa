@@ -1,11 +1,11 @@
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { logServerError } from "@/src/lib/safe-logging";
 import { paymentEnv, processMercadoPagoNotification } from "@/src/lib/composition";
 import { validateMercadoPagoSignature } from "@/src/modules/payments/mercado-pago-adapter";
 
 export async function POST(request: Request) {
   const env = await paymentEnv().catch((error: unknown) => {
-    console.error("mercado-pago webhook: payment configuration is invalid", error);
+    logServerError("mercado-pago webhook: payment configuration is invalid", error);
     return null;
   });
   if (!env) return NextResponse.json({ received: false }, { status: 503 });
@@ -36,8 +36,6 @@ export async function POST(request: Request) {
       bodyDataId: body?.data?.id ?? null,
       queryKeys: [...url.searchParams.keys()],
       tsAgeSeconds: ts ? Math.round(Date.now() / 1_000 - (Number(ts) > 1e11 ? Number(ts) / 1_000 : Number(ts))) : null,
-      secretLength: env.MERCADO_PAGO_WEBHOOK_SECRET.length,
-      secretFingerprint: createHash("sha256").update(env.MERCADO_PAGO_WEBHOOK_SECRET).digest("hex").slice(0, 8),
     });
     return NextResponse.json({ received: false }, { status: 401 });
   }
