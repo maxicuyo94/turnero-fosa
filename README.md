@@ -87,6 +87,9 @@ batch succeeds. Reuploading a successful file cannot add stock a second time.
 Each initial movement records the authenticated staff member and Excel origin.
 
 On Windows, if Vitest's default fork workers time out during startup, run `pnpm exec vitest run --pool=threads --maxWorkers=1`.
+Type checking and the design-system build use TypeScript 7 through the `@typescript/native` npm alias (`tsc`).
+The `typescript` dependency aliases Microsoft's `@typescript/typescript6` compatibility package (`tsc6`)
+for ESLint and other tools that still need the JavaScript compiler API. Keep both aliases together.
 `vitest.setup.ts` refuses to start the suite when `DATABASE_URL` points to a non-local, non-allowlisted
 database (the same rule as the test-data loader), because integration tests rewrite settings and delete rows.
 The inventory database tests also remove only their own fixtures.
