@@ -1,7 +1,6 @@
 # Backlog de errores y riesgos
 
-Revisión: **2026-10-07**. `preview` y `main` en `c5326bb` (auditoría y
-actualizaciones de Dependabot publicadas).
+Registro histórico: **2026-10-07**, cuando `preview` y `main` se documentaron en `c5326bb` (auditoría y actualizaciones de Dependabot publicadas). Enlaces a código corregidos el 25/10/2026; las ramas remotas y los despliegues no se volvieron a consultar.
 
 | Ítem | Estado |
 | --- | --- |
@@ -36,9 +35,9 @@ cancelación interna en PostgreSQL. **Cerrado** salvo reproducción nueva.
 - **Escenario:** dos solicitudes leen `PENDING_CONFIRMATION`; una cancela y otra
   confirma. Ambas son aceptadas y el resultado puede ser `CANCELLED → CONFIRMED`,
   transición que la política normal prohíbe.
-- **Origen:** [operaciones](../src/modules/internal/operations.ts)
+- **Origen:** [operaciones](../src/modules/appointments/operations.ts)
   (`updateInternalAppointmentStatus`) valida antes de escribir; el
-  [repositorio](../src/modules/internal/prisma-repository.ts)
+  [repositorio](../src/modules/appointments/prisma-repository.ts)
   (`updateAppointmentStatus`) no compara el estado esperado al actualizar.
 - **Alcance a revisar:** cancelación pública, cambios internos y webhooks deben
   coordinarse; el bloqueo de reprogramación por sí solo no cubre estos caminos.
@@ -62,7 +61,7 @@ reproducción nueva.
   `25:00` a `26:00`; `scheduleDateExceptionSchema.safeParse` acepta `2026-02-31`.
 - **Origen:** [esquemas de horarios](../src/modules/settings/schemas.ts) comprueban
   formato, pero no rangos ni existencia de la fecha. La
-  [página pública](../app/(public)/booking/page.tsx) pasa `date` de la URL al
+  [página pública](../app/%28public%29/booking/page.tsx) pasa `date` de la URL al
   [repositorio](../src/modules/booking/prisma-repository.ts), que construye fechas
   para Prisma sin una validación previa de calendario.
 - **Impacto posible:** configuraciones imposibles, fechas normalizadas a otro día

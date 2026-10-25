@@ -502,3 +502,9 @@ explicit hours. Breaks, minimum notice, and the booking window still apply on an
 the response as closed exceptions. Public booking never calls the provider: availability always reads
 the persisted rows. A failed or malformed response leaves every stored exception untouched, and rows a
 workshop user edited by hand are preserved across later imports.
+
+## Revisión documental local — 25/10/2026
+
+El código y las suites existentes distinguen turnero, inventario y tienda pública; los resultados de Preview/Producción citados arriba son registros históricos. No se consultaron Vercel, Neon, Mercado Pago ni correo y no se volvió a ejecutar una suite en esta revisión. Las carpetas locales `output/` y `tmp/`, ya presentes sin seguimiento Git, se conservaron.
+
+Siguiente paso: contrastar el [roadmap](openspec/ROADMAP.md), el [backlog](openspec/BACKLOG.md) y [publicación](publicacion.md) antes de habilitar cobros reales o notificaciones. Las migraciones, seeds y pruebas con PostgreSQL escriben en la base seleccionada: requieren una base aislada, y no se ejecutan como parte de una revisión documental.
