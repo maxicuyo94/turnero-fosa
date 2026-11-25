@@ -73,7 +73,7 @@ test("mechanic buys with shipping, persists cart and staff dispatches paid order
   await page.goto("/shop");
   await page.getByLabel("Buscar repuesto").fill(prefix);
   await page.getByRole("button", { name: `Agregar ${prefix} Filtro de aceite al carrito` }).click();
-  await page.getByRole("link", { name: /^(Carrito|Ver carrito) \d/u }).click();
+  await page.getByRole("link", { name: /^(Carrito|Ver carrito) \d/u }).first().click();
   await page.reload();
   await expect(page.getByLabel(`Cantidad de ${prefix} Filtro de aceite`)).toHaveValue("1");
   await page.getByRole("button", { name: "Elegir entrega" }).click();
@@ -120,7 +120,7 @@ test("individual buys for pickup without entering a shipping address", async ({ 
   await page.goto("/shop");
   await page.getByLabel("Buscar repuesto").fill(prefix);
   await page.getByRole("button", { name: `Agregar ${prefix} Filtro de aceite al carrito` }).click();
-  await page.getByRole("link", { name: /^(Carrito|Ver carrito) \d/u }).click();
+  await page.getByRole("link", { name: /^(Carrito|Ver carrito) \d/u }).first().click();
   await page.getByRole("button", { name: "Elegir entrega" }).click();
   await page.getByLabel("Nombre y apellido").fill(`${prefix} Particular`);
   await page.getByLabel("Email", { exact: true }).fill("individual@test.invalid");
@@ -167,7 +167,7 @@ test("buyer reviews delivery, stock and contact before reserving a purchase", as
   await expect(page.getByLabel("Buscar repuesto")).toHaveValue(`${prefix} Filtro`);
   await page.getByRole("link", { name: `Ver ficha de ${prefix} Filtro de aceite` }).click();
   await page.getByRole("button", { name: `Agregar ${prefix} Filtro de aceite al carrito` }).click();
-  await page.getByRole("link", { name: /^(Carrito|Ver carrito) \d/u }).click();
+  await page.getByRole("link", { name: /^(Carrito|Ver carrito) \d/u }).first().click();
   const quantity = page.getByLabel(`Cantidad de ${prefix} Filtro de aceite`);
   await quantity.fill("6");
   await expect(page.getByText("Ingresá entre 1 y 5 unidades.")).toBeVisible();
