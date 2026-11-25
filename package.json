@@ -38,7 +38,8 @@
       "deepmerge-ts": "8.0.0",
       "mysql2": "3.23.1",
       "source-map-js": "1.2.2",
-      "exceljs>uuid": "11.1.1"
+      "exceljs>uuid": "11.1.1",
+      "effect": "3.22.5"
     }
   },
   "dependencies": {
@@ -73,6 +74,7 @@
     "prisma": "^7.10.1",
     "tsx": "^4.23.15",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.3.8",
     "vitest": "^5.1.2"
   }
 }
